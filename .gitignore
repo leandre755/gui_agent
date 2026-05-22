@@ -1,0 +1,19 @@
+# Environnement virtuel Python
+venv/
+.venv/
+
+# Caches Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Captures d'écran locales de test
+screenshots/
+raw_screenshot_*.png
+screenshot_*.png
+
+# Fichiers système ou d'IDE
+.DS_Store
+.vscode/
+.idea/
