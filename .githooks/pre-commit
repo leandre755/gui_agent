@@ -1,0 +1,116 @@
+#!/bin/sh
+set -e
+
+echo "[Pre-Commit] Démarrage des 8 couches de validation Zero-Slop (Python/FastMCP)..."
+
+# 1. Scan Anti-Fuite de Secrets et Fichiers Critiques (.env, git_credential*.json)
+echo "[Pre-Commit] 1/8 - Scan Anti-Fuite de Secrets et fichiers sensibles..."
+STAGED_ENV=$(git diff --cached --name-only | grep -E '^(\.env(\.|$)|git_credential.*\.json|credentials\.json)' | grep -v '\.env\.example' || true)
+if [ -n "$STAGED_ENV" ]; then
+  echo "[Erreur Pre-Commit] Tentative de commit d'un fichier sensible : $STAGED_ENV"
+  echo "[Info] Les fichiers d'identifiants ou .env réels sont strictement interdits dans Git."
+  exit 1
+fi
+
+# Détection de motifs de clés privées et jetons d'accès
+STAGED_SECRETS=$(git diff --cached -S "PRIVATE KEY" -S "AKIA[0-9A-Z]{16}" -S "sk-[a-zA-Z0-9]{32,}" -S "github_pat_[a-zA-Z0-9_]{30,}" --name-only 2>/dev/null | grep -v '\.githooks/pre-commit' || true)
+if [ -n "$STAGED_SECRETS" ]; then
+  echo "[Erreur Pre-Commit] Motif de clé privée ou jeton d'accès identifié dans : $STAGED_SECRETS"
+  exit 1
+fi
+
+# Détection et Interdiction Stricte des Commentaires d'Inhibition (Zero-Slop Rule 17)
+SUPPRESSION_REGEX='(#\s*(type\s*:\s*ignore|noqa|pylint\s*:\s*disable|nosec|pragma\s*:\s*no\s*cover|ruff\s*:\s*noqa|pyright\s*:\s*ignore)|eslint-disable|@ts-ignore|@ts-nocheck|@ts-expect-error)'
+STAGED_SUPPRESSIONS=$(git diff --cached -U0 --name-only -G "$SUPPRESSION_REGEX" 2>/dev/null | grep -E '\.(py|sh|bash|ps1|js|ts|jsx|tsx|go|rs|c|cpp|h)$' | grep -v '\.githooks/pre-commit' || true)
+if [ -n "$STAGED_SUPPRESSIONS" ]; then
+  ADDED_SUPPRESSIONS=$(git diff --cached -U0 $STAGED_SUPPRESSIONS | grep -E '^\+[^+]' | grep -iE "$SUPPRESSION_REGEX" || true)
+  if [ -n "$ADDED_SUPPRESSIONS" ]; then
+    echo "[Erreur Pre-Commit] Interdiction Zero-Slop : Des commentaires de désactivation (# type: ignore, # noqa, # pylint: disable, # nosec, # ruff: noqa, etc.) ont été détectés dans :"
+    echo "$STAGED_SUPPRESSIONS"
+    echo "Lignes incriminées :"
+    echo "$ADDED_SUPPRESSIONS"
+    echo "[Info] Vous devez corriger le problème à la source dans le code au lieu d'ajouter un commentaire d'inhibition."
+    exit 1
+  fi
+fi
+
+# Protection des Fichiers de Configuration et Dépendances Critiques
+PROTECTED_MODIFIED=$(git diff --cached --name-only | grep -E '^(pyproject\.toml|\.githooks/pre-commit|\.gitignore|AGENTS\.md)$' || true)
+if [ -n "$PROTECTED_MODIFIED" ] && [ "$ALLOW_CONFIG_EDIT" != "1" ]; then
+  echo "[Pre-Commit Protection] Fichier protégé modifié : $PROTECTED_MODIFIED"
+  echo "[Info] Fichier critique de configuration. Pour valider cette modification, utilisez : ALLOW_CONFIG_EDIT=1 git commit"
+  exit 1
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --verbose || {
+    echo "[Erreur Pre-Commit] Gitleaks a détecté un secret dans les fichiers indexés !"
+    exit 1
+  }
+fi
+
+UV_BIN="${HOME}/.local/bin/uv"
+if ! command -v uv >/dev/null 2>&1 && [ ! -x "$UV_BIN" ]; then
+  echo "[Erreur Pre-Commit] 'uv' est requis pour exécuter les validations pre-commit."
+  exit 1
+fi
+UV_CMD=$(command -v uv 2>/dev/null || echo "$UV_BIN")
+
+# 2. Audit des Dépendances (CVEs)
+echo "[Pre-Commit] 2/8 - Audit des dépendances (pip-audit)..."
+$UV_CMD run --with pip-audit pip-audit || {
+  echo "[Erreur Pre-Commit] Des vulnérabilités de sécurité ont été détectées dans les dépendances Python."
+  exit 1
+}
+
+# 3. Linter Ultra-Rapide Rust (Ruff) - Zéro warning toléré
+echo "[Pre-Commit] 3/8 - Linter Rust Ultra-Rapide (Ruff, zéro warning toléré)..."
+$UV_CMD run --with ruff ruff check --quiet . || {
+  echo "[Erreur Pre-Commit] Ruff a bloqué une erreur ou un anti-pattern dans le code !"
+  exit 1
+}
+
+# 4. Formatage de Code (Ruff Format)
+echo "[Pre-Commit] 4/8 - Vérification du formatage de code (Ruff Format)..."
+$UV_CMD run --with ruff ruff format --check . || {
+  echo "[Erreur Pre-Commit] Le code n'est pas correctement formaté d'après Ruff."
+  echo "[Info] Lancez 'uv run --with ruff ruff format .' pour corriger automatiquement."
+  exit 1
+}
+
+# 5. Typage Statique Strict (Mypy)
+echo "[Pre-Commit] 5/8 - Typage Statique Global Strict (Mypy)..."
+if [ -f "./venv/bin/mypy" ]; then
+  ./venv/bin/mypy gui_agent mcp_gui_server.py --ignore-missing-imports || {
+    echo "[Erreur Pre-Commit] Échec de la vérification de types Mypy."
+    exit 1
+  }
+else
+  $UV_CMD run --with mypy mypy gui_agent mcp_gui_server.py --ignore-missing-imports || {
+    echo "[Erreur Pre-Commit] Échec de la vérification de types Mypy."
+    exit 1
+  }
+fi
+
+# 6. Code Smells & Règles équivalentes Sonar (Bugbear, Simplify, Complexité McCabe)
+echo "[Pre-Commit] 6/8 - Code Smells & Complexité Cognitive (Ruff Sonar/Bugbear/Simplify)..."
+$UV_CMD run --with ruff ruff check --select B,SIM,C90,UP,RUF --quiet . || {
+  echo "[Erreur Pre-Commit] Des code smells ou une complexité excessive ont été détectés !"
+  exit 1
+}
+
+# 7. Audit Sécurité Code AST (Bandit)
+echo "[Pre-Commit] 7/8 - Audit Sécurité Code AST (Bandit)..."
+$UV_CMD run --with bandit bandit -c pyproject.toml -q -r gui_agent mcp_gui_server.py || {
+  echo "[Erreur Pre-Commit] Bandit a identifié un risque de sécurité dans le code !"
+  exit 1
+}
+
+# 8. Scan SAST Sécurité via Semgrep
+echo "[Pre-Commit] 8/8 - Scan SAST Sécurité (Semgrep)..."
+$UV_CMD run --with semgrep semgrep scan --config auto --quiet --error || {
+  echo "[Erreur Pre-Commit] Semgrep a identifié une vulnérabilité SAST dans le code !"
+  exit 1
+}
+
+echo "[Pre-Commit] Les 8 couches de validation Zero-Slop (Anti-leak, CVE, Ruff Lint, Format, Mypy, Sonar/Smells, Bandit, Semgrep) sont 100% validées."

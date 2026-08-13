@@ -17,3 +17,11 @@ screenshot_*.png
 .DS_Store
 .vscode/
 .idea/
+
+# Identifiants et secrets sensibles
+git_credential*.json
+*.env*
+!*.env.example
+*.pem
+*.key
+credentials.json

@@ -1,7 +1,4 @@
-"""
-Serveur MCP GUI Agent - Module de rétrocompatibilité.
-Redirige vers le package standard `gui_agent.server`.
-"""
+"""GUI Agent - FastMCP Computer Use Monolithic Server for Linux Desktops."""
 
 from gui_agent.server import (
     FastMCP,
@@ -41,9 +38,11 @@ from gui_agent.server import (
     type_char_human,
 )
 
+__version__ = "0.1.0"
 __all__ = [
     "SCREENSHOTS_DIR",
     "FastMCP",
+    "__version__",
     "capture_screen_pil",
     "check_display_env",
     "get_monitor_geometry",
@@ -78,6 +77,3 @@ __all__ = [
     "translate_key",
     "type_char_human",
 ]
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,126 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gui-agent"
+version = "0.1.0"
+description = "Monolithic FastMCP GUI Agent Server for Linux Desktop Computer Use"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Leandre", email = "leandre@example.com" },
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "gui",
+    "agent",
+    "computer-use",
+    "fastmcp",
+    "automation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Human Machine Interfaces",
+    "Topic :: System :: Hardware",
+]
+dependencies = [
+    "mcp>=1.2.0,<2.0.0",
+    "pyautogui>=0.9.54",
+    "pillow>=10.0.0",
+    "mss>=9.0.0",
+    "pyperclip>=1.8.0",
+    "opencv-python-headless>=4.8.0",
+    "numpy>=1.24.0",
+    "python-xlib>=0.33",
+    "pytesseract>=0.3.10",
+    "playwright>=1.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.10.0",
+    "bandit>=1.7.0",
+    "pytest>=8.0.0",
+    "pip-audit>=2.7.0",
+]
+
+[project.scripts]
+gui-agent = "gui_agent.server:main"
+mcp-gui-server = "gui_agent.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gui_agent"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+exclude = [
+    ".git",
+    ".GCC",
+    "venv",
+    ".venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    "screenshots",
+    "dist",
+    "build",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # Pyflakes
+    "B",     # flake8-bugbear (équivalent Sonar / détection de bugs)
+    "SIM",   # flake8-simplify (équivalent Sonar / simplification & code smells)
+    "C90",   # complexité cognitive / cyclomatique (McCabe)
+    "UP",    # pyupgrade (modernisation syntaxe Python 3.13)
+    "RUF",   # règles internes Ruff
+    "S",     # flake8-bandit (sécurité du code)
+    "BLE",   # blind-except (interdiction des `except Exception: pass` aveugles)
+]
+ignore = [
+    "S603",   # subprocess call - trusted system commands (xdotool, wmctrl, ffmpeg, spectacle)
+    "S607",   # start process with partial executable path
+    "BLE001", # blind-except permis aux frontières des outils JSON-RPC FastMCP
+    "S108",   # temp file naming
+    "E501",   # line length géré par le formateur
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = ["S101", "BLE001", "S108"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 25
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = [
+    "^venv/",
+    "^\\.venv/",
+    "^\\.GCC/",
+    "^dist/",
+    "^build/",
+]
+
+[tool.bandit]
+exclude_dirs = ["venv", ".venv", "screenshots", ".GCC", "dist", "build"]
+skips = ["B603", "B607", "B404"]
