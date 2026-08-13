@@ -31,9 +31,12 @@
   - `Pre-commit 8 couches Zero-Slop` : **100% PASS**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun.
+- **Blocker / Failure Explanation**: Aucun blocage technique. La publication PyPI est mise en attente (décision utilisateur) pour une session ultérieure.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target URL**: [https://github.com/leandre755/gui_agent/releases/tag/v0.1.0](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0)
-2. **Immediate Action**: La release v0.1.0 et les pipelines GitHub Actions sont opérationnels et validés.
-3. **Verification Command**: `gh run list --limit 5`
+1. **Action différée : Publication sur PyPI (pypi.org)** :
+   - Obtenir le token API PyPI auprès de l'utilisateur (`pypi-...`).
+   - Téléverser le paquet préalablement construit : `uv publish --token <TOKEN>`.
+   - Tester l'installation globale : `pip install gui-agent` et `uv tool install gui-agent`.
+2. **Target Files**: [pyproject.toml](file:///home/omni/Code/gui_agent/pyproject.toml) / [dist/](file:///home/omni/Code/gui_agent/dist/)
+3. **Verification Command**: `uv tool install gui-agent --force && gui-agent --help`

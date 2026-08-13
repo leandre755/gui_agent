@@ -52,7 +52,11 @@ Fournir un serveur MCP GUI monolithique FastMCP complet et léger, optimisé pou
 - 🔄 In progress: 
   - Aucun.
 - ⏳ Pending: 
-  - Publication finale sur PyPI.
+  - **Publication officielle sur PyPI (pypi.org)** :
+    1. Inscription / Connexion sur [pypi.org](https://pypi.org).
+    2. Génération d'un token API de publication (`pypi-...`).
+    3. Exécution de la commande : `uv publish --token <PYPI_API_TOKEN>`.
+    4. Ajustement du README pour `pip install gui-agent` direct.
 
 ## 👉 Next Session Direction
-La suite complète de cycle de vie (installation, exécution, documentation, skills et désinstallation) pour Linux, macOS et Windows est opérationnelle et 100% qualifiée.
+Le dépôt GitHub, les scripts multiplateformes, la release v0.1.0 et la CI/CD sont 100% opérationnels. La prochaine étape différée consistera à créer le compte PyPI et lancer `uv publish` pour rendre `pip install gui-agent` accessible publiquement sans passer par GitHub.
