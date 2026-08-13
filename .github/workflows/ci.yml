@@ -71,11 +71,15 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          if [[ -f requirements.txt ]]; then python -m pip install -r requirements.txt; fi
+          if [[ -f pyproject.toml ]]; then
+            python -m pip install -e ".[dev]" || python -m pip install -e .
+          elif [[ -f requirements.txt ]]; then
+            python -m pip install -r requirements.txt
+          fi
           python -m pip install pytest ruff
           python -m compileall -q .
           ruff check .
-          if find . -type f \( -name 'test_*.py' -o -name '*_test.py' \) -print -quit | grep -q .; then pytest -q; fi
+          pytest -v tests/
 
       - name: Set up Java
         if: steps.detect.outputs.java == 'true'

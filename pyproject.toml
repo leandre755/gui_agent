@@ -124,3 +124,10 @@ exclude = [
 [tool.bandit]
 exclude_dirs = ["venv", ".venv", "screenshots", ".GCC", "dist", "build"]
 skips = ["B603", "B607", "B404"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+
+
