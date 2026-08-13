@@ -68,6 +68,8 @@ jobs:
       - name: Validate Python project
         if: steps.detect.outputs.python == 'true'
         shell: bash
+        env:
+          DISPLAY: :99
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip

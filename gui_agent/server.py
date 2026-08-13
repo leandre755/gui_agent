@@ -11,6 +11,9 @@ import tempfile
 import time
 from typing import Any
 from PIL import Image, ImageDraw
+
+# S'assurer que la variable DISPLAY existe pour éviter KeyError sous Linux headless/CI
+os.environ.setdefault("DISPLAY", ":0")
 import pyautogui
 
 # S'assurer que le SDK MCP est accessible
