@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions d’utilisation
+    url: https://github.com/OWNER/REPOSITORY/discussions
+    about: Replace this placeholder with your project discussion or support channel.
+  - name: Signalement de sécurité privé
+    url: https://github.com/OWNER/REPOSITORY/security/advisories/new
+    about: Replace this placeholder with your private security reporting URL.

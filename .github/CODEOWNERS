@@ -1,0 +1,26 @@
+# ==============================================================================
+# GitHub Code Owners Configuration
+# ==============================================================================
+# Global repository owners (default for all files)
+* @leandre755 @omni01-Cell @lender926-lab
+
+# CI/CD Workflows, Security & Governance
+/.github/ @leandre755 @omni01-Cell @lender926-lab
+/.github/workflows/ @leandre755 @omni01-Cell @lender926-lab
+/.github/scripts/ @leandre755 @omni01-Cell @lender926-lab
+/.github/CODEOWNERS @leandre755 @omni01-Cell @lender926-lab
+
+# Agent Policies, Security Boundaries & Context
+/AGENTS.md @leandre755 @omni01-Cell @lender926-lab
+/AGENT_POLICY.md @leandre755 @omni01-Cell @lender926-lab
+/.agents/ @leandre755 @omni01-Cell @lender926-lab
+/.coding-stuff/ @leandre755 @omni01-Cell @lender926-lab
+
+# Build, Packaging & Dependencies
+/pyproject.toml @leandre755 @omni01-Cell @lender926-lab
+/gui_agent/ @leandre755 @omni01-Cell @lender926-lab
+/.githooks/ @leandre755 @omni01-Cell @lender926-lab
+/install.sh @leandre755 @omni01-Cell @lender926-lab
+/install.ps1 @leandre755 @omni01-Cell @lender926-lab
+/uninstall.sh @leandre755 @omni01-Cell @lender926-lab
+/uninstall.ps1 @leandre755 @omni01-Cell @lender926-lab

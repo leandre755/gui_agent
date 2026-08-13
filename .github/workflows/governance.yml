@@ -1,0 +1,157 @@
+name: Pull request governance
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: governance-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate title, commits and protected paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate pull request title
+        id: title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|chore|docs|refactor|test|ci|perf|build|style|revert)(\([a-z0-9._/-]+\))?!?: .{3,}'
+          if printf '%s\n' "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo 'status=pass' >> "$GITHUB_OUTPUT"
+          else
+            echo 'status=fail' >> "$GITHUB_OUTPUT"
+            echo 'A PR title must follow Conventional Commits, for example: feat(hooks): add profile selection.' >&2
+            exit 1
+          fi
+
+      - name: Compute changed files and size
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" > "$CHANGED_FILES_FILE"
+          git diff --numstat "$BASE_SHA...$HEAD_SHA" > "${CHANGED_FILES_FILE}.numstat"
+          added=$(awk '{ sum += $1 } END { print sum + 0 }' "${CHANGED_FILES_FILE}.numstat")
+          deleted=$(awk '{ sum += $2 } END { print sum + 0 }' "${CHANGED_FILES_FILE}.numstat")
+          total=$((added + deleted))
+          protected=false
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              .github/workflows/*|.github/scripts/*|.github/CODEOWNERS|AGENTS.md|AGENT_POLICY.md|AUTONOMY.md|.claude/*|.cursor/*|.agents/*|.devin/*|.windsurf/*|githooks/*|setup.sh|setup.ps1)
+                protected=true
+                ;;
+            esac
+          done < "$CHANGED_FILES_FILE"
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+          echo "protected=$protected" >> "$GITHUB_OUTPUT"
+          if (( total > 1000 )); then
+            echo 'status=fail' >> "$GITHUB_OUTPUT"
+            echo "Pull request too large: $total changed lines (maximum 1000)." >&2
+            exit 1
+          elif (( total > 500 )); then
+            echo 'status=warning' >> "$GITHUB_OUTPUT"
+            echo "Pull request is large: $total changed lines. Consider splitting it." >&2
+          else
+            echo 'status=pass' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate commit messages
+        id: commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='^(feat|fix|chore|docs|refactor|test|ci|perf|build|style|revert)(\([a-z0-9._/-]+\))?!?: .{3,}'
+          invalid=0
+          while IFS= read -r subject; do
+            if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
+              echo "Invalid commit subject: $subject" >&2
+              invalid=$((invalid + 1))
+            fi
+          done < <(git log --format=%s "$BASE_SHA..$HEAD_SHA")
+          if (( invalid > 0 )); then
+            echo 'status=fail' >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo 'status=pass' >> "$GITHUB_OUTPUT"
+
+      - name: Upsert governance summary
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          TITLE_STATUS: ${{ steps.title.outputs.status || 'fail' }}
+          SIZE_STATUS: ${{ steps.diff.outputs.status || 'fail' }}
+          TOTAL_CHANGES: ${{ steps.diff.outputs.total || 'unknown' }}
+          COMMITS_STATUS: ${{ steps.commits.outputs.status || 'fail' }}
+          PROTECTED_PATHS: ${{ steps.diff.outputs.protected || 'unknown' }}
+        with:
+          script: |
+            const marker = '<!-- coding-stuff:governance-summary:v1 -->';
+            const title = process.env.TITLE_STATUS === 'pass' ? 'pass' : 'fail';
+            const commits = process.env.COMMITS_STATUS === 'pass' ? 'pass' : 'fail';
+            const size = process.env.SIZE_STATUS || 'fail';
+            const protectedPaths = process.env.PROTECTED_PATHS === 'true';
+            const body = [
+              marker,
+              '## Governance summary',
+              '',
+              `- PR title: **${title}**`,
+              `- Commit messages: **${commits}**`,
+              `- Size: **${size}** (${process.env.TOTAL_CHANGES} changed lines)`,
+              `- Sensitive automation files changed: **${protectedPaths ? 'yes — require Code Owner review' : 'no'}**`,
+              '',
+              'Branch protection and CODEOWNERS must enforce approval for sensitive paths.'
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100
+            });
+            const existing = comments.find((comment) => comment.user.type === 'Bot' && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }
+
+      - name: Enforce governance result
+        if: |
+          steps.title.outputs.status != 'pass' ||
+          steps.diff.outputs.status == 'fail' ||
+          steps.commits.outputs.status != 'pass'
+        shell: bash
+        run: exit 1

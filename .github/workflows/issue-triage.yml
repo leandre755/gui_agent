@@ -1,0 +1,95 @@
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, reopened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Existing issue number to triage
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: true
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Classify and upsert bounded triage result
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+        with:
+          script: |
+            const rawNumber = process.env.ISSUE_NUMBER;
+            if (!/^[1-9][0-9]*$/.test(rawNumber)) {
+              core.setFailed('issue_number must be a positive integer.');
+              return;
+            }
+            const issueNumber = Number(rawNumber);
+            const issue = context.payload.issue || (await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            })).data;
+            if (issue.pull_request) {
+              core.setFailed('The target must be an issue, not a pull request.');
+              return;
+            }
+
+            const text = `${issue.title || ''}\n${issue.body || ''}`.toLowerCase();
+            const labels = new Set(['needs-triage']);
+            if (/\b(bug|error|crash|regression|broken)\b/.test(text)) labels.add('bug');
+            if (/\b(feature|enhancement|proposal|request)\b/.test(text)) labels.add('enhancement');
+            if (/\b(doc|documentation|readme|guide)\b/.test(text)) labels.add('documentation');
+            if (/\b(question|how do i|help)\b/.test(text)) labels.add('question');
+            if (/\b(security|vulnerability|cve|exploit)\b/.test(text)) labels.add('security');
+            if (/\b(critical|urgent|blocking)\b/.test(text)) labels.add('priority-high');
+
+            const boundedLabels = [...labels].slice(0, 4);
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: boundedLabels
+            });
+
+            const marker = '<!-- coding-stuff:issue-triage:v1 -->';
+            const body = [
+              marker,
+              '## Triage initial',
+              '',
+              `Labels added: ${boundedLabels.map((label) => `\`${label}\``).join(', ')}`,
+              '',
+              'This deterministic first pass is limited to labels. A maintainer must validate priority, scope and security reports.'
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              per_page: 100
+            });
+            const existing = comments.find((comment) => comment.user.type === 'Bot' && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body
+              });
+            }

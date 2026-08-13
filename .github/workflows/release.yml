@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Run a safe dry-run or publish a release
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, publish]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Semantic release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: release
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Check semantic-release configuration
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package.json && -f package-lock.json ]] && node -e "const p=require('./package.json'); process.exit((p.devDependencies?.['semantic-release'] || p.dependencies?.['semantic-release']) ? 0 : 1)"; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'Semantic Release is not configured. Add semantic-release to package.json and commit package-lock.json.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Install locked release tooling
+        if: steps.config.outputs.enabled == 'true'
+        run: npm ci --ignore-scripts
+
+      - name: Run dry-run
+        if: |
+          steps.config.outputs.enabled == 'true' &&
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'dry-run')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npx semantic-release --dry-run
+
+      - name: Publish release
+        if: |
+          steps.config.outputs.enabled == 'true' &&
+          (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'))
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npx semantic-release
+
+      - name: Write release summary
+        if: always()
+        shell: bash
+        env:
+          RELEASE_ENABLED: ${{ steps.config.outputs.enabled || 'false' }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode || 'publish-on-main-push' }}
+        run: |
+          {
+            echo '## Release summary'
+            echo
+            echo "- Semantic Release configured: $RELEASE_ENABLED"
+            echo "- Trigger: $EVENT_NAME"
+            echo "- Manual mode: $INPUT_MODE"
+            echo '- Publish operations must be protected by the `release` environment.'
+          } >> "$GITHUB_STEP_SUMMARY"

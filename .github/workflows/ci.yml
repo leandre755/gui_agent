@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  validate:
+    name: Build, test and static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Detect supported project files
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "node=$([[ -f package.json ]] && echo true || echo false)"
+            echo "python=$([[ -f pyproject.toml || -f requirements.txt || -f setup.py ]] && echo true || echo false)"
+            echo "java=$([[ -f pom.xml || -f build.gradle || -f build.gradle.kts ]] && echo true || echo false)"
+            echo "go=$([[ -f go.mod ]] && echo true || echo false)"
+            echo "rust=$([[ -f Cargo.toml ]] && echo true || echo false)"
+            echo "dotnet=$(find . -maxdepth 2 -type f \( -name '*.sln' -o -name '*.csproj' \) -print -quit | grep -q . && echo true || echo false)"
+            echo "cpp=$([[ -f CMakeLists.txt ]] && echo true || echo false)"
+            echo "php=$([[ -f composer.json ]] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: steps.detect.outputs.node == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Validate Node.js project
+        if: steps.detect.outputs.node == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package-lock.json || { echo 'package-lock.json is required for reproducible CI.'; exit 1; }
+          npm ci --ignore-scripts
+          npm run lint --if-present
+          npm run typecheck --if-present
+          npm test --if-present
+          npm run build --if-present
+          npm audit --omit=dev --audit-level=high
+
+      - name: Set up Python
+        if: steps.detect.outputs.python == 'true'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Python project
+        if: steps.detect.outputs.python == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [[ -f requirements.txt ]]; then python -m pip install -r requirements.txt; fi
+          python -m pip install pytest ruff
+          python -m compileall -q .
+          ruff check .
+          if find . -type f \( -name 'test_*.py' -o -name '*_test.py' \) -print -quit | grep -q .; then pytest -q; fi
+
+      - name: Set up Java
+        if: steps.detect.outputs.java == 'true'
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validate Java project
+        if: steps.detect.outputs.java == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -x ./mvnw ]]; then ./mvnw --batch-mode verify; elif [[ -x ./gradlew ]]; then ./gradlew --no-daemon check; else mvn --batch-mode verify; fi
+
+      - name: Set up Go
+        if: steps.detect.outputs.go == 'true'
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+
+      - name: Validate Go project
+        if: steps.detect.outputs.go == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          go mod verify
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test ./...
+
+      - name: Set up Rust
+        if: steps.detect.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Validate Rust project
+        if: steps.detect.outputs.rust == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --all-features
+
+      - name: Set up .NET
+        if: steps.detect.outputs.dotnet == 'true'
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate .NET project
+        if: steps.detect.outputs.dotnet == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore
+          dotnet build --no-restore --configuration Release
+          dotnet test --no-build --configuration Release
+
+      - name: Validate C and C++ project
+        if: steps.detect.outputs.cpp == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B .coding-stuff-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build .coding-stuff-build --parallel
+          ctest --test-dir .coding-stuff-build --output-on-failure
+
+      - name: Validate PHP project
+        if: steps.detect.outputs.php == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -r -n1 php -l
+          if command -v composer >/dev/null 2>&1; then composer audit --locked; fi
+
+      - name: Publish execution summary
+        if: always()
+        shell: bash
+        env:
+          DETECT_NODE: ${{ steps.detect.outputs.node }}
+          DETECT_PYTHON: ${{ steps.detect.outputs.python }}
+          DETECT_JAVA: ${{ steps.detect.outputs.java }}
+          DETECT_GO: ${{ steps.detect.outputs.go }}
+          DETECT_RUST: ${{ steps.detect.outputs.rust }}
+          DETECT_DOTNET: ${{ steps.detect.outputs.dotnet }}
+          DETECT_CPP: ${{ steps.detect.outputs.cpp }}
+          DETECT_PHP: ${{ steps.detect.outputs.php }}
+        run: |
+          {
+            echo '## CI summary'
+            echo
+            echo '| Ecosystem | Detected |'
+            echo '|---|---|'
+            echo "| Node.js | $DETECT_NODE |"
+            echo "| Python | $DETECT_PYTHON |"
+            echo "| Java | $DETECT_JAVA |"
+            echo "| Go | $DETECT_GO |"
+            echo "| Rust | $DETECT_RUST |"
+            echo "| .NET | $DETECT_DOTNET |"
+            echo "| C/C++ | $DETECT_CPP |"
+            echo "| PHP | $DETECT_PHP |"
+          } >> "$GITHUB_STEP_SUMMARY"
