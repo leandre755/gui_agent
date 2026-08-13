@@ -670,21 +670,21 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.0" },
+    { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.9.4" },
     { name = "mcp", specifier = ">=1.2.0,<2.0.0" },
-    { name = "mss", specifier = ">=9.0.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "numpy", specifier = ">=1.24.0" },
-    { name = "opencv-python-headless", specifier = ">=4.8.0" },
-    { name = "pillow", specifier = ">=10.0.0" },
-    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.7.0" },
-    { name = "playwright", specifier = ">=1.40.0" },
+    { name = "mss", specifier = ">=10.2.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.0" },
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "opencv-python-headless", specifier = ">=5.0.0.93" },
+    { name = "pillow", specifier = ">=12.3.0" },
+    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.1" },
+    { name = "playwright", specifier = ">=1.62.0" },
     { name = "pyautogui", specifier = ">=0.9.54" },
-    { name = "pyperclip", specifier = ">=1.8.0" },
-    { name = "pytesseract", specifier = ">=0.3.10" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pyperclip", specifier = ">=1.11.0" },
+    { name = "pytesseract", specifier = ">=0.3.13" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
     { name = "python-xlib", specifier = ">=0.33" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.1" },
 ]
 provides-extras = ["dev"]
 

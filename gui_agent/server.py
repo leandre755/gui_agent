@@ -6,7 +6,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 from typing import Any
@@ -19,9 +18,10 @@ import pyautogui
 # S'assurer que le SDK MCP est accessible
 try:
     from mcp.server.fastmcp import FastMCP
-except ImportError:
-    print("Erreur : Le SDK 'mcp' n'est pas installé dans cet environnement virtuel.", file=sys.stderr)
-    sys.exit(1)
+except ImportError as err:
+    raise ImportError(
+        "Erreur : Le SDK 'mcp' version 1.x (FastMCP) est requis pour faire fonctionner gui-agent."
+    ) from err
 
 # Configuration de la sécurité de PyAutoGUI
 pyautogui.FAILSAFE = True  # Déplacer la souris dans le coin supérieur gauche lève une exception FailSafeException
