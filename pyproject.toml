@@ -35,25 +35,25 @@ classifiers = [
     "Topic :: System :: Hardware",
 ]
 dependencies = [
-    "mcp>=1.2.0,<2.0.0",
+    "mcp>=2.0.0,<3.0.0",
     "pyautogui>=0.9.54",
-    "pillow>=10.0.0",
-    "mss>=9.0.0",
-    "pyperclip>=1.8.0",
-    "opencv-python-headless>=4.8.0",
-    "numpy>=1.24.0",
+    "pillow>=12.3.0",
+    "mss>=10.2.0",
+    "pyperclip>=1.11.0",
+    "opencv-python-headless>=5.0.0.93",
+    "numpy>=2.2.6",
     "python-xlib>=0.33",
-    "pytesseract>=0.3.10",
-    "playwright>=1.40.0",
+    "pytesseract>=0.3.13",
+    "playwright>=1.62.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.8.0",
-    "mypy>=1.10.0",
-    "bandit>=1.7.0",
-    "pytest>=8.0.0",
-    "pip-audit>=2.7.0",
+    "ruff>=0.16.1",
+    "mypy>=2.3.0",
+    "bandit>=1.9.4",
+    "pytest>=9.1.1",
+    "pip-audit>=2.10.1",
 ]
 
 [project.scripts]
