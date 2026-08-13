@@ -1,37 +1,39 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Exécuter les commits atomiques (Release & Gouvernance/CI) et pousser sur le dépôt distant GitHub `origin/main`.
+- **Requested Task**: Corriger le pipeline CI sur GitHub Actions, pousser directement sur `main` sans PR et introduire la Release officielle `v0.1.0`.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**: 
-  1. Commit 1 créé : `[main 23d8c95] feat(release): production packaging, cross-platform lifecycle scripts and test suite` (33 fichiers, +6912 / -428).
-  2. Commit 2 créé : `[main d7744de] feat(governance): add GitHub CI/CD workflows, dependabot, agent policies, and CODEOWNERS` (17 fichiers, +919).
-  3. Authentification GitHub CLI activée sur `@leandre755` et push distant effectué avec succès (`133a2c3..d7744de main -> main`).
-  4. Répertoire de travail 100% propre (`git status` : rien à valider, la copie de travail est propre).
+  1. Pipeline CI réparé et **100% vert sur GitHub Actions** ([Run 3175528...](https://github.com/leandre755/gui_agent/actions/runs/31755282245)) :
+     - Épinglage de la dépendance `mcp>=1.2.0,<2.0.0` (garantissant la présence de FastMCP).
+     - Remplacement de `sys.exit(1)` par `raise ImportError`.
+     - Support des exécutions headless dans CI via `xvfb-run` et initialisation `DISPLAY: :0`.
+     - Configuration de `testpaths = ["tests"]` et `pythonpath = ["."]` dans `pyproject.toml`.
+  2. Release GitHub [`v0.1.0`](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0) créée avec notes de publication et artefacts sdist (`gui_agent-0.1.0.tar.gz`) et wheel (`gui_agent-0.1.0-py3-none-any.whl`).
+  3. Tous les workflows distants (`CI`, `Release`, `Workflow hygiene`) sont au statut **SUCCESS (✓)**.
+  4. Répertoire local 100% propre et synchronisé avec `origin/main`.
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **Commit 23d8c95**:
-  - Packaging standard `gui_agent/`, `pyproject.toml`, `uv.lock`.
-  - Scripts d'installation et désinstallation multiplateformes (`install.sh`, `install.ps1`, `uninstall.sh`, `uninstall.ps1`, `INSTALL.md`, `README.md`, `LICENSE`).
-  - Suite de tests unitaires et intégration `tests/test_package.py`.
-  - Hook de validation local Zero-Slop 8 couches `.githooks/pre-commit`.
-- **Commit d7744de**:
-  - Workflows GitHub Actions `.github/workflows/` (CI, governance, issue triage, release, security, workflow-hygiene).
-  - Modèles d'issues et gouvernance (`dependabot.yml`, `CODEOWNERS`, `PULL_REQUEST_TEMPLATE.md`).
-  - Politiques d'agents `AGENT_POLICY.md`, `.agents/rules/coding-stuff-policy.md`, `.coding-stuff/`.
+- **File**: `pyproject.toml`
+  - **Scope**: Section `[tool.pytest.ini_options]` (`testpaths = ["tests"]`, `pythonpath = ["."]`), épinglage `mcp>=1.2.0,<2.0.0`.
+- **File**: `gui_agent/server.py`
+  - **Scope**: `os.environ.setdefault("DISPLAY", ":0")` et levée propre d'`ImportError`.
+- **File**: `.github/workflows/ci.yml`
+  - **Scope**: Installation dynamique du package `pyproject.toml` et exécution sous `xvfb-run`.
+- **Directory**: `examples/`
+  - **Scope**: Déplacement des scripts de test manuels hors du chemin de découverte pytest.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit && ./venv/bin/pytest -v`
 - **Linter/Compiler Status**: 
-  - `git push origin main` : **133a2c3..d7744de main -> main (OK)**
-  - `verify_workflows.py` : **Validation réussie : 6 workflow(s) conformes.**
-  - `pytest` : **7 passed in 3.90s**
-  - `pre-commit 8 couches` : **100% PASS**
+  - `GitHub Actions CI` : **SUCCESS (✓)**
+  - `pytest` : **7 passed in 1.17s**
+  - `Pre-commit 8 couches Zero-Slop` : **100% PASS**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun. Tout est en ligne sur GitHub.
+- **Blocker / Failure Explanation**: Aucun.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target File**: [https://github.com/leandre755/gui_agent](https://github.com/leandre755/gui_agent)
-2. **Immediate Action**: Le projet est déployé et versionné sur GitHub.
-3. **Verification Command**: `git status`
+1. **Target URL**: [https://github.com/leandre755/gui_agent/releases/tag/v0.1.0](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0)
+2. **Immediate Action**: La release v0.1.0 et les pipelines GitHub Actions sont opérationnels et validés.
+3. **Verification Command**: `gh run list --limit 5`
