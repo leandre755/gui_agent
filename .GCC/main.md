@@ -1,6 +1,7 @@
 # Current Project Context
 
 ## 🏆 Major Milestones (Archived Epics)
+- [2026-08-13] Publication et push complets sur GitHub (`origin/main`) : Commits atomiques `feat(release)` (packaging production 0.1.0, scripts de cycle de vie multiplateformes, tests) et `feat(governance)` (CI/CD GitHub Actions, dependabot, agent policies, CODEOWNERS) avec validation 100% Zero-Slop 8 couches.
 - [2026-08-13] Configuration complète du starter-kit de gouvernance et CI/CD `coding-stuff` (politique accompagnée `AGENT_POLICY.md`, adaptateur `.agents/rules/coding-stuff-policy.md`, 6 workflows GitHub Actions conformes et sécurisés, templates d'issues, dependabot durci).
 - [2026-08-13] Création et validation des scripts de désinstallation propre multiplateformes [`uninstall.sh`](file:///home/omni/Code/gui_agent/uninstall.sh) (Linux/macOS) et [`uninstall.ps1`](file:///home/omni/Code/gui_agent/uninstall.ps1) (Windows PowerShell) avec nettoyage automatique des configurations MCP (Claude Code, Antigravity) et option de purge des données.
 - [2026-08-13] Création et validation complète du Skill d'installation Windows `gui-agent-windows-install` et consolidation dans [`INSTALL.md`](file:///home/omni/Code/gui_agent/INSTALL.md) et [`install.ps1`](file:///home/omni/Code/gui_agent/install.ps1).

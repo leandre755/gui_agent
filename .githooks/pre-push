@@ -1,0 +1,45 @@
+#!/bin/bash
+# ==============================================================================
+# Git Hook: pre-push
+# Exécute la suite de tests avant d'autoriser le push distant
+# ==============================================================================
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}🚀 PRE-PUSH HOOK : Exécution des tests unitaires${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+if [ -f "./venv/bin/pytest" ]; then
+    TEST_CMD="./venv/bin/pytest -v"
+elif command -v uv >/dev/null 2>&1; then
+    TEST_CMD="uv run --with pytest pytest -v"
+elif command -v pytest >/dev/null 2>&1; then
+    TEST_CMD="pytest -v"
+else
+    echo -e "${RED}❌ Aucun exécutable pytest ou uv trouvé.${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}Commande de test : $TEST_CMD${NC}"
+echo ""
+
+$TEST_CMD || {
+    echo ""
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}❌ Échec du push : La suite de tests a échoué !${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    exit 1
+}
+
+echo ""
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}✅ Tous les tests sont validés, push autorisé.${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+exit 0

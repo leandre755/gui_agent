@@ -1,35 +1,37 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Identifier l'ensemble des comptes GitHub authentifiés via `gh auth status` et les enregistrer en tant que propriétaires dans [`.github/CODEOWNERS`](file:///home/omni/Code/gui_agent/.github/CODEOWNERS).
+- **Requested Task**: Exécuter les commits atomiques (Release & Gouvernance/CI) et pousser sur le dépôt distant GitHub `origin/main`.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**: 
-  1. `gh auth status` a identifié les 3 comptes configurés : `@leandre755`, `@omni01-Cell`, `@lender926-lab`.
-  2. [`.github/CODEOWNERS`](file:///home/omni/Code/gui_agent/.github/CODEOWNERS) a été créé avec ces 3 propriétaires couvrant la racine (`*`), les workflows CI/CD, les scripts de gouvernance, les politiques d'agents et le package de production.
-  3. Fichier template résiduel `.github/CODEOWNERS.example` supprimé.
-  4. Suite de tests unitaires `pytest` validée à 100% (7/7 PASS).
-  5. Hook pre-commit Zero-Slop 8 couches validé à 100% (Anti-leak, CVE, Ruff, Format, Mypy, Sonar/Smells, Bandit, Semgrep).
+  1. Commit 1 créé : `[main 23d8c95] feat(release): production packaging, cross-platform lifecycle scripts and test suite` (33 fichiers, +6912 / -428).
+  2. Commit 2 créé : `[main d7744de] feat(governance): add GitHub CI/CD workflows, dependabot, agent policies, and CODEOWNERS` (17 fichiers, +919).
+  3. Authentification GitHub CLI activée sur `@leandre755` et push distant effectué avec succès (`133a2c3..d7744de main -> main`).
+  4. Répertoire de travail 100% propre (`git status` : rien à valider, la copie de travail est propre).
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `.github/CODEOWNERS`
-  - **Scope**: Définition des propriétaires de code GitHub (`@leandre755 @omni01-Cell @lender926-lab`) pour la racine, `.github/`, `AGENTS.md`, `AGENT_POLICY.md`, `gui_agent/`, et les scripts d'installation.
+- **Commit 23d8c95**:
+  - Packaging standard `gui_agent/`, `pyproject.toml`, `uv.lock`.
+  - Scripts d'installation et désinstallation multiplateformes (`install.sh`, `install.ps1`, `uninstall.sh`, `uninstall.ps1`, `INSTALL.md`, `README.md`, `LICENSE`).
+  - Suite de tests unitaires et intégration `tests/test_package.py`.
+  - Hook de validation local Zero-Slop 8 couches `.githooks/pre-commit`.
+- **Commit d7744de**:
+  - Workflows GitHub Actions `.github/workflows/` (CI, governance, issue triage, release, security, workflow-hygiene).
+  - Modèles d'issues et gouvernance (`dependabot.yml`, `CODEOWNERS`, `PULL_REQUEST_TEMPLATE.md`).
+  - Politiques d'agents `AGENT_POLICY.md`, `.agents/rules/coding-stuff-policy.md`, `.coding-stuff/`.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit && ./venv/bin/pytest -v`
 - **Linter/Compiler Status**: 
+  - `git push origin main` : **133a2c3..d7744de main -> main (OK)**
   - `verify_workflows.py` : **Validation réussie : 6 workflow(s) conformes.**
-  - `pip-audit` : **No known vulnerabilities found**
-  - `ruff check .` : **All checks passed!**
-  - `ruff format --check .` : **20 files already formatted**
-  - `mypy` : **Success: no issues found in 4 source files**
-  - `bandit` : **No issues identified**
-  - `semgrep` : **0 Code Findings (Code 0)**
   - `pytest` : **7 passed in 3.90s**
+  - `pre-commit 8 couches` : **100% PASS**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun.
+- **Blocker / Failure Explanation**: Aucun. Tout est en ligne sur GitHub.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target File**: [git status](file:///home/omni/Code/gui_agent)
-2. **Immediate Action**: Exécuter `git add . && git commit -m "..." && git push origin main`.
-3. **Verification Command**: `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit && ./venv/bin/pytest -v`
+1. **Target File**: [https://github.com/leandre755/gui_agent](https://github.com/leandre755/gui_agent)
+2. **Immediate Action**: Le projet est déployé et versionné sur GitHub.
+3. **Verification Command**: `git status`
