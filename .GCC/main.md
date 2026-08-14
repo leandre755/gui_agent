@@ -51,12 +51,18 @@ Fournir un serveur MCP GUI monolithique FastMCP complet et léger, optimisé pou
   - Validation 100% de la suite de tests (`pytest` 7/7) et du hook Zero-Slop 8 couches.
 - 🔄 In progress: 
   - Aucun.
-- ⏳ Pending: 
-  - **Publication officielle sur PyPI (pypi.org)** :
-    1. Inscription / Connexion sur [pypi.org](https://pypi.org).
-    2. Génération d'un token API de publication (`pypi-...`).
-    3. Exécution de la commande : `uv publish --token <PYPI_API_TOKEN>`.
-    4. Ajustement du README pour `pip install gui-agent` direct.
+- ⏳ Pending (Roadmap des versions futures) :
+  - **1. Support complet Windows Natif (21/21 outils)** :
+    - Gestion des fenêtres native (`pygetwindow` ou Win32 API `user32.dll` pour `gui_window_list`, `focus`, `close`, `resize_move`).
+    - Capture vidéo native via `ffmpeg -f gdigrab`.
+  - **2. Linux Universel & Wayland (sans dépendance stricte X11)** :
+    - Support des environnements Wayland purs via `ydotool` (uinput), `wl-clipboard` et portails XDG Desktop / PipeWire pour la capture d'écran et vidéo.
+  - **3. Support macOS Natif** :
+    - Gestion des fenêtres et raccourcis via les APIs macOS Quartz / Accessibility API / `pyobjc`.
+    - Capture vidéo via `ffmpeg -f avfoundation`.
+  - **4. Publication officielle PyPI (pypi.org)** :
+    - Téléversement via `uv publish --token <PYPI_API_TOKEN>`.
 
 ## 👉 Next Session Direction
-Le dépôt GitHub, les scripts multiplateformes, la release v0.1.0 et la CI/CD sont 100% opérationnels. La prochaine étape différée consistera à créer le compte PyPI et lancer `uv publish` pour rendre `pip install gui-agent` accessible publiquement sans passer par GitHub.
+La version `v0.1.0` de production est validée, taggée et poussée sur GitHub. La prochaine phase architecturale portera sur l'abstraction multiplateforme du gestionnaire de fenêtres (Linux X11/Wayland, Windows Win32, macOS) pour unifier les 21 outils de manière universelle.
+
