@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://files.catbox.moe/k15pen.gif" alt="gui-agent Hero Animation" width="100%" style="border-radius: 8px;" />
+  <img src="https://files.catbox.moe/udf9j4.jpeg" alt="gui-agent Hero Banner" width="100%" style="border-radius: 8px;" />
 </p>
 
-<h1 align="center"><img src="https://i.ibb.co/1JKx3t4x/Emerald-mouse-cursor-logo-mark-202608142341.jpg" alt="gui-agent Logo" width="114" style="vertical-align: middle; border-radius: 12px; margin-right: 12px;" /> gui-agent</h1>
+<h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" width="114" style="vertical-align: middle; margin-right: 12px;" /> gui-agent</h1>
 
 <p align="center"><b>Serveur FastMCP Monolithique pour le Contrôle Graphique (Computer Use) sous Linux et Windows</b></p>
 
