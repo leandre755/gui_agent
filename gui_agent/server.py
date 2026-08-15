@@ -35,9 +35,11 @@ logger = logging.getLogger("mcp_gui_server")
 mcp = FastMCP("GUI Agent Server")
 
 # Répertoire de stockage des captures d'écran (configurable via GUI_AGENT_SCREENSHOTS_DIR)
-SCREENSHOTS_DIR = os.environ.get(
-    "GUI_AGENT_SCREENSHOTS_DIR",
-    os.path.join(os.path.expanduser("~"), ".local", "share", "gui-agent", "screenshots"),
+SCREENSHOTS_DIR = os.path.abspath(
+    os.environ.get(
+        "GUI_AGENT_SCREENSHOTS_DIR",
+        os.path.join(os.path.expanduser("~"), ".local", "share", "gui-agent", "screenshots"),
+    )
 )
 os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
@@ -249,22 +251,24 @@ def _resolve_screenshot_destination(
 
         os.makedirs(os.path.dirname(final_path), exist_ok=True)
     else:
+        configured_dir = os.path.abspath(SCREENSHOTS_DIR)
         timestamp = int(time.time())
         filename = f"screenshot_{timestamp}.{ext}"
-        final_path = os.path.join(SCREENSHOTS_DIR, filename)
+        final_path = os.path.join(configured_dir, filename)
         counter = 1
         while os.path.exists(final_path):
             filename = f"screenshot_{timestamp} ({counter}).{ext}"
-            final_path = os.path.join(SCREENSHOTS_DIR, filename)
+            final_path = os.path.join(configured_dir, filename)
             counter += 1
 
+    configured_raw_dir = os.path.abspath(SCREENSHOTS_DIR)
     timestamp_raw = int(time.time())
     raw_filename = f"raw_screenshot_{timestamp_raw}.{ext}"
-    raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
+    raw_path = os.path.join(configured_raw_dir, raw_filename)
     counter_raw = 1
     while os.path.exists(raw_path):
         raw_filename = f"raw_screenshot_{timestamp_raw} ({counter_raw}).{ext}"
-        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
+        raw_path = os.path.join(configured_raw_dir, raw_filename)
         counter_raw += 1
 
     return final_path, raw_path, renamed_due_to_conflict, original_requested_path

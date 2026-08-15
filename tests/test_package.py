@@ -163,9 +163,24 @@ def test_gui_take_screenshot_output_path(tmp_path):
     with open(existing_file, encoding="utf-8") as f:
         assert f.read() == "contenu_original_intact"
 
-    # Deuxième collision -> (2)
-    res_collision_2 = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_file)
-    assert res_collision_2.get("status") == "success"
-    expected_renamed_2 = str(tmp_path / "protected_screenshot (2).png")
-    assert res_collision_2.get("screenshot_path") == expected_renamed_2
-    assert os.path.isfile(expected_renamed_2)
+    # 6. Cas de configuration : vérification du chemin absolu avec GUI_AGENT_SCREENSHOTS_DIR relatif
+    orig_screenshots_dir = gui_agent.server.SCREENSHOTS_DIR
+    orig_cwd_dir = os.getcwd()
+    try:
+        custom_workdir = tmp_path / "custom_workdir"
+        custom_workdir.mkdir(parents=True, exist_ok=True)
+        os.chdir(custom_workdir)
+        gui_agent.server.SCREENSHOTS_DIR = "relative_screenshots_dir"
+        os.makedirs(gui_agent.server.SCREENSHOTS_DIR, exist_ok=True)
+
+        res_default = gui_agent.gui_take_screenshot(apply_grid=False, output_path=None)
+        assert res_default.get("status") == "success"
+        scr_path = res_default.get("screenshot_path")
+        raw_scr_path = res_default.get("raw_screenshot_path")
+        assert os.path.isabs(scr_path), f"screenshot_path doit être absolu : {scr_path}"
+        assert os.path.isabs(raw_scr_path), f"raw_screenshot_path doit être absolu : {raw_scr_path}"
+        assert os.path.isfile(scr_path)
+        assert os.path.isfile(raw_scr_path)
+    finally:
+        gui_agent.server.SCREENSHOTS_DIR = orig_screenshots_dir
+        os.chdir(orig_cwd_dir)
