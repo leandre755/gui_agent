@@ -30,7 +30,7 @@
 
 L'automatisation d'interfaces graphiques pour agents IA repose souvent sur une mosaïque d'outils séparés pour la capture d'écran, l'émulation des entrées, la gestion des fenêtres et l'OCR. Multiplier ces processus augmente la latence, consomme plusieurs centaines de mégaoctets de RAM et échoue dès qu'une fenêtre change d'état.
 
-**gui-agent** regroupe ces fonctions dans un serveur FastMCP unique communiquant via stdio. Il fournit 21 outils pour Linux (X11/XWayland) et Windows dans un seul processus utilisant moins de 50 Mo de RAM, sans runtime de navigateur lourd ni dépendance à des API de vision cloud.
+**gui-agent** regroupe ces fonctions dans un serveur FastMCP unique communiquant via stdio. Il fournit 21 outils pour Linux (X11/XWayland) et Windows dans un seul processus utilisant moins de 50 Mo de RAM, sans nécessiter de runtime de navigateur lourd pour les opérations de bureau (sauf en cas d'appel explicite à `gui_web_action`) ni dépendance à des API de vision cloud.
 
 Le serveur capture directement le framebuffer, superpose une grille de repérage cartésienne pour fiabiliser le ciblage spatial des modèles de vision, et transmet les entrées utilisateur via les appels système et utilitaires natifs (`xdotool`, API Win32). La détection d'éléments s'appuie sur la recherche de motifs OpenCV et un OCR local avec repli automatique.
 
@@ -220,9 +220,9 @@ Capture des images plein écran ou rognées avec incrustation optionnelle d'une 
   - `grid_interval` (`int`, valeur par défaut `100`) : Intervalle en pixels entre les lignes de grille (minimum 20).
   - `format` (`str`, valeur par défaut `"png"`) : Format de l'image de sortie (`"png"` ou `"jpeg"`).
   - `quality` (`int`, valeur par défaut `80`) : Qualité de compression (1-100) pour la sortie JPEG.
-  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination (défaut : image horodatée dans le dossier des captures).
+  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination. Les chemins relatifs sont automatiquement résolus en chemins absolus, les dossiers parents manquants sont créés, et le chemin absolu résolu est renvoyé dans `screenshot_path`. Par défaut : image horodatée dans le dossier des captures.
   - `include_base64` (`bool`, valeur par défaut `False`) : Renvoie la représentation textuelle encodée en Base64.
-- **Retourne** : `dict` contenant `screenshot_path`, `raw_screenshot_path`, `resolution` et `grid_applied`.
+- **Retourne** : `dict` contenant `screenshot_path` (chemin absolu résolu), `raw_screenshot_path`, `resolution`, `grid_applied` et `renamed_due_to_conflict`.
 
 #### `gui_mouse_move`
 Déplace le curseur de la souris vers les coordonnées cibles.

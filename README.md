@@ -30,7 +30,7 @@
 
 Desktop automation for AI agents usually requires running multiple disjointed utilities for screen capture, input simulation, window management, and OCR. Spawning separate processes increases latency, consumes hundreds of megabytes of RAM, and fails when windows or display servers change state.
 
-**gui-agent** packs these capabilities into a single FastMCP server communicating over stdio. It provides 21 tools for Linux (X11/XWayland) and Windows in a single process that uses under 50 MB RAM, running without browser runtimes or cloud vision APIs.
+**gui-agent** packs these capabilities into a single FastMCP server communicating over stdio. It provides 21 tools for Linux (X11/XWayland) and Windows in a single process that uses under 50 MB RAM, requiring no heavy browser runtimes for core desktop operations (unless `gui_web_action` is explicitly called) or cloud vision APIs.
 
 The server captures frames directly from the display server, renders a Cartesian pixel grid over screenshots to prevent spatial errors in vision models, and dispatches native input events through OS system calls and utilities (`xdotool`, Win32 API). It includes OpenCV template matching and local OCR fallbacks for reliable element targeting.
 
@@ -220,9 +220,9 @@ Captures full-screen or cropped screenshots with an optional Cartesian coordinat
   - `grid_interval` (`int`, default `100`): Interval in pixels between grid lines (minimum 20).
   - `format` (`str`, default `"png"`): Output image format (`"png"` or `"jpeg"`).
   - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
-  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped image in screenshots dir).
+  - `output_path` (`str | None`, default `None`): Destination file path. Relative paths are automatically resolved to absolute paths, missing parent directories are created, and the resolved absolute path is returned in `screenshot_path`. If omitted, defaults to a timestamped image in the screenshots directory.
   - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
-- **Returns**: `dict` containing `screenshot_path`, `raw_screenshot_path`, `resolution`, and `grid_applied`.
+- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `resolution`, `grid_applied`, and `renamed_due_to_conflict`.
 
 #### `gui_mouse_move`
 Moves the mouse cursor to target coordinates.

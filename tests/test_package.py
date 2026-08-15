@@ -99,7 +99,7 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert "save_to_artifacts" not in sig.parameters, "save_to_artifacts ne doit plus exister dans la signature"
     assert "output_path" in sig.parameters, "output_path doit être présent dans la signature"
 
-    # 1. Cas nominal : capture PNG avec output_path valide
+    # 1. Cas nominal : capture PNG avec output_path absolu valide
     target_file = str(tmp_path / "nested" / "custom_screenshot.png")
     res = gui_agent.gui_take_screenshot(apply_grid=True, format="png", output_path=target_file)
     assert res.get("status") == "success"
@@ -108,6 +108,21 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert os.path.isfile(res["raw_screenshot_path"])
     with Image.open(target_file) as img:
         assert img.format == "PNG"
+
+    # 1.b Cas nominal : capture PNG avec output_path relatif dans un répertoire de travail contrôlé
+    orig_cwd = os.getcwd()
+    try:
+        work_dir = tmp_path / "relative_workdir"
+        work_dir.mkdir(parents=True, exist_ok=True)
+        os.chdir(work_dir)
+        rel_output = os.path.join("nested_rel", "rel_screenshot.png")
+        res_rel = gui_agent.gui_take_screenshot(apply_grid=False, format="png", output_path=rel_output)
+        assert res_rel.get("status") == "success"
+        expected_abs = str((work_dir / "nested_rel" / "rel_screenshot.png").resolve())
+        assert res_rel.get("screenshot_path") == expected_abs
+        assert os.path.isfile(expected_abs)
+    finally:
+        os.chdir(orig_cwd)
 
     # 2. Cas nominal : capture JPEG avec output_path valide
     target_jpg = str(tmp_path / "nested" / "custom_screenshot.jpg")

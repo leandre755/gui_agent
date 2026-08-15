@@ -207,8 +207,14 @@ def _resolve_screenshot_destination(
     renamed_due_to_conflict = False
     original_requested_path = None
 
-    if output_path:
-        final_path = os.path.abspath(output_path)
+    if output_path is not None:
+        clean_out = str(output_path).strip()
+        if not clean_out:
+            return {
+                "status": "error",
+                "message": "output_path ne peut pas être une chaîne vide.",
+            }
+        final_path = os.path.abspath(clean_out)
         if os.path.isdir(final_path):
             return {
                 "status": "error",
