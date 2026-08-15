@@ -1,70 +1,42 @@
 # Current Project Context
 
 ## 🏆 Major Milestones (Archived Epics)
-- [2026-08-14] Refonte complète de la vitrine README en mode Landing Page UX bilingue isomorphique ([`README.md`](file:///home/omni/Code/gui_agent/README.md) et [`README.fr.md`](file:///home/omni/Code/gui_agent/README.fr.md)) selon le standard `build-readme`, palette Émeraude (`#10B981` / `#34D399` / `#0D1117`), 0 emoji d'en-tête, 21 outils cartographiés et 100% Zero-Slop 8 couches validé.
-- [2026-08-13] Création et publication de la Release GitHub `v0.1.0` ([Releases](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0)) avec artefacts sdist/wheel et validation à 100% du pipeline CI/CD GitHub Actions (`CI` vert, `Release` vert, `Workflow hygiene` vert).
-- [2026-08-13] Publication et push complets sur GitHub (`origin/main`) : Commits atomiques `feat(release)` (packaging production 0.1.0, scripts de cycle de vie multiplateformes, tests) et `feat(governance)` (CI/CD GitHub Actions, dependabot, agent policies, CODEOWNERS) avec validation 100% Zero-Slop 8 couches.
-- [2026-08-13] Configuration complète du starter-kit de gouvernance et CI/CD `coding-stuff` (politique accompagnée `AGENT_POLICY.md`, adaptateur `.agents/rules/coding-stuff-policy.md`, 6 workflows GitHub Actions conformes et sécurisés, templates d'issues, dependabot durci).
-- [2026-08-13] Création et validation des scripts de désinstallation propre multiplateformes [`uninstall.sh`](file:///home/omni/Code/gui_agent/uninstall.sh) (Linux/macOS) et [`uninstall.ps1`](file:///home/omni/Code/gui_agent/uninstall.ps1) (Windows PowerShell) avec nettoyage automatique des configurations MCP (Claude Code, Antigravity) et option de purge des données.
-- [2026-08-13] Création et validation complète du Skill d'installation Windows `gui-agent-windows-install` et consolidation dans [`INSTALL.md`](file:///home/omni/Code/gui_agent/INSTALL.md) et [`install.ps1`](file:///home/omni/Code/gui_agent/install.ps1).
-- [2026-08-13] Mise en production du package Python standard `gui-agent` (build `uv build` sdist/wheel, distribution `uv tool install`, points d'entrée CLI `gui-agent` et `mcp-gui-server`, script d'installation automatisé `install.sh` et documentation `README.md`).
-- [2026-08-13] Mise en place, remédiation et validation à 100% du hook pre-commit 8 couches Zero-Slop (Anti-leak, CVE, Ruff, Format, Mypy, Sonar/Smells, Bandit, Semgrep) avec détection stricte des commentaires d'inhibition.
-- [2026-08-13] Campagne de qualification complète et validée à 100% (21/21 PASS) des outils MCP GUI par 21 sous-agents séquentiels dédiés.
-- [2026-08-13] Extraction OCR/Visuelle et transmission complète (texte + image du coupon CapCut) au contact "Ape Ive" via WhatsApp Web avec preuve visuelle.
-- [2026-08-13] Enregistrement et qualification du serveur MCP `gui-agent` dans la configuration globale Antigravity CLI (`~/.gemini/config/mcp_config.json`).
-- [2026-08-12] Résolution et validation E2E à 100% des 4 défauts techniques (DEF-01 à DEF-04) du serveur MCP GUI.
-- [2026-08-12] Campagne de qualification et test des 21 outils MCP GUI du serveur `gui-agent` via le client Claude Code CLI.
-- [2026-08-11] Configuration et intégration du serveur MCP `gui-agent` dans Claude Code CLI (`claude mcp add`).
-- [2026-08-11] Implémentation complète et validation E2E du serveur MCP GUI Computer Use Monolithique (`mcp_gui_server.py`).
+- [2026-08-14] FastMCP Monolithic Architecture & 21 Desktop Tools Implementation
+- [2026-08-14] Multi-Layer Quality & Pre-Commit 8-Layer Zero-Slop Pipeline
+- [2026-08-15] Complete README Overhaul: Landing Page UX, Hosted Excalidraw SVGs, Official Transparent Logo & Landscape Hero Banner, Bilingual Line-for-Line Isomorphism (475 lines), and De-AI Humanization Pass
 
 ## 🎯 Objective
-Fournir un serveur MCP GUI monolithique FastMCP complet et léger, optimisé pour les environnements Linux X11/XWayland et Windows sur des architectures à ressources limitées (Intel i5 dual-core, ~3 Go RAM disponible), directement connecté à Claude Code et Antigravity CLI comme client MCP.
+High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
 
 ## 🧠 Decisions Made
-- [2026-08-13] Scripts de désinstallation propre et atomique (uninstall.sh / uninstall.ps1)
-  - **Context**: Offrir un mécanisme de désinstallation et nettoyage complet pour Linux/macOS et Windows sans laisser de configurations résiduelles.
-  - **Rationale**: Désinstallation isolée via `uv tool uninstall gui-agent`, retrait automatique des entrées MCP dans Claude Code et `mcp_config.json` d'Antigravity, et option de purge ciblée du dossier de captures (`--purge-data`).
-- [2026-08-13] Skill d'installation Windows & Automatisation PowerShell (install.ps1)
-  - **Context**: Permettre le déploiement et la configuration de `gui-agent` sur Windows 10/11 en une seule ligne de commande PowerShell.
-  - **Rationale**: Script PowerShell `install.ps1` combinant Winget (FFmpeg, Tesseract), téléchargement d'Astral `uv`, `uv tool install` isolé et mise à jour JSON automatique pour Claude Code et Antigravity CLI, encapsulé dans un Skill `SKILL.md` documenté selon la spécification `agentskills.io`.
-- [2026-08-13] Distribution de Production via Package PyPI + uv tool install + install.sh
-  - **Rationale**: Packaging standardisé `pyproject.toml` (Hatchling/UV), génération des artifacts wheel/sdist via `uv build`, installation isolée instantanée via `uv tool install gui-agent` avec exposition des binaires `gui-agent` et `mcp-gui-server` dans `~/.local/bin`, et automatisation de bout en bout via `install.sh`.
-- [2026-08-13] Test séquentiel par 21 sous-agents dédiés
-  - **Rationale**: Lancement d'un seul sous-agent à la fois, enregistrement immédiat du rapport de test et destruction de l'instance avant le lancement du sous-agent suivant.
-- [2026-08-13] Integration Antigravity CLI Global MCP (`mcp_config.json`)
-  - **Rationale**: Inscription stdio dans `~/.gemini/config/mcp_config.json` ciblant l'exécutable `gui-agent`.
-- [2026-08-13] Pre-Commit 8 couches Zero-Slop via UV & Ruff étendu (Python)
-  - **Rationale**: Ruff (Rust) offre une vitesse d'exécution <15ms tout en couvrant les règles Sonar/Bugbear/Simplify, combiné à Mypy (typage strict), Bandit (AST sécurité) et Semgrep (SAST).
+- [2026-08-14] Monolithic FastMCP Architecture over Multi-Microservice Topology
+  - **Context**: LLM context limits and port conflict risks under multiple concurrent tool servers.
+  - **Discarded Options**: Dynamic subprocess spawning per tool group; separated multi-server endpoints.
+  - **Rationale**: Monolithic stdio design preserves <50 MB RAM, single connection, zero port risk.
+- [2026-08-14] Animated Fluent 3D Emojis & Zero Keyboard Emojis in Headers
+  - **Context**: Standard keyboard emojis in headers appear unstyled and inconsistent across OS.
+  - **Discarded Options**: Raw unicode emojis in H2/H3; plain text headings.
+  - **Rationale**: Microsoft Fluent 3D Animated Emojis via raw CDN URLs provide state-of-the-art landing page aesthetics matching the Emerald palette.
+- [2026-08-14] External Media Hosting (Gist & CDN) over Local Repository Assets
+  - **Context**: Storing images, banners, and SVGs inside repository tree pollutes codebase and increases clone size.
+  - **Discarded Options**: Committing media to `assets/` in git tracking.
+  - **Rationale**: Public GitHub Gist for SVGs and fast CDN for PNG/JPEG assets keep the codebase 100% lightweight and clean.
+- [2026-08-15] Excalidraw Architecture Flowcharts over Mermaid for Expressive Systems
+  - **Context**: Mermaid renders emojis poorly and creates tall vertical flowcharts.
+  - **Discarded Options**: ASCII text boxes, raw inline Mermaid code.
+  - **Rationale**: Excalidraw compact landscape layout (920x640px) enables hand-drawn cartoon aesthetics, expressive icons, and clean SVG vector rendering.
+- [2026-08-15] Documentation Humanization (De-AI Prose)
+  - **Context**: Generic LLM prose often contains repetitive promotional fluff, superficial analysis, and heavy connectives.
+  - **Discarded Options**: Keeping default generated marketing text.
+  - **Rationale**: Direct systems engineering prose improves clarity, readability, and authority.
 
 ## 🌿 Active Branches / Plans
-- `readme-overhaul` : Refonte complète de la vitrine README en mode Landing Page UX bilingue isomorphique ([plan_readme_overhaul.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_readme_overhaul.md))
-- `uninstall-scripts` : Création des scripts de désinstallation multiplateformes `uninstall.sh` et `uninstall.ps1` ([plan_uninstall_scripts.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_uninstall_scripts.md))
+- `main` : Stable production release with complete bilingual landing pages and Zero-Slop test harness.
 
 ## 📈 Current Status
-- ✅ Done: 
-  - Restructuration du package Python standard `gui_agent/` avec export des 21 outils FastMCP.
-  - Configuration de `pyproject.toml` (Hatchling backend, métadonnées, `dependencies`, `[project.scripts]`).
-  - Construction des artefacts sdist (`gui_agent-0.1.0.tar.gz`) et wheel (`gui_agent-0.1.0-py3-none-any.whl`).
-  - Validation de l'installation isolée via `uv tool install . --force` et vérification des exécutables `gui-agent` et `mcp-gui-server`.
-  - Création et validation des scripts d'installation `install.sh` (Linux) et `install.ps1` (Windows PowerShell).
-  - Création et validation des scripts de désinstallation `uninstall.sh` (Linux/macOS) et `uninstall.ps1` (Windows PowerShell).
-  - Consolidation de la documentation complète d'installation et de dépannage dans [`INSTALL.md`](file:///home/omni/Code/gui_agent/INSTALL.md).
-  - Rédaction complète du `README.md` et `LICENSE`.
-  - Validation 100% de la suite de tests (`pytest` 7/7) et du hook Zero-Slop 8 couches.
-- 🔄 In progress: 
-  - Aucun.
-- ⏳ Pending (Roadmap des versions futures) :
-  - **1. Support complet Windows Natif (21/21 outils)** :
-    - Gestion des fenêtres native (`pygetwindow` ou Win32 API `user32.dll` pour `gui_window_list`, `focus`, `close`, `resize_move`).
-    - Capture vidéo native via `ffmpeg -f gdigrab`.
-  - **2. Linux Universel & Wayland (sans dépendance stricte X11)** :
-    - Support des environnements Wayland purs via `ydotool` (uinput), `wl-clipboard` et portails XDG Desktop / PipeWire pour la capture d'écran et vidéo.
-  - **3. Support macOS Natif** :
-    - Gestion des fenêtres et raccourcis via les APIs macOS Quartz / Accessibility API / `pyobjc`.
-    - Capture vidéo via `ffmpeg -f avfoundation`.
-  - **4. Publication officielle PyPI (pypi.org)** :
-    - Téléversement via `uv publish --token <PYPI_API_TOKEN>`.
+- ✅ Done: 21 FastMCP tools implemented, tested (7/7 tests passed), 8-layer pre-commit hook operational, `README.md` & `README.fr.md` fully overhauled, humanized, and isomorphic (475 lines each).
+- 🔄 In progress: Session handoff and maintenance readiness.
+- ⏳ Pending: Windows Win32 native backend abstraction layer (`WindowBackend`).
 
 ## 👉 Next Session Direction
-La version `v0.1.0` de production est validée, taggée et poussée sur GitHub. La prochaine phase architecturale portera sur l'abstraction multiplateforme du gestionnaire de fenêtres (Linux X11/Wayland, Windows Win32, macOS) pour unifier les 21 outils de manière universelle.
-
+Proceed with multiplatform window management abstraction and extended OS backend integrations.
