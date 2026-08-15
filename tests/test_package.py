@@ -92,16 +92,35 @@ def test_install_doc_structure():
 
 def test_gui_take_screenshot_output_path(tmp_path):
     import inspect
+    import os
+    from PIL import Image
 
     sig = inspect.signature(gui_agent.gui_take_screenshot)
     assert "save_to_artifacts" not in sig.parameters, "save_to_artifacts ne doit plus exister dans la signature"
     assert "output_path" in sig.parameters, "output_path doit être présent dans la signature"
 
+    # 1. Cas nominal : capture PNG avec output_path valide
     target_file = str(tmp_path / "nested" / "custom_screenshot.png")
-    res = gui_agent.gui_take_screenshot(apply_grid=True, output_path=target_file)
+    res = gui_agent.gui_take_screenshot(apply_grid=True, format="png", output_path=target_file)
     assert res.get("status") == "success"
     assert res.get("screenshot_path") == target_file
-    import os
-
     assert os.path.isfile(target_file)
     assert os.path.isfile(res["raw_screenshot_path"])
+    with Image.open(target_file) as img:
+        assert img.format == "PNG"
+
+    # 2. Cas nominal : capture JPEG avec output_path valide
+    target_jpg = str(tmp_path / "nested" / "custom_screenshot.jpg")
+    res_jpg = gui_agent.gui_take_screenshot(apply_grid=False, format="jpeg", output_path=target_jpg)
+    assert res_jpg.get("status") == "success"
+    assert res_jpg.get("screenshot_path") == target_jpg
+    assert os.path.isfile(target_jpg)
+    with Image.open(target_jpg) as img_jpg:
+        assert img_jpg.format == "JPEG"
+
+    # 3. Cas de sécurité : rejet strict si conflit entre extension et format demandé
+    conflict_file = str(tmp_path / "conflicting.png")
+    res_err = gui_agent.gui_take_screenshot(apply_grid=False, format="jpeg", output_path=conflict_file)
+    assert res_err.get("status") == "error"
+    assert "Incohérence d'extension" in res_err.get("message", "")
+    assert not os.path.exists(conflict_file)

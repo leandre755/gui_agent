@@ -250,6 +250,12 @@ def gui_take_screenshot(
         width, height = working_img.size
 
         fmt_clean = str(format).lower().strip()
+        if fmt_clean not in ["png", "jpeg", "jpg"]:
+            return {
+                "status": "error",
+                "message": f"Format non supporté '{format}'. Formats supportés : 'png', 'jpeg', 'jpg'.",
+            }
+
         if fmt_clean in ["jpeg", "jpg"]:
             ext = "jpg"
             pil_format = "JPEG"
@@ -260,16 +266,31 @@ def gui_take_screenshot(
             pil_format = "PNG"
             save_kwargs = {"format": pil_format, "optimize": True}
 
-        timestamp = int(time.time())
-        filename = f"screenshot_{timestamp}.{ext}"
-        raw_filename = f"raw_screenshot_{timestamp}.{ext}"
-
-        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
         if output_path:
             final_path = os.path.abspath(output_path)
+            _, out_ext = os.path.splitext(final_path)
+            out_ext_clean = out_ext.lower().lstrip(".")
+            if not out_ext_clean:
+                final_path = f"{final_path}.{ext}"
+            else:
+                valid_exts = {"jpg": ["jpg", "jpeg"], "jpeg": ["jpg", "jpeg"], "png": ["png"]}[fmt_clean]
+                if out_ext_clean not in valid_exts:
+                    return {
+                        "status": "error",
+                        "message": (
+                            f"Incohérence d'extension de fichier : l'extension '{out_ext}' de output_path "
+                            f"ne correspond pas au format encodé '{format}' (attendu: {', '.join('.' + e for e in valid_exts)})."
+                        ),
+                    }
             os.makedirs(os.path.dirname(final_path), exist_ok=True)
         else:
+            timestamp = int(time.time())
+            filename = f"screenshot_{timestamp}.{ext}"
             final_path = os.path.join(SCREENSHOTS_DIR, filename)
+
+        timestamp_raw = int(time.time())
+        raw_filename = f"raw_screenshot_{timestamp_raw}.{ext}"
+        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
 
         # Sauvegarde de l'image brute
         working_img.save(raw_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
