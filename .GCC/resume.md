@@ -1,35 +1,41 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Enregistrer la roadmap multiplateforme complète (Windows 21/21 outils natifs, Linux Wayland universel sans dépendance X11, support macOS et publication PyPI différée) dans le registre GCC pour relecture et ajustement ultérieur par l'utilisateur.
+- **Requested Task**: Remplacer les diagrammes textuels ASCII du README par de véritables diagrammes visuels générés depuis le site web Mermaid ouvert dans le navigateur (`mermaidonline.live`), appliquer la palette de couleurs Émeraude (`#10B981` / `#34D399` / `#0D1117`), et intégrer les images SVG dans les versions anglaise et française tout en préservant l'isomorphisme strict ligne à ligne.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**: 
-  1. Release GitHub [`v0.1.0`](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0) publiée avec artefacts sdist/wheel.
-  2. Tous les workflows GitHub Actions (`CI`, `Release`, `Workflow hygiene`) sont au statut **SUCCESS (✓)**.
-  3. Hook local Zero-Slop 8 couches et hooks `commit-msg` / `pre-push` 100% opérationnels.
-  4. Roadmap d'évolution multiplateforme détaillée et consignée dans [`.GCC/main.md`](file:///home/omni/Code/gui_agent/.GCC/main.md).
+  1. Pilotage via Chrome DevTools MCP de la session Chrome ouverte sur `https://www.mermaidonline.live/mermaid-to-png`.
+  2. Injection et rendu des diagrammes de flux d'architecture avec application de la palette personnalisée Émeraude (nœuds `#064E3B`, bordures `#10B981` et `#34D399`, fond `#0D1117`).
+  3. Export et enregistrement des assets vectoriels haute définition :
+     - [`assets/how-it-works-en.svg`](file:///home/omni/Code/gui_agent/assets/how-it-works-en.svg) (19 165 octets)
+     - [`assets/how-it-works-fr.svg`](file:///home/omni/Code/gui_agent/assets/how-it-works-fr.svg) (19 237 octets)
+  4. Remplacement des blocs ASCII dans [`README.md`](file:///home/omni/Code/gui_agent/README.md) et [`README.fr.md`](file:///home/omni/Code/gui_agent/README.fr.md) par des balises `<img src="..." width="100%" style="border-radius: 10px;" />`.
+  5. Validation de l'isomorphisme parfait des fichiers : exactement **475 lignes** chacun (`wc -l`).
+  6. Validation Pre-Commit Zero-Slop 8 couches à 100% vert et 7/7 tests pytest passés.
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `.GCC/main.md`
-  - **Scope**: Section `⏳ Pending` enrichie avec les 4 chantiers majeurs :
-    1. Windows Natif 21/21 outils (`pygetwindow` / Win32 API `user32.dll` + `ffmpeg -f gdigrab`).
-    2. Linux Universel & Wayland (`ydotool`, `wl-clipboard`, PipeWire / XDG Portals).
-    3. macOS Natif (Quartz / Accessibility API / AVFoundation).
-    4. Publication PyPI (`uv publish`).
+- **File**: `assets/how-it-works-en.svg`
+  - **Scope**: Diagramme vectoriel d'architecture Computer Use en anglais généré depuis Mermaid Online avec la charte Émeraude.
+- **File**: `assets/how-it-works-fr.svg`
+  - **Scope**: Diagramme vectoriel d'architecture Computer Use en français généré depuis Mermaid Online avec la charte Émeraude.
+- **File**: `README.md`
+  - **Scope**: Section "How It Works" mise à jour avec l'image SVG et suppression du bloc ASCII.
+- **File**: `README.fr.md`
+  - **Scope**: Section "Architecture & Flux de Fonctionnement" mise à jour avec l'image SVG et suppression du bloc ASCII.
 - **File**: `.GCC/resume.md`
-  - **Scope**: Directives de reprise détaillées pour la future phase de développement.
+  - **Scope**: Actualisation du registre de passation technique.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit && ./venv/bin/pytest -v`
-- **Linter/Compiler Status**: 
-  - `GitHub Actions CI` : **SUCCESS (✓)**
-  - `pytest` : **7 passed in 1.36s**
+- **Linter/Compiler Status**:
   - `Pre-commit 8 couches Zero-Slop` : **100% PASS**
+  - `pytest` : **7 passed in 3.71s**
+  - `Isomorphisme de lignes` : **475 lignes chacun (1:1 strict)**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun. Le projet est stable, documenté et prêt pour la relecture utilisateur.
+- **Blocker / Failure Explanation**: Aucun.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Objectif de la prochaine session** : Relecture utilisateur, ajustements et implémentation de la couche d'abstraction de fenêtrage multiplateforme (`WindowBackend` abstraite avec adaptateurs `X11Backend`, `Win32Backend`, `WaylandBackend`, `MacOSBackend`).
-2. **Target File**: [gui_agent/server.py](file:///home/omni/Code/gui_agent/gui_agent/server.py)
-3. **Verification Command**: `pytest -v tests/`
+1. **Target File**: [gui_agent/server.py](file:///home/omni/Code/gui_agent/gui_agent/server.py)
+2. **Immediate Action**: Poursuivre la roadmap multiplateforme (couche d'abstraction `WindowBackend`).
+3. **Verification Command**: `./venv/bin/pytest -v`

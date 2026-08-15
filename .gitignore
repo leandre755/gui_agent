@@ -25,3 +25,8 @@ git_credential*.json
 *.pem
 *.key
 credentials.json
+
+# Assets temporaires locaux
+assets/
+*.excalidraw
+mermaid_diagrams.txt

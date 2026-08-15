@@ -1,6 +1,7 @@
 # Current Project Context
 
 ## 🏆 Major Milestones (Archived Epics)
+- [2026-08-14] Refonte complète de la vitrine README en mode Landing Page UX bilingue isomorphique ([`README.md`](file:///home/omni/Code/gui_agent/README.md) et [`README.fr.md`](file:///home/omni/Code/gui_agent/README.fr.md)) selon le standard `build-readme`, palette Émeraude (`#10B981` / `#34D399` / `#0D1117`), 0 emoji d'en-tête, 21 outils cartographiés et 100% Zero-Slop 8 couches validé.
 - [2026-08-13] Création et publication de la Release GitHub `v0.1.0` ([Releases](https://github.com/leandre755/gui_agent/releases/tag/v0.1.0)) avec artefacts sdist/wheel et validation à 100% du pipeline CI/CD GitHub Actions (`CI` vert, `Release` vert, `Workflow hygiene` vert).
 - [2026-08-13] Publication et push complets sur GitHub (`origin/main`) : Commits atomiques `feat(release)` (packaging production 0.1.0, scripts de cycle de vie multiplateformes, tests) et `feat(governance)` (CI/CD GitHub Actions, dependabot, agent policies, CODEOWNERS) avec validation 100% Zero-Slop 8 couches.
 - [2026-08-13] Configuration complète du starter-kit de gouvernance et CI/CD `coding-stuff` (politique accompagnée `AGENT_POLICY.md`, adaptateur `.agents/rules/coding-stuff-policy.md`, 6 workflows GitHub Actions conformes et sécurisés, templates d'issues, dependabot durci).
@@ -36,6 +37,7 @@ Fournir un serveur MCP GUI monolithique FastMCP complet et léger, optimisé pou
   - **Rationale**: Ruff (Rust) offre une vitesse d'exécution <15ms tout en couvrant les règles Sonar/Bugbear/Simplify, combiné à Mypy (typage strict), Bandit (AST sécurité) et Semgrep (SAST).
 
 ## 🌿 Active Branches / Plans
+- `readme-overhaul` : Refonte complète de la vitrine README en mode Landing Page UX bilingue isomorphique ([plan_readme_overhaul.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_readme_overhaul.md))
 - `uninstall-scripts` : Création des scripts de désinstallation multiplateformes `uninstall.sh` et `uninstall.ps1` ([plan_uninstall_scripts.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_uninstall_scripts.md))
 
 ## 📈 Current Status
