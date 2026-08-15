@@ -163,6 +163,14 @@ def test_gui_take_screenshot_output_path(tmp_path):
     with open(existing_file, encoding="utf-8") as f:
         assert f.read() == "contenu_original_intact"
 
+    # Deuxième collision -> progression du suffixe vers (2)
+    res_collision_2 = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_file)
+    assert res_collision_2.get("status") == "success"
+    assert res_collision_2.get("renamed_due_to_conflict") is True
+    expected_renamed_2 = str(tmp_path / "protected_screenshot (2).png")
+    assert res_collision_2.get("screenshot_path") == expected_renamed_2
+    assert os.path.isfile(expected_renamed_2)
+
     # 6. Cas de configuration : vérification du chemin absolu avec GUI_AGENT_SCREENSHOTS_DIR relatif
     orig_screenshots_dir = gui_agent.server.SCREENSHOTS_DIR
     orig_cwd_dir = os.getcwd()
