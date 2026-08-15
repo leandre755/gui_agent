@@ -208,7 +208,7 @@ def gui_take_screenshot(
     grid_interval: int = 100,
     format: str = "png",
     quality: int = 80,
-    save_to_artifacts: bool = False,
+    output_path: str | None = None,
     include_base64: bool = False,
 ) -> dict[str, Any]:
     """
@@ -265,7 +265,11 @@ def gui_take_screenshot(
         raw_filename = f"raw_screenshot_{timestamp}.{ext}"
 
         raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
-        final_path = os.path.join(SCREENSHOTS_DIR, filename)
+        if output_path:
+            final_path = os.path.abspath(output_path)
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+        else:
+            final_path = os.path.join(SCREENSHOTS_DIR, filename)
 
         # Sauvegarde de l'image brute
         working_img.save(raw_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})

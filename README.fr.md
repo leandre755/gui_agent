@@ -220,7 +220,7 @@ Capture des images plein écran ou rognées avec incrustation optionnelle d'une 
   - `grid_interval` (`int`, valeur par défaut `100`) : Intervalle en pixels entre les lignes de grille (minimum 20).
   - `format` (`str`, valeur par défaut `"png"`) : Format de l'image de sortie (`"png"` ou `"jpeg"`).
   - `quality` (`int`, valeur par défaut `80`) : Qualité de compression (1-100) pour la sortie JPEG.
-  - `save_to_artifacts` (`bool`, valeur par défaut `False`) : Indicateur pour le stockage dans le dossier d'artefacts.
+  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination (défaut : image horodatée dans le dossier des captures).
   - `include_base64` (`bool`, valeur par défaut `False`) : Renvoie la représentation textuelle encodée en Base64.
 - **Retourne** : `dict` contenant `screenshot_path`, `raw_screenshot_path`, `resolution` et `grid_applied`.
 

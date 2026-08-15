@@ -220,7 +220,7 @@ Captures full-screen or cropped screenshots with an optional Cartesian coordinat
   - `grid_interval` (`int`, default `100`): Interval in pixels between grid lines (minimum 20).
   - `format` (`str`, default `"png"`): Output image format (`"png"` or `"jpeg"`).
   - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
-  - `save_to_artifacts` (`bool`, default `False`): Flag for artifact-specific directory storage.
+  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped image in screenshots dir).
   - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
 - **Returns**: `dict` containing `screenshot_path`, `raw_screenshot_path`, `resolution`, and `grid_applied`.
 

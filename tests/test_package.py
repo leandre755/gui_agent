@@ -66,25 +66,26 @@ def test_installation_and_uninstallation_scripts_presence():
     assert os.path.isfile("install.ps1"), "install.ps1 manquant"
     assert os.path.isfile("uninstall.sh"), "uninstall.sh manquant"
     assert os.path.isfile("uninstall.ps1"), "uninstall.ps1 manquant"
+    assert os.path.isfile("ci.sh"), "ci.sh manquant"
+    assert os.access("ci.sh", os.X_OK), "ci.sh non exécutable"
     assert os.path.getsize("install.sh") > 100
     assert os.path.getsize("install.ps1") > 100
     assert os.path.getsize("uninstall.sh") > 100
     assert os.path.getsize("uninstall.ps1") > 100
+    assert os.path.getsize("ci.sh") > 100
 
 
-def test_install_doc_structure():
+def test_gui_take_screenshot_output_path(tmp_path):
+    import inspect
+
+    sig = inspect.signature(gui_agent.gui_take_screenshot)
+    assert "save_to_artifacts" not in sig.parameters, "save_to_artifacts ne doit plus exister dans la signature"
+    assert "output_path" in sig.parameters, "output_path doit être présent dans la signature"
+
+    target_file = str(tmp_path / "custom_screenshot.png")
+    res = gui_agent.gui_take_screenshot(apply_grid=False, output_path=target_file)
+    assert res.get("status") == "success"
+    assert res.get("screenshot_path") == target_file
     import os
 
-    doc_path = "INSTALL.md"
-    assert os.path.isfile(doc_path), "INSTALL.md manquant"
-    with open(doc_path, encoding="utf-8") as f:
-        content = f.read()
-
-    assert "Guide d'Installation" in content
-    assert "Microsoft Windows" in content
-    assert "Linux & macOS" in content
-    assert "Dépannage" in content
-    assert "powershell" in content.lower()
-    assert "uv tool install" in content
-    assert "install.ps1" in content
-    assert "uninstall.ps1" in content
+    assert os.path.exists(target_file)

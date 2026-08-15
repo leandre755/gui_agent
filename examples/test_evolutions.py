@@ -37,18 +37,20 @@ def run_evolution_tests():
     assert res_scroll.get("status") == "success", "Échec du défilement"
     print("Défilement simulé avec succès.")
 
-    # 4. Test de la capture d'écran directe dans les artefacts
-    print("\n[Test 4] Capture d'écran avec stockage direct dans les artefacts...")
-    res_scr = mcp_gui_server.gui_take_screenshot(apply_grid=False, save_to_artifacts=True)
+    # 4. Test de la capture d'écran directe avec output_path personnalisé
+    print("\n[Test 4] Capture d'écran avec stockage direct dans un chemin personnalisé...")
+    custom_output_path = "/tmp/gui_agent_test_screenshot.png"
+    if os.path.exists(custom_output_path):
+        os.remove(custom_output_path)
+    res_scr = mcp_gui_server.gui_take_screenshot(apply_grid=False, output_path=custom_output_path)
     assert res_scr.get("status") == "success", "Échec de la capture d'écran"
-    dest_art = "/home/omni/.gemini/antigravity/brain/e48ec26a-978a-4f3e-ad66-71e604f5934e/screenshot_mcp.png"
-    assert os.path.exists(dest_art), "Le fichier de capture d'écran est introuvable dans les artefacts"
-    print(f"Capture enregistrée directement dans les artefacts à : {dest_art}")
+    assert os.path.exists(custom_output_path), "Le fichier de capture d'écran personnalisé est introuvable"
+    print(f"Capture enregistrée directement à : {custom_output_path}")
 
     # 5. Test déterministe de Template Matching (Recherche visuelle)
     print("\n[Test 5] Test déterministe de Template Matching (OpenCV)...")
-    raw_path = res_scr.get("raw_path")
-    assert os.path.exists(raw_path), "Fichier brut manquant"
+    raw_path = res_scr.get("raw_screenshot_path") or res_scr.get("screenshot_path")
+    assert raw_path and os.path.exists(raw_path), "Fichier brut manquant"
 
     img = Image.open(raw_path)
     template_area = img.crop((100, 100, 130, 130))
