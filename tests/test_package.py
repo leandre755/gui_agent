@@ -124,3 +124,33 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert res_err.get("status") == "error"
     assert "Incohérence d'extension" in res_err.get("message", "")
     assert not os.path.exists(conflict_file)
+
+    # 4. Cas de sécurité : rejet si output_path est un répertoire existant
+    existing_dir = str(tmp_path / "existing_dir")
+    os.makedirs(existing_dir, exist_ok=True)
+    res_dir_err = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_dir)
+    assert res_dir_err.get("status") == "error"
+    assert "est un dossier existant" in res_dir_err.get("message", "")
+
+    # 5. Cas de sécurité : protection contre l'écrasement de fichier existant (renommage (1), (2)...)
+    existing_file = str(tmp_path / "protected_screenshot.png")
+    with open(existing_file, "w", encoding="utf-8") as f:
+        f.write("contenu_original_intact")
+
+    res_collision = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_file)
+    assert res_collision.get("status") == "success"
+    assert res_collision.get("renamed_due_to_conflict") is True
+    expected_renamed = str(tmp_path / "protected_screenshot (1).png")
+    assert res_collision.get("screenshot_path") == expected_renamed
+    assert os.path.isfile(expected_renamed)
+
+    # Vérification que le fichier initial n'a pas été altéré
+    with open(existing_file, encoding="utf-8") as f:
+        assert f.read() == "contenu_original_intact"
+
+    # Deuxième collision -> (2)
+    res_collision_2 = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_file)
+    assert res_collision_2.get("status") == "success"
+    expected_renamed_2 = str(tmp_path / "protected_screenshot (2).png")
+    assert res_collision_2.get("screenshot_path") == expected_renamed_2
+    assert os.path.isfile(expected_renamed_2)

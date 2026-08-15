@@ -200,6 +200,70 @@ def gui_get_screen_info() -> dict[str, Any]:
         return {"status": "error", "message": f"Impossible d'obtenir les dimensions de l'écran : {e!s}"}
 
 
+def _resolve_screenshot_destination(
+    output_path: str | None, fmt_clean: str, ext: str
+) -> tuple[str, str, bool, str | None] | dict[str, Any]:
+    """Résout le chemin cible final et le chemin brut en évitant tout écrasement accidentel."""
+    renamed_due_to_conflict = False
+    original_requested_path = None
+
+    if output_path:
+        final_path = os.path.abspath(output_path)
+        if os.path.isdir(final_path):
+            return {
+                "status": "error",
+                "message": f"output_path '{final_path}' est un dossier existant, un chemin de fichier est requis.",
+            }
+        _, out_ext = os.path.splitext(final_path)
+        out_ext_clean = out_ext.lower().lstrip(".")
+        if not out_ext_clean:
+            final_path = f"{final_path}.{ext}"
+        else:
+            valid_exts = {"jpg": ["jpg", "jpeg"], "jpeg": ["jpg", "jpeg"], "png": ["png"]}[fmt_clean]
+            if out_ext_clean not in valid_exts:
+                return {
+                    "status": "error",
+                    "message": (
+                        f"Incohérence d'extension de fichier : l'extension '{out_ext}' de output_path "
+                        f"ne correspond pas au format encodé '{fmt_clean}' (attendu: {', '.join('.' + e for e in valid_exts)})."
+                    ),
+                }
+
+        # Protection anti-collision : si le fichier existe déjà, incrémentation (1), (2)...
+        if os.path.exists(final_path):
+            original_requested_path = final_path
+            parent_dir = os.path.dirname(final_path)
+            stem, ext_part = os.path.splitext(os.path.basename(final_path))
+            counter = 1
+            while os.path.exists(final_path):
+                candidate_name = f"{stem} ({counter}){ext_part}"
+                final_path = os.path.join(parent_dir, candidate_name)
+                counter += 1
+            renamed_due_to_conflict = True
+
+        os.makedirs(os.path.dirname(final_path), exist_ok=True)
+    else:
+        timestamp = int(time.time())
+        filename = f"screenshot_{timestamp}.{ext}"
+        final_path = os.path.join(SCREENSHOTS_DIR, filename)
+        counter = 1
+        while os.path.exists(final_path):
+            filename = f"screenshot_{timestamp} ({counter}).{ext}"
+            final_path = os.path.join(SCREENSHOTS_DIR, filename)
+            counter += 1
+
+    timestamp_raw = int(time.time())
+    raw_filename = f"raw_screenshot_{timestamp_raw}.{ext}"
+    raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
+    counter_raw = 1
+    while os.path.exists(raw_path):
+        raw_filename = f"raw_screenshot_{timestamp_raw} ({counter_raw}).{ext}"
+        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
+        counter_raw += 1
+
+    return final_path, raw_path, renamed_due_to_conflict, original_requested_path
+
+
 @mcp.tool()
 def gui_take_screenshot(
     monitor_index: int = 1,
@@ -266,31 +330,11 @@ def gui_take_screenshot(
             pil_format = "PNG"
             save_kwargs = {"format": pil_format, "optimize": True}
 
-        if output_path:
-            final_path = os.path.abspath(output_path)
-            _, out_ext = os.path.splitext(final_path)
-            out_ext_clean = out_ext.lower().lstrip(".")
-            if not out_ext_clean:
-                final_path = f"{final_path}.{ext}"
-            else:
-                valid_exts = {"jpg": ["jpg", "jpeg"], "jpeg": ["jpg", "jpeg"], "png": ["png"]}[fmt_clean]
-                if out_ext_clean not in valid_exts:
-                    return {
-                        "status": "error",
-                        "message": (
-                            f"Incohérence d'extension de fichier : l'extension '{out_ext}' de output_path "
-                            f"ne correspond pas au format encodé '{format}' (attendu: {', '.join('.' + e for e in valid_exts)})."
-                        ),
-                    }
-            os.makedirs(os.path.dirname(final_path), exist_ok=True)
-        else:
-            timestamp = int(time.time())
-            filename = f"screenshot_{timestamp}.{ext}"
-            final_path = os.path.join(SCREENSHOTS_DIR, filename)
+        dest_result = _resolve_screenshot_destination(output_path, fmt_clean, ext)
+        if isinstance(dest_result, dict):
+            return dest_result
 
-        timestamp_raw = int(time.time())
-        raw_filename = f"raw_screenshot_{timestamp_raw}.{ext}"
-        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
+        final_path, raw_path, renamed_due_to_conflict, original_requested_path = dest_result
 
         # Sauvegarde de l'image brute
         working_img.save(raw_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
@@ -353,6 +397,14 @@ def gui_take_screenshot(
             with open(target_to_encode, "rb") as f_img:
                 base64_data = base64.b64encode(f_img.read()).decode("utf-8")
 
+        if renamed_due_to_conflict and original_requested_path:
+            success_msg = (
+                f"Capture d'écran générée avec succès. Le fichier existant a été protégé contre l'écrasement ; "
+                f"la capture a été enregistrée sous le nom '{os.path.basename(final_path)}'."
+            )
+        else:
+            success_msg = "Capture d'écran générée avec succès."
+
         res_dict = {
             "status": "success",
             "screenshot_path": final_path,
@@ -362,7 +414,8 @@ def gui_take_screenshot(
             "cropped": (crop_box is not None),
             "grid_applied": apply_grid,
             "grid_interval": grid_interval if apply_grid else None,
-            "message": "Capture d'écran générée avec succès.",
+            "renamed_due_to_conflict": renamed_due_to_conflict,
+            "message": success_msg,
         }
         if include_base64 and base64_data:
             res_dict["base64_data"] = base64_data
