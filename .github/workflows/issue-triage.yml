@@ -45,16 +45,96 @@ jobs:
               return;
             }
 
-            const text = `${issue.title || ''}\n${issue.body || ''}`.toLowerCase();
-            const labels = new Set(['needs-triage']);
-            if (/\b(bug|error|crash|regression|broken)\b/.test(text)) labels.add('bug');
-            if (/\b(feature|enhancement|proposal|request)\b/.test(text)) labels.add('enhancement');
-            if (/\b(doc|documentation|readme|guide)\b/.test(text)) labels.add('documentation');
+            const bodyText = issue.body || '';
+            const text = `${issue.title || ''}\n${bodyText}`.toLowerCase();
+
+            // Analyseur robuste de blocs Markdown ligne par ligne :
+            // Exclut les blocs de code (``` ou ~~~ avec indentation jusqu'à 3 espaces) et gère les blocs non terminés
+            const rawLines = bodyText.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/);
+            const contentLines = [];
+            let inFence = false;
+            let fenceChar = '';
+            let fenceLen = 0;
+
+            for (const line of rawLines) {
+              const trimmed = line.trimStart();
+              const indent = line.length - trimmed.length;
+              if (indent <= 3) {
+                const fenceMatch = trimmed.match(/^(`{3,}|~{3,})/);
+                if (fenceMatch) {
+                  const char = fenceMatch[1][0];
+                  const len = fenceMatch[1].length;
+                  if (!inFence) {
+                    inFence = true;
+                    fenceChar = char;
+                    fenceLen = len;
+                    continue;
+                  } else if (char === fenceChar && len >= fenceLen && /^\s*$/.test(trimmed.slice(len))) {
+                    inFence = false;
+                    continue;
+                  }
+                }
+              }
+              if (!inFence) {
+                contentLines.push(line);
+              }
+            }
+
+            const level2Headings = contentLines
+              .filter(line => /^##\s+/.test(line.trim()))
+              .map(line => line.trim());
+
+            const hasHeading = (pattern) => level2Headings.some(h => pattern.test(h));
+
+            // Vérification de conformité des templates basée sur les vrais titres H2 du document
+            const hasBugSections = hasHeading(/^##\s*🐛?\s*Describe the Bug/i) &&
+                                  hasHeading(/^##\s*📋?\s*Steps to Reproduce/i) &&
+                                  hasHeading(/^##\s*✅?\s*Expected Behavior/i);
+            const hasFeatureSections = hasHeading(/^##\s*💡?\s*Feature Description/i) &&
+                                      hasHeading(/^##\s*🎯?\s*Use Case/i) &&
+                                      hasHeading(/^##\s*🔍?\s*Acceptance Criteria/i);
+            const hasDocSections = hasHeading(/^##\s*📖?\s*Documentation Issue/i) &&
+                                  hasHeading(/^##\s*📍?\s*Affected Section/i);
+
+            const followsTemplate = hasBugSections || hasFeatureSections || hasDocSections;
+
+            const labels = new Set();
+            if (/\b(bug|error|crash|regression|broken)\b/.test(text) || hasBugSections) labels.add('bug');
+            if (/\b(feature|enhancement|proposal|request)\b/.test(text) || hasFeatureSections) labels.add('enhancement');
+            if (/\b(doc|documentation|readme|guide)\b/.test(text) || hasDocSections) labels.add('documentation');
             if (/\b(question|how do i|help)\b/.test(text)) labels.add('question');
             if (/\b(security|vulnerability|cve|exploit)\b/.test(text)) labels.add('security');
             if (/\b(critical|urgent|blocking)\b/.test(text)) labels.add('priority-high');
 
-            const boundedLabels = [...labels].slice(0, 4);
+            let boundedLabels = [];
+            if (!followsTemplate) {
+              // Si non conforme, needs-triage est prioritaire et garanti dans la limite de 4 labels
+              const otherLabels = [...labels].filter(l => l !== 'needs-triage').slice(0, 3);
+              boundedLabels = ['needs-triage', ...otherLabels];
+            } else {
+              // Si conforme, supprimer le label needs-triage s'il existait déjà (ex: issue éditée / réouverture)
+              const currentIssueLabels = (issue.labels || []).map(l => typeof l === 'string' ? l : l.name);
+              if (currentIssueLabels.includes('needs-triage')) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'needs-triage'
+                  });
+                } catch (err) {
+                  // Tolérer uniquement HTTP 404 (label déjà retiré ou absent)
+                  if (err.status === 404) {
+                    core.info('needs-triage label already absent on issue.');
+                  } else {
+                    core.setFailed(`Failed to remove stale needs-triage label: ${err.message}`);
+                    return;
+                  }
+                }
+              }
+              boundedLabels = [...labels].slice(0, 4);
+            }
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,

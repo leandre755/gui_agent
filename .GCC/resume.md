@@ -2,23 +2,30 @@
 
 ## 🎯 Functional Outcome & Task Reality
 - **Requested Task**:
-  1. Clôturer et fusionner la Pull Request #8 (`fix/atomic-window-resize-move`) après validation formelle 5/5 sur Greptile et CodeRabbit.
-  2. Valider l'intégrité de la branche principale `main` via la suite CI locale (`./ci.sh`).
-  3. Mettre à jour les registres GCC (`.GCC/main.md` et `.GCC/resume.md`).
+  1. Résoudre l'anomalie de non-atomicité dans `gui_window_resize_move` via chaînage d'arguments `xdotool`.
+  2. Ouvrir la PR #8, obtenir la note parfaite **5/5** sur Greptile et CodeRabbit, et la fusionner sur `main`.
+  3. Standardiser la terminologie documentaire vers **Quality-Gate** (en remplacement de Zero-Slop) dans `README.md` et `README.fr.md`.
+  4. Corriger l'alignement visuel et le dimensionnement du logo dans les en-têtes `<h1>`.
+  5. Effectuer les commits avec passage rigoureux des 8 couches du pipeline qualité.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  1. **Scores de Revue** : **Confidence Score: 5/5** sur Greptile & **5/5 Pre-merge checks passed** sur CodeRabbit (0 commentaire non résolu).
-  2. **Fusion GitHub** : PR #8 fusionnée avec succès sur `main` (commit [`1bd13f4`](https://github.com/leandre755/gui_agent/commit/1bd13f4738596645ae4972ffaf3664d4b31644ae)).
-  3. **CI Locale (`./ci.sh`) sur `main`** : **100% PASS** (27/27 tests unitaires validés sous Pytest, 0 erreur Ruff lint, 0 erreur Ruff format, 0 erreur Mypy).
+  1. **PR #8 Fusionnée** : Commit [`1bd13f4`](https://github.com/leandre755/gui_agent/commit/1bd13f4738596645ae4972ffaf3664d4b31644ae) sur `main` avec **Confidence Score: 5/5** sur Greptile et **5/5 Pre-merge checks passed** sur CodeRabbit.
+  2. **Harmonisation Doc & Logo** : Commits [`f414f2f`](https://github.com/leandre755/gui_agent/commit/f414f2f), [`c2d7061`](https://github.com/leandre755/gui_agent/commit/c2d7061) et [`6c111b8`](https://github.com/leandre755/gui_agent/commit/6c111b8) sur `main`.
+  3. **CI Locale (`./ci.sh`)** : **100% PASS** (27/27 tests unitaires Pytest validés sous Python 3.13 / Xvfb, 0 erreur Ruff lint, 0 erreur Ruff format, 0 erreur Mypy).
+  4. **Hooks Pre-Commit Quality-Gate** : 8/8 couches validées à chaque étape.
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **Branch**: `main` (synchronisée sur `origin/main` à `1bd13f4`)
+- **Branch**: `main` (commit [`6c111b8`](https://github.com/leandre755/gui_agent/commit/6c111b8))
 - **File**: `gui_agent/server.py`
-  - **Scope**: Chaînage atomique de `windowsize` et `windowmove` dans un unique appel `subprocess.run([xdotool_bin, "windowsize", str(window_id), str(width), str(height), "windowmove", str(window_id), str(x), str(y)])`.
+  - **Scope**: Chaînage de `windowsize` et `windowmove` dans une invocation unique de sous-processus `subprocess.run([xdotool_bin, "windowsize", str(window_id), str(width), str(height), "windowmove", str(window_id), str(x), str(y)])` afin de réduire la fenêtre de course.
 - **File**: `tests/test_package.py`
-  - **Scope**: 27 fonctions de test unitaires modulaires couvrant l'ensemble du contrat d'API, de sécurité de concurrence et de cycle de vie des captures et fenêtres.
-- **File**: `.GCC/main.md`
-  - **Scope**: Archivage du jalon PR #8 (Score 5/5) et mise à jour du statut projet.
+  - **Scope**: Tests unitaires `test_gui_window_resize_move_atomic_command` et `test_gui_window_resize_move_invalid_params` sans directives d'inhibition.
+- **File**: `README.md` & `README.fr.md`
+  - **Scope**: Remplacement de la terminologie Zero-Slop par Quality-Gate et ajustement de la hauteur du logo à `42px` avec alignement vertical médian parfait.
+- **File**: `.githooks/pre-commit`
+  - **Scope**: Messages de retour standardisés Quality-Gate.
+- **File**: `.GCC/main.md` & `.GCC/resume.md`
+  - **Scope**: Archivage des jalons et mise à jour des registres de transition.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh`
@@ -29,9 +36,9 @@
   - `ruff` : **All checks passed / 21 files already formatted**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun. La PR #8 est mergée, le code est intègre et validé à 100% sur la branche principale.
+- **Blocker / Failure Explanation**: Aucun. Tous les objectifs de la session ont été complétés, testés et validés à 100%.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target Branch**: `main` (ou nouvelle branche thématique pour les prochains chantiers).
-2. **Next Epic**: Poursuivre le plan d'organisation du dépôt ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) ou traiter les points suivants identifiés dans l'audit.
+1. **Target Branch**: `fix/issue-triage-template-compliance` (branche de PR dédiée).
+2. **Next Epic**: Poursuivre le plan d'organisation du dépôt ([plan_organize_repo.md](branches/plan_organize_repo.md)) selon les directives validées.
 3. **Verification Command**: `./ci.sh`
