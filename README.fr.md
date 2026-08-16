@@ -2,7 +2,7 @@
   <img src="https://files.catbox.moe/udf9j4.jpeg" alt="gui-agent Hero Banner" width="100%" style="border-radius: 8px;" />
 </p>
 
-<h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" width="114" style="vertical-align: middle; margin-right: 12px;" /> gui-agent</h1>
+<h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" height="42" style="vertical-align: middle; margin-right: 10px;" />gui-agent</h1>
 
 <p align="center"><b>Serveur FastMCP Monolithique pour le Contrôle Graphique (Computer Use) sous Linux et Windows</b></p>
 
