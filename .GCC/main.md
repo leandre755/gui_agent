@@ -5,6 +5,7 @@
 - [2026-08-14] Multi-Layer Quality & Pre-Commit 8-Layer Zero-Slop Pipeline
 - [2026-08-15] Complete README Overhaul: Landing Page UX, Hosted Excalidraw SVGs, Official Transparent Logo & Landscape Hero Banner, Bilingual Line-for-Line Isomorphism (475 lines), and De-AI Humanization Pass
 - [2026-08-15] Local CI Runner (`ci.sh`) & Exhaustive Multi-Agent Repository Audit (`organize-repos`)
+- [2026-08-16] Parameter `output_path` Migration, Inode Security Hardening & Zero-Slop Rollback (PR #7, Confidence Score 5/5)
 
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -62,14 +63,13 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `main` : Stable production release with complete bilingual landing pages and Zero-Slop test harness.
-- `fix/screenshot-output-path-param` (PR #7) : Remplacement de `save_to_artifacts` par `output_path`, validation d'extensions, protection anti-écrasement, normalisation absolue des chemins de capture et élimination des failles de race condition via suppression liée au descripteur de répertoire (22/22 tests).
+- `main` : Stable production release with complete bilingual landing pages, 25/25 Zero-Slop test harness, and hardened screenshot rollback lifecycle.
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
-- ✅ Done: Implémentation du paramètre `output_path`, validation d'extensions, protection anti-écrasement incrémentale, et sécurisation des copies/Base64 par validation d'inodes (PR #7, 22/22 tests unitaires validés).
-- 🔄 In progress: Reprise et refonte de la gestion du cycle de vie des descripteurs pour la suppression/rollback sur échec (élimination des courses TOCTOU résiduelles relevées par Greptile et CodeRabbit).
-- ⏳ Pending: Obtention du Confidence Score 5/5 sur Greptile et CodeRabbit sans aucun échec de sécurité restant.
+- ✅ Done: Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec approbation formelle et Confidence Score 5/5 sur Greptile et CodeRabbit (25/25 tests unitaires validés).
+- 🔄 In progress: Transition et préparation des prochains chantiers issus de l'audit du dépôt.
+- ⏳ Pending: Exécution des points complémentaires d'audit et réorganisation structurelle.
 
 ## 👉 Next Session Direction
-Poursuivre la correction des points relevés dans l'audit utilisateur (sur la base de la PR #7 ou de la branche de travail convenue) en appliquant le protocole de vérification irréfutable et en maintenant la structure du dépôt alignée.
+Poursuivre les axes d'amélioration issus de l'audit et traiter les points d'optimisation structurelle sur une nouvelle branche de travail dédiée.
