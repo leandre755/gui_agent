@@ -52,14 +52,15 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors)
 
 
-def test_reject_escaped_unicode_on_trigger(tmp_path: Path):
-    """Vérifie le décodage et le rejet de pull_request_target avec une clé d'échappement YAML unicode 'o\\u006e'."""
-    wf = tmp_path / "escaped_on.yml"
-    wf.write_text(
+def test_nested_escaped_event_keys_and_dispatch_inputs_not_confused(tmp_path: Path):
+    """Vérifie que les clés d'événements échappées (ex: 'pull_request_t\\u0061rget') sont bien détectées, et que le texte des inputs workflow_dispatch n'est pas confondu avec un trigger."""
+    # 1. Échappement imbriqué de pull_request_target
+    wf_escaped = tmp_path / "nested_escaped_trigger.yml"
+    wf_escaped.write_text(
         """
-name: Escaped On Target
-"o\\u006e":
-  pull_request_target:
+name: Nested Escaped PR Target
+on:
+  "pull_request_t\\u0061rget":
     types: [opened]
 permissions:
   contents: read
@@ -74,9 +75,35 @@ jobs:
 """,
         encoding="utf-8",
     )
-    count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count >= 1
-    assert any("pull_request_target est formellement interdit" in e for e in errors)
+    count1, errors1, _ = verify_workflows.check_workflow(wf_escaped)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    # 2. workflow_dispatch avec descriptions ou valeurs contenant 'push' ou 'pull_request'
+    wf_inputs = tmp_path / "dispatch_with_input_text.yml"
+    wf_inputs.write_text(
+        """
+name: Dispatch Inputs
+on:
+  workflow_dispatch:
+    inputs:
+      action_type:
+        description: "Trigger a push or pull_request deployment"
+        default: "push"
+        required: true
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(wf_inputs)
+    assert count2 == 0, f"Erreurs inattendues pour inputs de workflow_dispatch: {errors2}"
 
 
 def test_reject_missing_top_level_permissions(tmp_path: Path):

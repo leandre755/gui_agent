@@ -69,10 +69,11 @@ class WorkflowVerifier:
         prefix = f"{self.path}:{line_no}: " if line_no is not None else f"{self.path}: "
         self.warnings.append(f"{prefix}{message}")
 
-    def _extract_on_section(self) -> str:
-        """Extrait les lignes correspondant à la directive top-level 'on:' en dépouillant les commentaires."""
+    def _parse_triggers(self) -> set[str]:
+        """Extrait et décode l'ensemble des événements déclencheurs sous la directive top-level 'on:'."""
         in_on = False
-        on_lines: list[str] = []
+        on_child_lines: list[str] = []
+
         for line in self.lines:
             stripped_code = strip_yaml_comment(line).rstrip()
             if not stripped_code.strip():
@@ -80,26 +81,58 @@ class WorkflowVerifier:
 
             current_indent = len(line) - len(line.lstrip(" "))
 
-            # Vérification de clé top-level (indentation 0)
+            # Détection de la clé top-level 'on:'
             if current_indent == 0:
                 top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                 if top_match:
                     raw_k = top_match.group(1).strip()
-                    decoded_k = decode_yaml_key(raw_k)
-                    if decoded_k == "on":
+                    if decode_yaml_key(raw_k) == "on":
                         in_on = True
-                        on_lines.append(stripped_code)
+                        inline_val = top_match.group(2).strip()
+                        # Forme scalaire inline ou liste flow-style inline (ex: 'on: push' ou 'on: [push, pull_request]')
+                        if inline_val:
+                            if inline_val.startswith("[") and inline_val.endswith("]"):
+                                items = inline_val[1:-1].split(",")
+                                return {decode_yaml_key(item.strip()) for item in items if item.strip()}
+                            return {decode_yaml_key(inline_val)}
                         continue
                     elif in_on:
                         break
 
             if in_on:
-                on_lines.append(stripped_code)
-        return "\n".join(on_lines)
+                on_child_lines.append(stripped_code)
+
+        if not on_child_lines:
+            return set()
+
+        # Identifier le niveau d'indentation direct des événements déclarés sous 'on:'
+        min_child_indent: int | None = None
+        for line in on_child_lines:
+            indent = len(line) - len(line.lstrip(" "))
+            if min_child_indent is None or indent < min_child_indent:
+                min_child_indent = indent
+
+        triggers: set[str] = set()
+        for line in on_child_lines:
+            indent = len(line) - len(line.lstrip(" "))
+            if min_child_indent is not None and indent == min_child_indent:
+                stripped = line.strip()
+                # Séquence YAML (ex: '- push' ou '- "push"')
+                if stripped.startswith("-"):
+                    item = stripped[1:].strip()
+                    triggers.add(decode_yaml_key(item))
+                else:
+                    # Mapping direct (ex: 'push:' ou '"pull_request_target":')
+                    key_match = re.match(r"^([^:]+):", stripped)
+                    if key_match:
+                        raw_event = key_match.group(1).strip()
+                        triggers.add(decode_yaml_key(raw_event))
+
+        return triggers
 
     def verify_forbidden_triggers(self) -> None:
-        on_text = self._extract_on_section()
-        if re.search(r"\bpull_request_target\b", on_text):
+        triggers = self._parse_triggers()
+        if "pull_request_target" in triggers:
             self.log_error("pull_request_target est formellement interdit pour des raisons de sécurité.")
 
     def verify_top_level_permissions(self) -> None:
@@ -125,8 +158,8 @@ class WorkflowVerifier:
             self.log_error("Bloc top-level 'permissions:' manquant (least-privilege obligatoire).")
 
     def verify_concurrency(self) -> None:
-        on_text = self._extract_on_section()
-        has_pr_or_push = bool(re.search(r"\b(?:pull_request|push)\b", on_text))
+        triggers = self._parse_triggers()
+        has_pr_or_push = bool(triggers.intersection({"pull_request", "push"}))
         if has_pr_or_push:
             has_concurrency = False
             for line in self.lines:
