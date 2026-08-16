@@ -72,9 +72,12 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
-- ✅ Done: Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec approbation formelle et Confidence Score 5/5 sur Greptile et CodeRabbit (25/25 tests unitaires validés).
-- 🔄 In progress: Transition et préparation des prochains chantiers issus de l'audit du dépôt.
-- ⏳ Pending: Exécution des points complémentaires d'audit et réorganisation structurelle.
+- ✅ Done:
+  - Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
+  - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
+  - Standardisation de la terminologie Quality-Gate et correction de l'alignement du logo H1 dans les READMEs.
+- 🔄 In progress: Préparation du chantier d'harmonisation de l'arborescence (plan_organize_repo.md).
+- ⏳ Pending: Exécution des points complémentaires d'audit du dépôt.
 
 ## 👉 Next Session Direction
-Poursuivre les axes d'amélioration issus de l'audit et traiter les points d'optimisation structurelle sur une nouvelle branche de travail dédiée.
+Poursuivre la réorganisation structurelle du dépôt sur une nouvelle branche de travail dédiée selon les directives validées du plan.
