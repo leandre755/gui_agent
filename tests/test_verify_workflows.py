@@ -245,27 +245,51 @@ jobs:
     assert count == 0, f"Erreurs inattendues: {errors}"
 
 
-def test_comments_in_on_section_not_mistaken_for_triggers(tmp_path: Path):
-    """Vérifie que des commentaires mentionnant pull_request_target ou push dans le bloc on: ne déclenchent pas de fausse alerte."""
-    wf = tmp_path / "commented_triggers.yml"
-    wf.write_text(
+def test_flow_style_trigger_mapping_triggers_detected(tmp_path: Path):
+    """Vérifie que les mappings flow-style tels que on: {push: null} ou on: {pull_request_target: null} sont correctement parsés."""
+    # 1. pull_request_target dans un mapping flow-style inline
+    wf_pr_target = tmp_path / "flow_mapping_pr_target.yml"
+    wf_pr_target.write_text(
         """
-name: Commented Triggers
-on:
-  workflow_dispatch: # Not pull_request_target nor push
+name: Flow Mapping PR Target
+on: {pull_request_target: null}
 permissions:
   contents: read
+concurrency:
+  group: test-${{ github.ref }}
 jobs:
-  test_job: # Main test job
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5 # Timeout comment
+    timeout-minutes: 5
     steps:
-      - run: echo success
+      - run: echo test
 """,
         encoding="utf-8",
     )
-    count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count == 0, f"Erreurs inattendues pour triggers en commentaire: {errors}"
+    count1, errors1, _ = verify_workflows.check_workflow(wf_pr_target)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    # 2. push dans un mapping flow-style sans concurrency
+    wf_push_no_concurrency = tmp_path / "flow_mapping_push.yml"
+    wf_push_no_concurrency.write_text(
+        """
+name: Flow Mapping Push
+on: {push: null}
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(wf_push_no_concurrency)
+    assert count2 >= 1
+    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors2)
 
 
 def test_reject_persist_credentials_true(tmp_path: Path):

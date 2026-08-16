@@ -53,6 +53,32 @@ def strip_yaml_comment(line: str) -> str:
     return line
 
 
+def parse_inline_yaml_triggers(val: str) -> set[str]:
+    """Parse une valeur inline YAML (flow-style sequence, flow-style mapping, ou scalaire)."""
+    trimmed = val.strip()
+    if not trimmed:
+        return set()
+
+    # Flow-style sequence (ex: '[push, pull_request]')
+    if trimmed.startswith("[") and trimmed.endswith("]"):
+        items = trimmed[1:-1].split(",")
+        return {decode_yaml_key(item.strip()) for item in items if item.strip()}
+
+    # Flow-style mapping (ex: '{push: null, pull_request: {branches: [main]}}')
+    if trimmed.startswith("{") and trimmed.endswith("}"):
+        content = trimmed[1:-1]
+        keys: set[str] = set()
+        for pair in content.split(","):
+            if ":" in pair:
+                raw_k = pair.split(":", 1)[0].strip()
+                if raw_k:
+                    keys.add(decode_yaml_key(raw_k))
+        return keys
+
+    # Scalaire simple (ex: 'push')
+    return {decode_yaml_key(trimmed)}
+
+
 class WorkflowVerifier:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -89,12 +115,8 @@ class WorkflowVerifier:
                     if decode_yaml_key(raw_k) == "on":
                         in_on = True
                         inline_val = top_match.group(2).strip()
-                        # Forme scalaire inline ou liste flow-style inline (ex: 'on: push' ou 'on: [push, pull_request]')
                         if inline_val:
-                            if inline_val.startswith("[") and inline_val.endswith("]"):
-                                items = inline_val[1:-1].split(",")
-                                return {decode_yaml_key(item.strip()) for item in items if item.strip()}
-                            return {decode_yaml_key(inline_val)}
+                            return parse_inline_yaml_triggers(inline_val)
                         continue
                     elif in_on:
                         break
