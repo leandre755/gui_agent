@@ -11,7 +11,7 @@ Décrivez le problème résolu et le changement fonctionnel apporté.
 
 ## Impact sur l’automatisation
 
-- [ ] Cette pull request ne modifie pas `.github/workflows`, `.github/scripts`, `githooks`, `setup.sh` ou `setup.ps1`.
+- [ ] Cette pull request ne modifie pas `.github/workflows`, `.github/scripts`, `.github/CODEOWNERS`, `AGENTS.md`, `AGENT_POLICY.md`, `AUTONOMY.md`, `.claude/`, `.cursor/`, `.agents/`, `.devin/`, `.windsurf/`, `.coding-stuff/`, `.githooks/`, `install.sh`, `install.ps1`, `uninstall.sh` ou `uninstall.ps1`.
 - [ ] Si elle modifie ces chemins, les implications de permissions, secrets, déclencheurs et cache sont documentées ci-dessous et une revue Code Owner est requise.
 
 ## Risques et retour arrière
