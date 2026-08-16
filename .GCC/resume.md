@@ -1,23 +1,30 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Résoudre l'issue #26 en enrichissant `.github/scripts/verify_workflows.py` pour valider la logique métier et les invariants de sécurité des workflows GitHub Actions (permissions, timeouts, triggers, SHA pins, concurrency), ajouter des tests unitaires et intégrer l'étape dans `ci.sh`.
+- **Requested Task**: Résoudre l'issue #26, ouvrir la PR #36 et mener le cycle de revue Greploop / Optibot jusqu'à un score de confiance de 5/5 avec zéro commentaire restant.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  1. `verify_workflows.py` : Validation des 6 workflows réels du dépôt (`.github/workflows/*.yml`) avec 100% de succès.
-  2. `tests/test_verify_workflows.py` : 8 tests unitaires couvrant les cas nominaux et les rejets stricts (`pull_request_target`, `write-all`, permissions manquantes, job sans timeout, job sans runs-on, actions non épinglées par SHA-40, `persist-credentials: true`, omission de `concurrency`).
-  3. `./ci.sh` : Intégration de l'étape "Validation Workflows GitHub Actions" avec **100% PASS** (compileall, verify_workflows, ruff check, ruff format, mypy, 35/35 pytest).
+  1. **Revue Greptile & Optibot** :
+     - Score final Greptile : **`Confidence Score: 5/5`** ("The PR appears safe to merge. No blocking failure remains. No review comments.").
+     - Résolution de 100% des retours Optibot / Greptile (14 threads résolus, 0 thread ouvert via API GraphQL).
+  2. **Pipeline de Validation Local** :
+     - `verify_workflows.py` : Validation des 6 workflows réels du projet + support des clés entre guillemets, formes scalaires, syntaxe flow-style et indentations YAML dynamiques.
+     - `tests/test_verify_workflows.py` : 10 tests de conformité et de cas limites (37/37 tests pytest validés).
+     - `./ci.sh` : **100% PASS** (Bytecode, Workflows validation, Ruff check, Ruff format, Mypy, 37/37 Pytest).
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `.github/scripts/verify_workflows.py`
-  - **Scope**: `WorkflowVerifier`, `check_workflow`, `main`
-  - **Exact Technical Change**: Implémentation complète de la validation structurelle et métier (stdlib Python sans dépendance tierce) : vérification de l'interdiction de `pull_request_target`, bloc top-level `permissions:` obligatoire, interdiction de `write-all`, bloc `concurrency:` obligatoire pour `pull_request` et `push`, extraction et validation des jobs avec `runs-on:` et `timeout-minutes:`, épinglage SHA-40 immuable des actions tierces avec avertissement sur le format de tag, interdiction de `persist-credentials: true`.
+  - **Scope**: `WorkflowVerifier`, `_extract_on_section`, `verify_concurrency`, `verify_jobs_and_steps`
+  - **Exact Technical Change**:
+    - Support des clés avec guillemets (`"on":`, `"permissions":`, `"concurrency":`, `"jobs":`).
+    - Reconnaissance des formes scalaires de `concurrency:` en plus des blocs multilignes.
+    - Analyse dynamique de l'indentation YAML des jobs pour supporter n'importe quelle indentation valide (2, 4 espaces) tout en isolant strictement les scripts imbriqués contre les faux positifs.
 - **File**: `tests/test_verify_workflows.py`
-  - **Scope**: Suite de tests unitaires pour l'analyseur de workflows.
-  - **Exact Technical Change**: 8 tests pytest validant exhaustivement tous les scénarios de conformité et de rejet.
+  - **Scope**: Suite de tests unitaires
+  - **Exact Technical Change**: Ajout de tests pour les clés avec guillemets, l'indentation alternative, et les formes scalaires de `concurrency`.
 - **File**: `ci.sh`
-  - **Scope**: Pipeline local CI
-  - **Exact Technical Change**: Ajout de l'étape 2 "Validation Workflows GitHub Actions" avant le linting et les tests.
+  - **Scope**: Script CI local
+  - **Exact Technical Change**: Mise à jour de l'aide `--quick` pour documenter l'exécution de la validation des workflows.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh`
@@ -27,12 +34,12 @@
   - `ruff check` : All checks passed
   - `ruff format` : 22 files already formatted
   - `mypy` : Success (0 issues in 4 source files)
-  - `pytest` : 35/35 passed in 7.64s
+  - `pytest` : 37/37 passed
 
 ## 🚧 Unfinished Work & Technical Failures
 - **Blocker / Failure Explanation**: Aucun.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target PR**: Ouvrir la PR sur GitHub pour l'issue #26 depuis `fix/ci-verify-workflows-logic` vers `main`.
-2. **Immediate Action**: Créer le commit respectant Conventional Commits et ouvrir la PR avec le template dédié.
-3. **Verification Command**: `gh pr create`
+1. **Target PR**: **#36** (`https://github.com/leandre755/gui_agent/pull/36`).
+2. **Immediate Action**: Fusionner la PR #36 dans `main`, fermer l'issue #26 et passer à l'issue suivante du backlog (#32).
+3. **Verification Command**: `gh pr merge 36 --squash`

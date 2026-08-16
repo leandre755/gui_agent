@@ -52,6 +52,33 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors)
 
 
+def test_reject_escaped_unicode_on_trigger(tmp_path: Path):
+    """Vérifie le décodage et le rejet de pull_request_target avec une clé d'échappement YAML unicode 'o\\u006e'."""
+    wf = tmp_path / "escaped_on.yml"
+    wf.write_text(
+        """
+name: Escaped On Target
+"o\\u006e":
+  pull_request_target:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
 def test_reject_missing_top_level_permissions(tmp_path: Path):
     """Vérifie le rejet en l'absence de bloc permissions top-level."""
     wf = tmp_path / "missing_perms.yml"
@@ -164,6 +191,32 @@ jobs:
     )
     count, errors, _ = verify_workflows.check_workflow(wf)
     assert count == 0, f"Erreurs inattendues: {errors}"
+
+
+def test_accept_block_sequence_runs_on(tmp_path: Path):
+    """Vérifie que la syntaxe runs-on sous forme de séquence indentée (liste YAML) est acceptée."""
+    wf = tmp_path / "block_sequence_runs_on.yml"
+    wf.write_text(
+        """
+name: Block Sequence Runner
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  custom_runner_job:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    timeout-minutes: 5
+    steps:
+      - run: echo runner sequence test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count == 0, f"Erreurs inattendues pour séquence runs-on: {errors}"
 
 
 def test_reject_unpinned_action_ref(tmp_path: Path):

@@ -7,6 +7,7 @@ une portabilité totale en local (scripts CI, hooks) et en environnement GitHub 
 
 from __future__ import annotations
 
+import codecs
 import re
 import sys
 from pathlib import Path
@@ -14,6 +15,21 @@ from pathlib import Path
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 USES_PATTERN = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(.+))?\s*$")
 PERSIST_CREDENTIALS_TRUE_PATTERN = re.compile(r"^\s*persist-credentials:\s*true\b(?:\s*#.*)?$")
+
+
+def decode_yaml_key(raw_key: str) -> str:
+    """Décode une clé YAML potentiellement entourée de guillemets et contenant des échappements Unicode/Hex."""
+    key = raw_key.strip()
+    if (key.startswith('"') and key.endswith('"')) or (key.startswith("'") and key.endswith("'")):
+        quote = key[0]
+        unquoted = key[1:-1]
+        if quote == '"':
+            try:
+                return codecs.decode(unquoted, "unicode_escape")
+            except Exception:
+                return unquoted
+        return unquoted
+    return key
 
 
 class WorkflowVerifier:
@@ -33,17 +49,32 @@ class WorkflowVerifier:
         self.warnings.append(f"{prefix}{message}")
 
     def _extract_on_section(self) -> str:
-        """Extrait les lignes correspondant à la directive top-level 'on:' (y compris avec guillemets)."""
+        """Extrait les lignes correspondant à la directive top-level 'on:'."""
         in_on = False
         on_lines: list[str] = []
         for line in self.lines:
-            if re.match(r"^(?:on|\"on\"|'on'):\s*", line):
-                in_on = True
-                on_lines.append(line)
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                if in_on:
+                    on_lines.append(line)
                 continue
+
+            current_indent = len(line) - len(line.lstrip(" "))
+
+            # Vérification de clé top-level (indentation 0)
+            if current_indent == 0:
+                top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                if top_match:
+                    raw_k = top_match.group(1).strip()
+                    decoded_k = decode_yaml_key(raw_k)
+                    if decoded_k == "on":
+                        in_on = True
+                        on_lines.append(line)
+                        continue
+                    elif in_on:
+                        break
+
             if in_on:
-                if line and not line.startswith(" ") and not line.startswith("#"):
-                    break
                 on_lines.append(line)
         return "\n".join(on_lines)
 
@@ -53,42 +84,50 @@ class WorkflowVerifier:
             self.log_error("pull_request_target est formellement interdit pour des raisons de sécurité.")
 
     def verify_top_level_permissions(self) -> None:
-        # Vérifie la présence d'un bloc top-level permissions
-        has_top_permissions = bool(
-            re.search(r"^(?:permissions|\"permissions\"|'permissions'):\s*", self.text, flags=re.MULTILINE)
-        )
+        has_top_permissions = False
+        for idx, line in enumerate(self.lines, start=1):
+            current_indent = len(line) - len(line.lstrip(" "))
+            if current_indent == 0:
+                top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                if top_match:
+                    raw_k = top_match.group(1).strip()
+                    val = top_match.group(2).strip()
+                    decoded_k = decode_yaml_key(raw_k)
+                    if decoded_k == "permissions":
+                        has_top_permissions = True
+                        if re.match(r"^(?:write-all|write)\b", val):
+                            self.log_error(
+                                "L'utilisation de 'permissions: write-all' ou 'permissions: write' est strictement interdite.",
+                                line_no=idx,
+                            )
+
         if not has_top_permissions:
             self.log_error("Bloc top-level 'permissions:' manquant (least-privilege obligatoire).")
 
-        # Interdiction absolue de write-all ou write scalaire
-        for idx, line in enumerate(self.lines, start=1):
-            if re.search(r"^(?:permissions|\"permissions\"|'permissions'):\s*(?:write-all|write)\b", line):
-                self.log_error(
-                    "L'utilisation de 'permissions: write-all' ou 'permissions: write' est strictement interdite.",
-                    line_no=idx,
-                )
-
     def verify_concurrency(self) -> None:
         on_text = self._extract_on_section()
-        # Détecte pull_request et push sous toutes leurs formes (mapping, flow style list, scalaire)
         has_pr_or_push = bool(re.search(r"\b(?:pull_request|push)\b", on_text))
         if has_pr_or_push:
-            has_concurrency = bool(
-                re.search(
-                    r"^(?:concurrency|\"concurrency\"|'concurrency'):\s*(?:(?:#.*)?$|\S)",
-                    self.text,
-                    flags=re.MULTILINE,
-                )
-            )
+            has_concurrency = False
+            for line in self.lines:
+                current_indent = len(line) - len(line.lstrip(" "))
+                if current_indent == 0:
+                    top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                    if top_match:
+                        raw_k = top_match.group(1).strip()
+                        decoded_k = decode_yaml_key(raw_k)
+                        if decoded_k == "concurrency":
+                            has_concurrency = True
+                            break
+
             if not has_concurrency:
                 self.log_error("Bloc top-level 'concurrency:' manquant pour un workflow déclenché par PR ou push.")
 
-    def verify_jobs_and_steps(self) -> None:
+    def _parse_job_blocks(self) -> dict[str, list[tuple[int, str]]]:
         in_jobs_block = False
         jobs_indent: int | None = None
         current_job: str | None = None
         job_indent: int | None = None
-        # job_direct_properties: job_name -> list of direct properties (indented strictly below job header, before any steps)
         job_direct_properties: dict[str, list[tuple[int, str]]] = {}
 
         for idx, line in enumerate(self.lines, start=1):
@@ -100,79 +139,83 @@ class WorkflowVerifier:
 
             # Détection de la section top-level 'jobs:'
             if not in_jobs_block:
-                if re.match(r"^(?:jobs|\"jobs\"|'jobs'):\s*(?:#.*)?$", line):
-                    in_jobs_block = True
-                    jobs_indent = current_line_indent
+                if current_line_indent == 0:
+                    top_match = re.match(r"^([^:]+):\s*(?:#.*)?$", line)
+                    if top_match and decode_yaml_key(top_match.group(1).strip()) == "jobs":
+                        in_jobs_block = True
+                        jobs_indent = current_line_indent
                 continue
 
-            # Si on est dans la section jobs
-            if in_jobs_block:
-                # Si on rencontre une nouvelle clé de premier niveau (indentation <= jobs_indent)
-                if jobs_indent is not None and current_line_indent <= jobs_indent:
+            # Sortie de la section jobs lors d'une nouvelle clé top-level
+            if jobs_indent is not None and current_line_indent <= jobs_indent:
+                in_jobs_block = False
+                current_job = None
+                continue
+
+            # Détection d'un en-tête de job
+            header_match = re.match(r"^(\s+)([^:]+):\s*$", line)
+            if header_match and (job_indent is None or current_line_indent == job_indent):
+                job_indent = len(header_match.group(1))
+                current_job = decode_yaml_key(header_match.group(2).strip())
+                job_direct_properties[current_job] = []
+                continue
+
+            # Accumulation des propriétés du job en cours
+            if current_job is not None and job_indent is not None:
+                if current_line_indent < job_indent:
                     in_jobs_block = False
                     current_job = None
                     continue
+                job_direct_properties[current_job].append((idx, line))
 
-                # Détection d'un en-tête de job (ex: '  validate:' ou '    job1:')
-                # Un en-tête de job est un mapping sans clé parente active au même niveau ou un nouveau niveau
-                if job_indent is None or current_line_indent == job_indent:
-                    job_header_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*$", line)
-                    if job_header_match and (jobs_indent is None or len(job_header_match.group(1)) > jobs_indent):
-                        job_indent = len(job_header_match.group(1))
-                        current_job = job_header_match.group(2)
-                        job_direct_properties[current_job] = []
-                        continue
+        return job_direct_properties
 
-                # Si on est à l'intérieur d'un job
-                if current_job is not None and job_indent is not None:
-                    # Si l'indentation revient au niveau du job ou au-dessus
-                    if current_line_indent < job_indent:
-                        in_jobs_block = False
-                        current_job = None
-                        continue
-                    elif current_line_indent == job_indent:
-                        # Nouveau job au même niveau d'indentation
-                        job_header_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*$", line)
-                        if job_header_match:
-                            current_job = job_header_match.group(2)
-                            job_direct_properties[current_job] = []
-                            continue
+    def _validate_single_job(self, job_name: str, lines: list[tuple[int, str]]) -> None:
+        has_timeout = False
+        has_runs_on = False
 
-                    # Propriété directe du job : indentation > job_indent mais propriété directe de premier niveau du job
-                    # Détecte les clés directes du job (runs-on, timeout-minutes, steps, permissions, etc.)
-                    # Les propriétés directes du job ont une indentation uniforme (property_indent)
-                    job_direct_properties[current_job].append((idx, line))
+        direct_prop_indent: int | None = None
+        for _idx, line in lines:
+            indent = len(line) - len(line.lstrip(" "))
+            if direct_prop_indent is None or indent < direct_prop_indent:
+                direct_prop_indent = indent
 
+        for i, (_idx, line) in enumerate(lines):
+            indent = len(line) - len(line.lstrip(" "))
+            if direct_prop_indent is not None and indent == direct_prop_indent:
+                if re.match(
+                    r"^\s*(?:timeout-minutes|\"timeout-minutes\"|'timeout-minutes'):\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$",
+                    line,
+                ):
+                    has_timeout = True
+
+                runs_on_match = re.match(r"^\s*(?:runs-on|\"runs-on\"|'runs-on'):\s*(.*)$", line)
+                if runs_on_match:
+                    inline_val = runs_on_match.group(1).strip()
+                    if inline_val and not inline_val.startswith("#"):
+                        has_runs_on = True
+                    else:
+                        for _next_idx, next_line in lines[i + 1 :]:
+                            next_indent = len(next_line) - len(next_line.lstrip(" "))
+                            if next_indent <= direct_prop_indent:
+                                break
+                            if next_line.strip().startswith("-"):
+                                has_runs_on = True
+                                break
+
+        if not has_runs_on:
+            self.log_error(f"Job '{job_name}' : directive 'runs-on:' obligatoire manquante au niveau du job.")
+        if not has_timeout:
+            self.log_error(f"Job '{job_name}' : directive 'timeout-minutes:' obligatoire manquante au niveau du job.")
+
+    def verify_jobs_and_steps(self) -> None:
+        job_direct_properties = self._parse_job_blocks()
         if not job_direct_properties:
             self.log_error("Aucun job défini sous la section 'jobs:'.")
             return
 
         for job_name, lines in job_direct_properties.items():
-            has_timeout = False
-            has_runs_on = False
-
-            # Détecter le niveau d'indentation des propriétés directes du job
-            direct_prop_indent: int | None = None
-            for _idx, line in lines:
-                indent = len(line) - len(line.lstrip(" "))
-                if direct_prop_indent is None or indent < direct_prop_indent:
-                    direct_prop_indent = indent
-
-            for _idx, line in lines:
-                indent = len(line) - len(line.lstrip(" "))
-                # Ne vérifier que les propriétés directes du job (au niveau direct_prop_indent) pour éviter les fuites dans les scripts de steps
-                if direct_prop_indent is not None and indent == direct_prop_indent:
-                    if re.match(r"^\s*timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$", line):
-                        has_timeout = True
-                    if re.match(r"^\s*runs-on:\s*\S.*$", line):
-                        has_runs_on = True
-
-            if not has_runs_on:
-                self.log_error(f"Job '{job_name}' : directive 'runs-on:' obligatoire manquante au niveau du job.")
-            if not has_timeout:
-                self.log_error(
-                    f"Job '{job_name}' : directive 'timeout-minutes:' obligatoire manquante au niveau du job."
-                )
+            self._validate_single_job(job_name, lines)
 
     def verify_action_pins_and_credentials(self) -> None:
         for idx, line in enumerate(self.lines, start=1):

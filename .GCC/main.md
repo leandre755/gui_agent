@@ -88,12 +88,11 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Standardisation de la terminologie Quality-Gate et correction de l'alignement du logo H1 dans les READMEs.
-  - Enregistrement et structuration exhaustive des 28 issues du backlog.
-  - Création de la branche `fix/governance-workflows-paths` et ouverture de la **PR #35** pour résoudre l'issue #22.
-- 🔄 In progress: Suivi et validation des revues de code (CodeRabbit / Greptile) sur la PR #35.
+  - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
+  - Résolution de l'issue #26 via la **PR #36** (`fix/ci-verify-workflows-logic`) avec Confidence Score 5/5 Greptile & 0 commentaire restant (37/37 tests validés).
+- 🔄 In progress: Validation finale et merge de la PR #36.
 - ⏳ Pending:
-  - 1. **Assainissement Gouvernance/CI/Hooks** : Fusionner #35 (issue #22), puis traiter #26 (`verify_workflows.py`), #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
+  - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
   - 3. **Tests Comportementaux (#28)** : Mettre en place la suite modulaire pour les 19 outils restants.
   - 4. **Bugs Fonctionnels & Prérequis (#31, #18, #17, #19, #20, #21, #13)** : Correction séquentielle TDD et ajout `python3-tk`.
