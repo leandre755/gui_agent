@@ -9,6 +9,7 @@ import mcp_gui_server
 
 
 def run_evolution_tests():
+    """Exécute la suite de tests des évolutions récentes de l'agent GUI."""
     print("=== DÉBUT DES TESTS DES ÉVOLUTIONS SOTA ===")
 
     # 1. Test de la liste des fenêtres

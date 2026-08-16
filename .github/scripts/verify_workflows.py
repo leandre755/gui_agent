@@ -18,10 +18,12 @@ USES = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(.+))?\s*$
 
 
 def fail(message: str) -> None:
+    """Affiche un message d'erreur sur la sortie standard."""
     print(f"ERROR: {message}")
 
 
 def check_workflow(path: Path) -> int:
+    """Vérifie la conformité de sécurité d'un fichier de workflow GitHub Actions."""
     errors = 0
     lines = path.read_text(encoding="utf-8").splitlines()
     text = "\n".join(lines)
@@ -53,6 +55,7 @@ def check_workflow(path: Path) -> int:
 
 
 def main() -> int:
+    """Point d'entrée principal pour la vérification des workflows GitHub Actions."""
     root = Path(sys.argv[1]) if len(sys.argv) == 2 else Path(".github/workflows")
     if not root.is_dir():
         print(f"ERROR: répertoire introuvable : {root}")

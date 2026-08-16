@@ -1277,6 +1277,7 @@ async def gui_web_action(
         url_clean = "https://" + url_clean
 
     def _sync_playwright_work() -> dict[str, Any]:
+        """Exécute les opérations synchrones Playwright dans un thread isolé."""
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:

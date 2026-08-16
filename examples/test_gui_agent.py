@@ -14,6 +14,7 @@ except ImportError as e:
 
 
 def run_integration_test():
+    """Exécute un test d'intégration des interactions utilisateur (souris, clavier, captures)."""
     print("=== DÉBUT DU TEST DE L'AGENT GUI ===")
 
     # 1. Vérification des infos écran

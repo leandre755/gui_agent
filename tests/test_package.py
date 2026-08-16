@@ -6,11 +6,13 @@ from gui_agent.server import normalize_coordinates, translate_key
 
 
 def test_package_metadata():
+    """Valide les métadonnées et la structure d'export du package."""
     assert gui_agent.__version__ == "0.1.0"
     assert len(gui_agent.__all__) > 20
 
 
 def test_fastmcp_tools_registration():
+    """Vérifie l'enregistrement exact des 21 outils FastMCP du serveur."""
     tools = gui_agent.mcp._tool_manager.list_tools()
     tool_names = {t.name for t in tools}
     assert len(tools) == 21
@@ -38,6 +40,7 @@ def test_fastmcp_tools_registration():
 
 
 def test_backward_compatibility():
+    """Assure la rétrocompatibilité d'import depuis mcp_gui_server."""
     assert hasattr(mcp_gui_server, "gui_get_screen_info")
     assert hasattr(mcp_gui_server, "gui_take_screenshot")
     assert hasattr(mcp_gui_server, "normalize_coordinates")
@@ -45,6 +48,7 @@ def test_backward_compatibility():
 
 
 def test_normalize_coordinates():
+    """Valide la transformation et normalisation des coordonnées d'écran."""
     # Coordonnées réelles (normalized=False)
     x, y = normalize_coordinates(500, 300, normalized=False)
     assert x == 500
@@ -52,6 +56,7 @@ def test_normalize_coordinates():
 
 
 def test_translate_key():
+    """Valide la table de correspondance des touches clavier."""
     assert translate_key("ctrl") == "control"
     assert translate_key("alt") == "alt"
     assert translate_key("super") == "Super_L"
@@ -60,6 +65,7 @@ def test_translate_key():
 
 
 def test_installation_and_uninstallation_scripts_presence():
+    """Vérifie la présence et la taille minimale des scripts d'installation/désinstallation."""
     import os
 
     assert os.path.isfile("install.sh"), "install.sh manquant"
@@ -73,6 +79,7 @@ def test_installation_and_uninstallation_scripts_presence():
 
 
 def test_install_doc_structure():
+    """Valide la conformité structurelle du guide d'installation INSTALL.md."""
     import os
 
     doc_path = "INSTALL.md"
@@ -91,6 +98,7 @@ def test_install_doc_structure():
 
 
 def test_gui_take_screenshot_output_path(tmp_path):
+    """Teste le comportement sécurisé et exhaustif de output_path dans gui_take_screenshot."""
     import inspect
     import os
     from PIL import Image
