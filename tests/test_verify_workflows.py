@@ -193,30 +193,29 @@ jobs:
     assert count == 0, f"Erreurs inattendues: {errors}"
 
 
-def test_accept_block_sequence_runs_on(tmp_path: Path):
-    """Vérifie que la syntaxe runs-on sous forme de séquence indentée (liste YAML) est acceptée."""
-    wf = tmp_path / "block_sequence_runs_on.yml"
+def test_accept_runs_on_mapping_and_trailing_whitespace_timeout(tmp_path: Path):
+    """Vérifie que runs-on sous forme de mapping et timeout-minutes avec espaces de fin sont acceptés."""
+    wf = tmp_path / "mapping_runner_trailing_timeout.yml"
     wf.write_text(
         """
-name: Block Sequence Runner
+name: Mapping Runner
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  custom_runner_job:
+  mapping_job:
     runs-on:
-      - self-hosted
-      - linux
-      - x64
-    timeout-minutes: 5
+      group: ubuntu-runners
+      labels: [ubuntu-latest, gpu]
+    timeout-minutes: 10
     steps:
-      - run: echo runner sequence test
+      - run: echo success
 """,
         encoding="utf-8",
     )
     count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count == 0, f"Erreurs inattendues pour séquence runs-on: {errors}"
+    assert count == 0, f"Erreurs inattendues: {errors}"
 
 
 def test_reject_unpinned_action_ref(tmp_path: Path):

@@ -184,7 +184,7 @@ class WorkflowVerifier:
             indent = len(line) - len(line.lstrip(" "))
             if direct_prop_indent is not None and indent == direct_prop_indent:
                 if re.match(
-                    r"^\s*(?:timeout-minutes|\"timeout-minutes\"|'timeout-minutes'):\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$",
+                    r"^\s*(?:timeout-minutes|\"timeout-minutes\"|'timeout-minutes'):\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?\s*$",
                     line,
                 ):
                     has_timeout = True
@@ -195,11 +195,13 @@ class WorkflowVerifier:
                     if inline_val and not inline_val.startswith("#"):
                         has_runs_on = True
                     else:
+                        # Forme imbriquée sous runs-on: (séquence YAML ou mapping de labels/group)
                         for _next_idx, next_line in lines[i + 1 :]:
                             next_indent = len(next_line) - len(next_line.lstrip(" "))
                             if next_indent <= direct_prop_indent:
                                 break
-                            if next_line.strip().startswith("-"):
+                            next_stripped = next_line.strip()
+                            if next_stripped and not next_stripped.startswith("#"):
                                 has_runs_on = True
                                 break
 
