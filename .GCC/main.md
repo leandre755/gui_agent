@@ -9,6 +9,24 @@
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
 
+## 🛡️ Protocole de Validation par Pull Request & Critères 5/5 Inviolables
+- **Mode de travail exclusif par Pull Request (PR)** : Toute évolution, correctif de sécurité ou refactorisation est développée sur une branche dédiée et soumise via PR.
+- **Règle absolue d'évaluation des bots (CodeRabbit & Greptile)** :
+  - ❌ **NE JAMAIS se baser sur les signaux GitHub Check-Runs de l'API** (`gh api repos/leandre755/gui_agent/commits/<sha>/check-runs`). Dans l'interface GitHub, `conclusion: "success"` signifie uniquement que l'agent de revue a terminé l'exécution de son script d'analyse sans crasher, et NON que le code est validé ou sans erreur.
+  - ✅ **EXIGER la lecture textuelle intégrale des rapports et commentaires de PR** :
+    - **Greptile (`@greptile-apps`)** :
+      1. Inspecter le résumé mis à jour dans le message principal de la PR (`Greptile Summary`).
+      2. Exiger formellement un **`Confidence Score: 5/5`** (rejet absolu de tout score 1/5, 2/5, 3/5 ou 4/5).
+      3. Vérifier l'absence totale d'échecs de sécurité (`Zero reproduced security failures remaining`).
+      4. Traiter tous les commentaires spécifiques de lignes (P1/P2/Security) laissés par le bot avec les artefacts T-Rex de reproduction.
+    - **CodeRabbit (`@coderabbitai`)** :
+      1. Inspecter le bilan de revue de code complet (`Walkthrough` & `Review Summary`).
+      2. Résoudre 100% des commentaires actionnables (`Actionable comments: 0` restant).
+      3. Obtenir l'approbation formelle sans aucune réserve sur la sécurité, la maintenabilité ou la concurrence.
+- **Analyse des vulnérabilités de rollback capture identifiées par Greptile (PR #7)** :
+  - *P1 - Réservations en lecture seule non nettoyées* : Si un fichier réservé devient read-only, l'ouverture `O_RDWR` échoue et l'erreur étouffée laisse le fichier sur disque, forçant les retentatives vers des suffixes inutiles `(1)`. Solution : ouvrir d'abord en `O_RDONLY` pour vérifier l'identité et ne tronquer que si accessible en écriture.
+  - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
+
 ## 🧠 Decisions Made
 - [2026-08-14] Monolithic FastMCP Architecture over Multi-Microservice Topology
   - **Context**: LLM context limits and port conflict risks under multiple concurrent tool servers.

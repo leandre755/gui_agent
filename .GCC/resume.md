@@ -30,12 +30,16 @@
   - `git diff --check` : **Clean**
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Greptile attribue un Confidence Score de 3/5 car toute suppression par nom (`unlink`) dans un répertoire partagé non contrôlé conserve une micro-fenêtre TOCTOU entre la vérification de l'inode et l'instruction noyau de suppression. La session suivante devra appliquer le modèle de rétention continue des descripteurs (`held file descriptors`) ou éviter toute suppression par chemin pour atteindre le score 5/5 ferme.
+- **Blocker / Failure Explanation**: Greptile a attribué un Confidence Score de 2/5 (et 3/5) avec échecs de sécurité documentés dans le corps de la PR :
+  1. *P1 Read-only reservations escape cleanup* : Le nettoyage échoue sur les fichiers en lecture seule car ouvert en `O_RDWR`, laissant la réservation sur disque.
+  2. *P1 Rollback unlinks a substituted file* : La séquence `os.stat` puis `os.unlink` sur nom de chemin permet la suppression d'un fichier substitué par un tiers concurrent.
+  Le statut GitHub `conclusion: success` ne reflète pas la validation qualitative.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target File**: `gui_agent/server.py` (`_reserve_unique_file_path` et `_cleanup_reserved_file_safely`).
+1. **Target File**: `gui_agent/server.py` (`_reserve_unique_file_path`, `_write_pil_image_safely`, `_cleanup_reserved_file_safely`).
 2. **Branche de travail actuelle** : `fix/screenshot-output-path-param` (PR #7).
 3. **Action Immédiate à la reprise** :
    - Refondre la gestion des descripteurs pour éliminer totalement l'appel `os.unlink` en cas de rollback (retenir le descripteur ouvert de la réservation à l'écriture, ou tronquer sans unlink destructif) afin de satisfaire le modèle de concurrence stricte de Greptile et CodeRabbit.
-   - Demander une nouvelle revue `@greptile-apps` et `@coderabbitai` et vérifier textuellement le Confidence Score 5/5 dans le corps des commentaires de PR.
+   - Ouvrir en `O_RDONLY` pour la validation d'identité et ne tronquer que si accessible en écriture pour corriger le cas des fichiers read-only.
+   - Demander une nouvelle revue `@greptile-apps` et `@coderabbitai` et vérifier textuellement le **Confidence Score 5/5** dans le corps des commentaires et résumé de PR (et non via les check-runs GitHub).
 4. **Commande de Validation** : `./ci.sh`
