@@ -384,3 +384,52 @@ def test_gui_take_screenshot_include_base64_nominal_and_protection(tmp_path):
     with open(target_file, "rb") as f:
         expected_b64 = base64.b64encode(f.read()).decode("utf-8")
     assert res["base64_data"] == expected_b64
+
+
+def test_gui_take_screenshot_readonly_reservation_cleanup(tmp_path):
+    """Une réservation en lecture seule doit rester libérable après un échec."""
+    import contextlib
+    import os
+
+    target = str(tmp_path / "readonly_cleanup" / "capture.png")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "wb") as file_obj:
+        file_obj.write(b"reserved")
+
+    identity_stat = os.stat(target)
+    identity = (identity_stat.st_dev, identity_stat.st_ino)
+    os.chmod(target, 0o444)
+    try:
+        gui_agent.server._cleanup_reserved_file_safely(target, identity)
+    finally:
+        # Le répertoire temporaire reste inscriptible ; seule la réservation était protégée.
+        with contextlib.suppress(FileNotFoundError):
+            os.chmod(target, 0o644)
+
+    assert not os.path.exists(target)
+
+
+def test_gui_take_screenshot_cleanup_preserves_writer_after_atomic_move(tmp_path, monkeypatch):
+    """Un fichier créé après le déplacement de rollback ne doit jamais être supprimé."""
+    import os
+
+    target = str(tmp_path / "post_move_race" / "capture.png")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "wb") as file_obj:
+        file_obj.write(b"reserved")
+    identity_stat = os.stat(target)
+    identity = (identity_stat.st_dev, identity_stat.st_ino)
+
+    original_rename = os.rename
+
+    def rename_then_write_foreign(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        original_rename(src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+        with open(target, "wb") as foreign_file:
+            foreign_file.write(b"foreign-writer")
+
+    monkeypatch.setattr(os, "rename", rename_then_write_foreign)
+    gui_agent.server._cleanup_reserved_file_safely(target, identity)
+
+    assert os.path.isfile(target)
+    with open(target, "rb") as foreign_file:
+        assert foreign_file.read() == b"foreign-writer"

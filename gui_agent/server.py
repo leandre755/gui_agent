@@ -293,47 +293,93 @@ def _copy_file_safely(
 
 
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
-    """Nettoie un fichier réservé en cas d'erreur de manière sécurisée sans risque de supprimer un fichier étranger.
+    """Supprime uniquement la réservation possédée, sans suppression TOCTOU d'un fichier étranger.
 
-    Pour éviter toute suppression erronée de fichier tiers dans des répertoires partagés
-    lors d'une substitution concurrente post-fstat, tronque d'abord le fichier réservé à 0 octet via son
-    descripteur sécurisé (`O_NOFOLLOW`). Ne supprime l'entrée que si elle correspond strictement à l'inode.
+    Une vérification suivie de ``unlink(target_path)`` ne peut pas être atomique : une autre
+    écriture peut remplacer l'entrée entre les deux appels. Le rollback déplace donc d'abord
+    l'entrée vers un répertoire de quarantaine privé, créé avec le mode 0700. Le fichier déplacé
+    est ensuite identifié par son descripteur. Si l'entrée avait été remplacée avant le déplacement,
+    elle est restaurée par un lien dur sans écrasement ; elle n'est jamais supprimée.
     """
-    if not target_path or not expected_identity or not os.path.exists(target_path):
+    if not target_path or not expected_identity:
         return
 
     parent_dir = os.path.dirname(target_path) or "."
     filename = os.path.basename(target_path)
-
     dir_fd = None
+    quarantine_dir = None
+    quarantine_fd = None
     file_fd = None
+    quarantine_name = "reserved"
+
     try:
         dir_flags = os.O_RDONLY
         if hasattr(os, "O_DIRECTORY"):
             dir_flags |= os.O_DIRECTORY
         dir_fd = os.open(parent_dir, dir_flags)
 
-        file_flags = os.O_RDWR if hasattr(os, "O_RDWR") else os.O_RDONLY
+        file_flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
             file_flags |= os.O_NOFOLLOW
-
         file_fd = os.open(filename, file_flags, dir_fd=dir_fd)
         st_file = os.fstat(file_fd)
-        if (st_file.st_dev, st_file.st_ino) == expected_identity:
-            # Tronquer le fichier réservé à 0 octet via son descripteur vérifié
-            with contextlib.suppress(OSError):
-                os.ftruncate(file_fd, 0)
+        if (st_file.st_dev, st_file.st_ino) != expected_identity:
+            return
 
-            # Re-vérification stricte de l'entrée répertoire avant unlink
-            st_entry = os.stat(filename, dir_fd=dir_fd)
-            if (st_entry.st_dev, st_entry.st_ino) == expected_identity:
-                os.unlink(filename, dir_fd=dir_fd)
+        # Le répertoire privé est créé sous le parent, mais n'est pas accessible aux autres
+        # utilisateurs ; aucun écrivain extérieur ne peut interposer un nom dans la quarantaine.
+        quarantine_dir = tempfile.mkdtemp(prefix=".gui-agent-rollback-", dir=parent_dir)
+        quarantine_flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            quarantine_flags |= os.O_DIRECTORY
+        quarantine_fd = os.open(quarantine_dir, quarantine_flags)
+
+        # rename est atomique pour l'entrée source. Le fichier actuellement présent est ensuite
+        # vérifié dans la quarantaine avant toute suppression.
+        os.rename(filename, quarantine_name, src_dir_fd=dir_fd, dst_dir_fd=quarantine_fd)
+        moved_fd = None
+        try:
+            moved_fd = os.open(quarantine_name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=quarantine_fd)
+            moved_stat = os.fstat(moved_fd)
+            moved_identity = (moved_stat.st_dev, moved_stat.st_ino)
+        finally:
+            if moved_fd is not None:
+                with contextlib.suppress(OSError):
+                    os.close(moved_fd)
+
+        if moved_identity == expected_identity:
+            # Cette entrée est dans le répertoire privé et ne peut plus être remplacée par un
+            # écrivain extérieur ; son unlink ne peut donc pas viser un fichier étranger.
+            os.unlink(quarantine_name, dir_fd=quarantine_fd)
+        else:
+            # La réservation a été remplacée avant le rename. Restaurer sans jamais écraser une
+            # nouvelle entrée concurrente ; en cas de collision, laisser la copie en quarantaine.
+            try:
+                os.link(
+                    quarantine_name,
+                    filename,
+                    src_dir_fd=quarantine_fd,
+                    dst_dir_fd=dir_fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError:
+                pass
+            else:
+                os.unlink(quarantine_name, dir_fd=quarantine_fd)
     except OSError:
-        pass
+        # Un rollback ne doit jamais supprimer un chemin qui n'a pas été vérifié. Une réservation
+        # résiduelle est préférable à la suppression d'un fichier créé par un autre écrivain.
+        return
     finally:
         if file_fd is not None:
             with contextlib.suppress(OSError):
                 os.close(file_fd)
+        if quarantine_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(quarantine_fd)
+        if quarantine_dir is not None:
+            with contextlib.suppress(OSError):
+                os.rmdir(quarantine_dir)
         if dir_fd is not None:
             with contextlib.suppress(OSError):
                 os.close(dir_fd)
