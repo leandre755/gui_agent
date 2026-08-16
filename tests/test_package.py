@@ -433,3 +433,39 @@ def test_gui_take_screenshot_cleanup_preserves_writer_after_atomic_move(tmp_path
     assert os.path.isfile(target)
     with open(target, "rb") as foreign_file:
         assert foreign_file.read() == b"foreign-writer"
+
+
+def test_gui_take_screenshot_cleanup_quarantine_collision_preserves_foreign_file(tmp_path, monkeypatch):
+    """Teste que si une substitution a eu lieu juste avant le rename et qu'une collision survient lors de la restauration, le fichier reste intact."""
+    import os
+
+    target = str(tmp_path / "quarantine_collision" / "capture.png")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "wb") as file_obj:
+        file_obj.write(b"original_reserved")
+    identity_stat = os.stat(target)
+    identity = (identity_stat.st_dev, identity_stat.st_ino)
+
+    original_rename = os.rename
+
+    # Simuler le cas où entre le fstat initial et le rename, un tiers a remplacé l'entrée par un fichier étranger
+    def rename_substituting_before_move(src, dst, *, src_dir_fd=None, dst_dir_fd=None):
+        # Remplacer le fichier par un fichier étranger avec un nouvel inode
+        os.remove(target)
+        with open(target, "wb") as foreign_file:
+            foreign_file.write(b"foreign_concurrent_data")
+        # Effectuer le rename de l'entrée (qui déplace maintenant le fichier étranger en quarantaine)
+        original_rename(src, dst, src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+        # Et créer un autre fichier en collision sur target pendant la tentative de restauration
+        with open(target, "wb") as coll_file:
+            coll_file.write(b"collision_file_on_target")
+
+    monkeypatch.setattr(os, "rename", rename_substituting_before_move)
+
+    # Lancer le cleanup avec l'identité d'origine
+    gui_agent.server._cleanup_reserved_file_safely(target, identity)
+
+    # Vérifier que le fichier en collision sur target existe toujours et n'a pas été écrasé
+    assert os.path.isfile(target)
+    with open(target, "rb") as check_f:
+        assert check_f.read() == b"collision_file_on_target"
