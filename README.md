@@ -15,7 +15,7 @@
   <a href="#-mcp-client-configuration"><img src="https://img.shields.io/badge/MCP_Clients-→-10B981?style=flat-square" alt="MCP Clients" /></a>
   <a href="#-toolset--cli-reference"><img src="https://img.shields.io/badge/Toolset-→-10B981?style=flat-square" alt="Toolset" /></a>
   <a href="#-clean-uninstallation"><img src="https://img.shields.io/badge/Uninstall-→-10B981?style=flat-square" alt="Uninstall" /></a>
-  <a href="#-development--zero-slop-quality"><img src="https://img.shields.io/badge/Development-→-10B981?style=flat-square" alt="Development" /></a>
+  <a href="#-development--quality-gate"><img src="https://img.shields.io/badge/Development-→-10B981?style=flat-square" alt="Development" /></a>
 </p>
 
 <p align="center">
@@ -420,9 +420,9 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 ---
 
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Development & Zero-Slop Quality
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Development & Quality-Gate
 
-The project enforces strict software engineering standards, verified by an 8-layer pre-commit hook pipeline and full test coverage.
+The project enforces strict software engineering standards, verified by an 8-layer pre-commit quality-gate pipeline and full test coverage.
 
 ### 1. Local Environment Setup
 
@@ -446,12 +446,12 @@ uv pip install -e ".[dev]"
 pytest -v tests/
 ```
 
-### 3. Zero-Slop 8-Layer Pre-Commit Verification
+### 3. Quality-Gate 8-Layer Pre-Commit Verification
 
 Every commit is gated through 8 strict static validation layers to eliminate technical debt and security vulnerabilities:
 
 ```bash
-# Run the 8-layer Zero-Slop validation hook locally
+# Run the 8-layer quality-gate validation hook locally
 ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 ```
 

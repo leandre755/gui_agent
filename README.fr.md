@@ -15,7 +15,7 @@
   <a href="#-configuration-des-clients-mcp"><img src="https://img.shields.io/badge/Clients_MCP-→-10B981?style=flat-square" alt="Clients MCP" /></a>
   <a href="#-référence-du-toolset--cli"><img src="https://img.shields.io/badge/Toolset-→-10B981?style=flat-square" alt="Toolset" /></a>
   <a href="#-désinstallation-propre"><img src="https://img.shields.io/badge/D%C3%A9sinstallation-→-10B981?style=flat-square" alt="Désinstallation" /></a>
-  <a href="#-développement--qualité-zero-slop"><img src="https://img.shields.io/badge/D%C3%A9veloppement-→-10B981?style=flat-square" alt="Développement" /></a>
+  <a href="#-développement--quality-gate"><img src="https://img.shields.io/badge/D%C3%A9veloppement-→-10B981?style=flat-square" alt="Développement" /></a>
 </p>
 
 <p align="center">
@@ -420,9 +420,9 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 ---
 
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Développement & Qualité Zero-Slop
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Développement & Quality-Gate
 
-Le projet applique des normes d'ingénierie logicielle strictes, vérifiées par un pipeline de 8 couches de hooks pre-commit et une couverture de tests complète.
+Le projet applique des normes d'ingénierie logicielle strictes, vérifiées par un pipeline de 8 couches de hooks pre-commit (Quality-Gate) et une couverture de tests complète.
 
 ### 1. Configuration de l'Environnement Local
 
@@ -446,12 +446,12 @@ uv pip install -e ".[dev]"
 pytest -v tests/
 ```
 
-### 3. Vérification Pre-Commit Zero-Slop en 8 Couches
+### 3. Vérification Pre-Commit Quality-Gate en 8 Couches
 
 Chaque commit est filtré par 8 couches strictes de validation statique pour éliminer la dette technique et les vulnérabilités de sécurité :
 
 ```bash
-# Exécuter le hook de validation Zero-Slop en 8 couches localement
+# Exécuter le hook de validation Quality-Gate en 8 couches localement
 ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 ```
 
