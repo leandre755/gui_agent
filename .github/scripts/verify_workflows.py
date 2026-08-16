@@ -14,8 +14,8 @@ from pathlib import Path
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 USES_PATTERN = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(.+))?\s*$")
 JOB_HEADER_PATTERN = re.compile(r"^ {2}([a-zA-Z0-9_-]+):\s*$")
-TIMEOUT_PATTERN = re.compile(r"^\s*timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$")
-RUNS_ON_PATTERN = re.compile(r"^\s*runs-on:\s*\S.*$")
+TIMEOUT_PATTERN = re.compile(r"^ {4}timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$")
+RUNS_ON_PATTERN = re.compile(r"^ {4}runs-on:\s*\S.*$")
 PERSIST_CREDENTIALS_TRUE_PATTERN = re.compile(r"^\s*persist-credentials:\s*true\b(?:\s*#.*)?$")
 
 
@@ -36,11 +36,11 @@ class WorkflowVerifier:
         self.warnings.append(f"{prefix}{message}")
 
     def _extract_on_section(self) -> str:
-        """Extrait les lignes correspondant à la directive top-level 'on:'."""
+        """Extrait les lignes correspondant à la directive top-level 'on:' (y compris avec guillemets)."""
         in_on = False
         on_lines: list[str] = []
         for line in self.lines:
-            if re.match(r"^on:\s*", line):
+            if re.match(r"^(?:on|\"on\"|'on'):\s*", line):
                 in_on = True
                 on_lines.append(line)
                 continue
@@ -57,13 +57,15 @@ class WorkflowVerifier:
 
     def verify_top_level_permissions(self) -> None:
         # Vérifie la présence d'un bloc top-level permissions
-        has_top_permissions = bool(re.search(r"^permissions:\s*(?:#.*)?$", self.text, flags=re.MULTILINE))
+        has_top_permissions = bool(
+            re.search(r"^(?:permissions|\"permissions\"|'permissions'):\s*", self.text, flags=re.MULTILINE)
+        )
         if not has_top_permissions:
             self.log_error("Bloc top-level 'permissions:' manquant (least-privilege obligatoire).")
 
         # Interdiction absolue de write-all ou write scalaire
         for idx, line in enumerate(self.lines, start=1):
-            if re.search(r"^permissions:\s*(?:write-all|write)\b", line):
+            if re.search(r"^(?:permissions|\"permissions\"|'permissions'):\s*(?:write-all|write)\b", line):
                 self.log_error(
                     "L'utilisation de 'permissions: write-all' ou 'permissions: write' est strictement interdite.",
                     line_no=idx,
@@ -74,7 +76,13 @@ class WorkflowVerifier:
         # Détecte pull_request et push sous toutes leurs formes (mapping, flow style list, scalaire)
         has_pr_or_push = bool(re.search(r"\b(?:pull_request|push)\b", on_text))
         if has_pr_or_push:
-            has_concurrency = bool(re.search(r"^concurrency:\s*(?:#.*)?$", self.text, flags=re.MULTILINE))
+            has_concurrency = bool(
+                re.search(
+                    r"^(?:concurrency|\"concurrency\"|'concurrency'):\s*(?:(?:#.*)?$|\S)",
+                    self.text,
+                    flags=re.MULTILINE,
+                )
+            )
             if not has_concurrency:
                 self.log_error("Bloc top-level 'concurrency:' manquant pour un workflow déclenché par PR ou push.")
 
@@ -84,7 +92,7 @@ class WorkflowVerifier:
         job_lines: dict[str, list[tuple[int, str]]] = {}
 
         for idx, line in enumerate(self.lines, start=1):
-            if re.match(r"^jobs:\s*(?:#.*)?$", line):
+            if re.match(r"^(?:jobs|\"jobs\"|'jobs'):\s*(?:#.*)?$", line):
                 in_jobs_block = True
                 continue
 
@@ -119,9 +127,11 @@ class WorkflowVerifier:
                     has_runs_on = True
 
             if not has_runs_on:
-                self.log_error(f"Job '{job_name}' : directive 'runs-on:' obligatoire manquante.")
+                self.log_error(f"Job '{job_name}' : directive 'runs-on:' obligatoire manquante au niveau du job.")
             if not has_timeout:
-                self.log_error(f"Job '{job_name}' : directive 'timeout-minutes:' obligatoire manquante.")
+                self.log_error(
+                    f"Job '{job_name}' : directive 'timeout-minutes:' obligatoire manquante au niveau du job."
+                )
 
     def verify_action_pins_and_credentials(self) -> None:
         for idx, line in enumerate(self.lines, start=1):

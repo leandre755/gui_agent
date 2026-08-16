@@ -26,12 +26,12 @@ def test_existing_workflows_are_all_valid():
 
 
 def test_reject_pull_request_target(tmp_path: Path):
-    """Vérifie le rejet strict du déclencheur pull_request_target."""
+    """Vérifie le rejet strict du déclencheur pull_request_target même sous clé avec guillemets."""
     wf = tmp_path / "bad_pr_target.yml"
     wf.write_text(
         """
 name: Insecure PR Target
-on:
+"on":
   pull_request_target:
     types: [opened]
 permissions:
@@ -117,8 +117,8 @@ jobs:
     assert any("write" in e for e in errors2)
 
 
-def test_reject_missing_timeout_or_runs_on(tmp_path: Path):
-    """Vérifie l'obligation des clés runs-on et timeout-minutes par job."""
+def test_reject_missing_timeout_or_runs_on_and_no_nested_leak(tmp_path: Path):
+    """Vérifie que les clés runs-on et timeout-minutes doivent être au niveau du job et non dans un script imbriqué."""
     wf = tmp_path / "missing_job_keys.yml"
     wf.write_text(
         """
@@ -130,7 +130,10 @@ permissions:
 jobs:
   incomplete_job:
     steps:
-      - run: echo hello
+      - name: Nested fake step
+        run: |
+          echo "runs-on: ubuntu-latest"
+          echo "timeout-minutes: 5"
 """,
         encoding="utf-8",
     )
@@ -211,6 +214,30 @@ jobs:
     count, errors, _ = verify_workflows.check_workflow(wf)
     assert count >= 1
     assert any("persist-credentials: true est formellement interdit" in e for e in errors)
+
+
+def test_accept_scalar_concurrency(tmp_path: Path):
+    """Vérifie que la syntaxe scalaire de concurrency est bien reconnue."""
+    wf = tmp_path / "scalar_concurrency.yml"
+    wf.write_text(
+        """
+name: Scalar Concurrency
+on:
+  pull_request:
+permissions:
+  contents: read
+concurrency: build-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo hello
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count == 0, f"Erreurs inattendues: {errors}"
 
 
 def test_reject_missing_concurrency_flow_style_and_mapping(tmp_path: Path):
