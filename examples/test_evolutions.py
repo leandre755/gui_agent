@@ -4,7 +4,7 @@ import sys
 import tempfile
 from PIL import Image
 
-sys.path.append("/home/omni/Code/gui_agent")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import mcp_gui_server
 
 
@@ -53,8 +53,8 @@ def run_evolution_tests():
         raw_path = res_scr["raw_screenshot_path"]
         assert raw_path and os.path.isfile(raw_path), "Fichier brut manquant"
 
-        img = Image.open(raw_path)
-        template_area = img.crop((100, 100, 130, 130))
+        with Image.open(raw_path) as img:
+            template_area = img.crop((100, 100, 130, 130))
         template_path = os.path.join(tmp_dir, "test_template_crop.png")
         template_area.save(template_path)
 

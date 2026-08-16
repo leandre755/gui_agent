@@ -45,11 +45,11 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 
 ## 🌿 Active Branches / Plans
 - `main` : Stable production release with complete bilingual landing pages and Zero-Slop test harness.
-- `fix/screenshot-output-path-param` (PR #7) : Remplacement de `save_to_artifacts` par `output_path`, validation d'extensions, protection anti-écrasement et normalisation absolue des chemins de capture — *Validé CI (8/8 tests) & CodeRabbit*.
+- `fix/screenshot-output-path-param` (PR #7) : Remplacement de `save_to_artifacts` par `output_path`, validation d'extensions, protection anti-écrasement, normalisation absolue des chemins de capture et élimination des failles de race condition (18/18 tests).
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
-- ✅ Done: Correctif `output_path` pour `gui_take_screenshot` implémenté, documenté et testé (PR #7 ouverte et poussée avec résolution des remarques CodeRabbit) ; Script `ci.sh` opérationnel (5/5 étapes validées) ; 8/8 tests Pytest passés sous Xvfb.
+- ✅ Done: Correctif `output_path` pour `gui_take_screenshot` implémenté, documenté et testé (PR #7 ouverte et poussée avec résolution des remarques CodeRabbit et Greptile) ; Script `ci.sh` opérationnel (5/5 étapes validées) ; 18/18 tests Pytest passés sous Xvfb.
 - 🔄 In progress: Gel temporaire de la structure à la demande de l'utilisateur pour préserver la validité de son audit et traitement point par point des retours.
 - ⏳ Pending: Reprise des points suivants de l'audit de l'utilisateur lors de la prochaine session.
 

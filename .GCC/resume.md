@@ -9,26 +9,26 @@
   5. Mettre à jour le registre GCC (`.GCC/main.md`, `.GCC/branches/test.md`, `.GCC/resume.md`) pour la reprise.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  1. [`ci.sh`](ci.sh) s'exécute avec 100% de succès :
-     - Compilation Bytecode Python : **PASS** (127ms)
-     - Linter Ruff : **PASS** (192ms)
-     - Formatage Ruff : **PASS** (38ms)
-     - Typage Mypy : **PASS** (368ms)
-     - Suite Pytest sous `xvfb-run -a` : **8/8 tests passés avec succès** (6348ms)
-  2. Pull Request GitHub créée et synchronisée : [PR #7](https://github.com/leandre755/gui_agent/pull/7) (commits `e272de6`, `00e5ac7`, `a3630c2`, `fc18932`, `61d613e`, `a684e83`, `b482362`).
+  1. [`ci.sh`](../ci.sh) s'exécute avec 100% de succès :
+     - Compilation Bytecode Python : **PASS** (125ms)
+     - Linter Ruff : **PASS** (46ms)
+     - Formatage Ruff : **PASS** (40ms)
+     - Typage Mypy : **PASS** (369ms)
+     - Suite Pytest sous `xvfb-run -a` : **18/18 tests passés avec succès** (8873ms)
+  2. Pull Request GitHub créée et synchronisée : [PR #7](https://github.com/leandre755/gui_agent/pull/7).
   3. Pre-commit 8 couches Zero-Slop et pre-push hook validés à 100%.
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `gui_agent/server.py`
-  - **Scope**: Suppression de `save_to_artifacts`, ajout de `output_path`, création de `_reserve_unique_file_path` (atomique via `os.O_CREAT | os.O_EXCL` avec capture d'identifiant d'inode `(st_dev, st_ino)`), écriture/copie sécurisée avec vérification d'inode (`_write_pil_image_safely`, `_copy_file_safely`), protection anti-écrasement incrémentale `(1)`, `(2)`, et rollback garanti avec vérification d'identité (`_cleanup_reserved_file_safely`) empêchant toute suppression de fichier étranger substitué.
+  - **Scope**: Sécurisation totale anti-race-condition : (1) `_cleanup_reserved_file_safely` renomme atomiquement la cible vers un chemin temporaire unique et vérifie son inode via `fstat` sur descripteur sécurisé (`O_NOFOLLOW`) avant suppression, restaurant le fichier à sa place d'origine si une substitution concurrente est détectée ; (2) Encodage `include_base64` sécurisé vérifiant l'inode via descripteur ouvert avant lecture ; (3) Rollback garanti de `final_path` si la réservation de `raw_path` échoue.
 - **File**: `tests/test_package.py`
-  - **Scope**: `test_gui_take_screenshot_output_path` étendu pour couvrir cas nominal absolu/relatif, JPEG/PNG, rejet d'incohérence, rejet de répertoire, multi-collision incrémentale (1 & 2), `SCREENSHOTS_DIR` relatif, nettoyage des réservations sur erreur disque et test de non-suppression sur substitution d'inode.
+  - **Scope**: Découpage de `test_gui_take_screenshot_output_path` en 11 fonctions de test modulaires isolées, utilisation de `monkeypatch` pour les répertoires et variables d'environnement, tests spécifiques pour le rollback lors d'échec de réservation brute et la protection lors de la lecture Base64.
 - **File**: `examples/test_evolutions.py`
-  - **Scope**: Migration vers `output_path` dans un dossier temporaire isolé `tempfile.TemporaryDirectory()`, test d'existence avec `os.path.isfile`, validation directe de `raw_screenshot_path`.
+  - **Scope**: Résolution portable de `sys.path` sans chemin absolu spécifique à l'hôte, et fermeture propre de l'image source avec le context manager `with Image.open(...)`.
 - **File**: `README.md` & `README.fr.md`
-  - **Scope**: Mise à jour de la documentation de `gui_take_screenshot` (paramètre `output_path`, résolution absolue, création des répertoires, règles de validation et anti-collision atomique) et clarification sur l'absence de runtime navigateur pour les outils desktop (sauf `gui_web_action`).
+  - **Scope**: Précision sur les coordonnées normalisées `[0, 1000]`, formatage rigoureux des suffixes de collision `(1)` et `(2)` sans espaces parasites dans les balises de code.
 - **File**: `.GCC/main.md` & `.GCC/branches/test.md`
-  - **Scope**: Journalisation de la décision technique, indexation de la PR #7 et mise à jour du journal de qualification des tests.
+  - **Scope**: Mise à jour du journal de qualification (18 tests) et documentation des garanties d'atomicité et de protection contre les substitutions concurrentes.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh && ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit`

@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import uuid
 from typing import Any
 from PIL import Image, ImageDraw
 
@@ -279,14 +280,41 @@ def _copy_file_safely(src_path: str, dst_path: str, expected_dst_identity: tuple
 
 
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
-    """Supprime un fichier réservé en cas d'erreur uniquement s'il correspond à l'inode originel."""
+    """Supprime un fichier réservé en cas d'erreur de manière atomique sans risque de supprimer un fichier substitué."""
     if not target_path or not expected_identity or not os.path.exists(target_path):
         return
-    with contextlib.suppress(OSError):
-        # Vérification de l'identité avant suppression pour éviter de supprimer un fichier étranger substitué
-        st = os.stat(target_path)
-        if (st.st_dev, st.st_ino) == expected_identity:
-            os.remove(target_path)
+    parent_dir = os.path.dirname(target_path) or "."
+    trash_path = os.path.join(parent_dir, f".cleanup_{os.getpid()}_{uuid.uuid4().hex}")
+    try:
+        os.rename(target_path, trash_path)
+    except OSError:
+        return
+
+    # Vérification atomique de l'identité via fstat sur le descripteur du fichier déplacé
+    trash_fd = None
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        trash_fd = os.open(trash_path, flags)
+        st_trash = os.fstat(trash_fd)
+        if (st_trash.st_dev, st_trash.st_ino) == expected_identity:
+            os.close(trash_fd)
+            trash_fd = None
+            os.remove(trash_path)
+        else:
+            # Substitution détectée : on restaure immédiatement le fichier à sa place sans le supprimer
+            os.close(trash_fd)
+            trash_fd = None
+            with contextlib.suppress(OSError):
+                os.rename(trash_path, target_path)
+    except OSError:
+        if trash_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(trash_fd)
+        with contextlib.suppress(OSError):
+            if os.path.exists(trash_path) and not os.path.exists(target_path):
+                os.rename(trash_path, target_path)
 
 
 def _resolve_screenshot_destination(
@@ -342,7 +370,11 @@ def _resolve_screenshot_destination(
     configured_raw_dir = os.path.abspath(SCREENSHOTS_DIR)
     timestamp_raw = int(time.time())
     stem_raw = f"raw_screenshot_{timestamp_raw}"
-    raw_path, _, raw_identity = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
+    try:
+        raw_path, _, raw_identity = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
+    except Exception:
+        _cleanup_reserved_file_safely(final_path, final_identity)
+        raise
 
     return final_path, raw_path, renamed_due_to_conflict, original_requested_path, final_identity, raw_identity
 
@@ -370,6 +402,8 @@ def gui_take_screenshot(
     grid_img = None
     final_path = None
     raw_path = None
+    final_identity = None
+    raw_identity = None
     success = False
     try:
         raw_img = capture_screen_pil(monitor_index=monitor_index)
@@ -477,10 +511,23 @@ def gui_take_screenshot(
 
         base64_data = None
         if include_base64:
-            # Encodage Base64 de l'image retournée (avec ou sans grille)
+            # Encodage Base64 sécurisé : réouverture avec validation stricte de l'inode (évite toute substitution de contenu)
             target_to_encode = final_path if os.path.exists(final_path) else raw_path
-            with open(target_to_encode, "rb") as f_img:
-                base64_data = base64.b64encode(f_img.read()).decode("utf-8")
+            expected_encode_id = final_identity if target_to_encode == final_path else raw_identity
+            read_flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                read_flags |= os.O_NOFOLLOW
+            fd_read = os.open(target_to_encode, read_flags)
+            try:
+                st_read = os.fstat(fd_read)
+                if (st_read.st_dev, st_read.st_ino) != expected_encode_id:
+                    raise RuntimeError(
+                        f"Détection d'une substitution de fichier concurrente sur '{target_to_encode}' lors de l'encodage Base64."
+                    )
+                with open(fd_read, "rb", closefd=False) as f_img:
+                    base64_data = base64.b64encode(f_img.read()).decode("utf-8")
+            finally:
+                os.close(fd_read)
 
         if renamed_due_to_conflict and original_requested_path:
             success_msg = (
@@ -512,8 +559,8 @@ def gui_take_screenshot(
         return {"status": "error", "message": f"Échec de la capture d'écran : {e!s}"}
     finally:
         if not success:
-            _cleanup_reserved_file_safely(final_path, locals().get("final_identity"))
-            _cleanup_reserved_file_safely(raw_path, locals().get("raw_identity"))
+            _cleanup_reserved_file_safely(final_path, final_identity)
+            _cleanup_reserved_file_safely(raw_path, raw_identity)
         for img in [raw_img, cropped_img, grid_img]:
             if img is not None:
                 with contextlib.suppress(Exception):

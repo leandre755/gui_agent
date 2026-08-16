@@ -97,8 +97,8 @@ def test_install_doc_structure():
     assert "uninstall.ps1" in content
 
 
-def test_gui_take_screenshot_output_path(tmp_path):
-    """Teste le comportement sécurisé et exhaustif de output_path dans gui_take_screenshot."""
+def test_gui_take_screenshot_output_path_nominal_png(tmp_path):
+    """Teste le cas nominal d'enregistrement PNG avec output_path absolu."""
     import inspect
     import os
     from PIL import Image
@@ -107,7 +107,6 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert "save_to_artifacts" not in sig.parameters, "save_to_artifacts ne doit plus exister dans la signature"
     assert "output_path" in sig.parameters, "output_path doit être présent dans la signature"
 
-    # 1. Cas nominal : capture PNG avec output_path absolu valide
     target_file = str(tmp_path / "nested" / "custom_screenshot.png")
     res = gui_agent.gui_take_screenshot(apply_grid=True, format="png", output_path=target_file)
     assert res.get("status") == "success"
@@ -117,22 +116,27 @@ def test_gui_take_screenshot_output_path(tmp_path):
     with Image.open(target_file) as img:
         assert img.format == "PNG"
 
-    # 1.b Cas nominal : capture PNG avec output_path relatif dans un répertoire de travail contrôlé
-    orig_cwd = os.getcwd()
-    try:
-        work_dir = tmp_path / "relative_workdir"
-        work_dir.mkdir(parents=True, exist_ok=True)
-        os.chdir(work_dir)
-        rel_output = os.path.join("nested_rel", "rel_screenshot.png")
-        res_rel = gui_agent.gui_take_screenshot(apply_grid=False, format="png", output_path=rel_output)
-        assert res_rel.get("status") == "success"
-        expected_abs = str((work_dir / "nested_rel" / "rel_screenshot.png").resolve())
-        assert res_rel.get("screenshot_path") == expected_abs
-        assert os.path.isfile(expected_abs)
-    finally:
-        os.chdir(orig_cwd)
 
-    # 2. Cas nominal : capture JPEG avec output_path valide
+def test_gui_take_screenshot_output_path_relative(tmp_path, monkeypatch):
+    """Teste la résolution absolue d'un output_path relatif dans un répertoire contrôlé."""
+    import os
+
+    work_dir = tmp_path / "relative_workdir"
+    work_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(work_dir)
+    rel_output = os.path.join("nested_rel", "rel_screenshot.png")
+    res_rel = gui_agent.gui_take_screenshot(apply_grid=False, format="png", output_path=rel_output)
+    assert res_rel.get("status") == "success"
+    expected_abs = str((work_dir / "nested_rel" / "rel_screenshot.png").resolve())
+    assert res_rel.get("screenshot_path") == expected_abs
+    assert os.path.isfile(expected_abs)
+
+
+def test_gui_take_screenshot_output_path_jpeg(tmp_path):
+    """Teste le cas nominal d'enregistrement JPEG avec output_path valide."""
+    import os
+    from PIL import Image
+
     target_jpg = str(tmp_path / "nested" / "custom_screenshot.jpg")
     res_jpg = gui_agent.gui_take_screenshot(apply_grid=False, format="jpeg", output_path=target_jpg)
     assert res_jpg.get("status") == "success"
@@ -141,21 +145,33 @@ def test_gui_take_screenshot_output_path(tmp_path):
     with Image.open(target_jpg) as img_jpg:
         assert img_jpg.format == "JPEG"
 
-    # 3. Cas de sécurité : rejet strict si conflit entre extension et format demandé
+
+def test_gui_take_screenshot_output_path_extension_conflict(tmp_path):
+    """Teste le rejet strict lors d'un conflit entre l'extension de fichier et le format demandé."""
+    import os
+
     conflict_file = str(tmp_path / "conflicting.png")
     res_err = gui_agent.gui_take_screenshot(apply_grid=False, format="jpeg", output_path=conflict_file)
     assert res_err.get("status") == "error"
     assert "Incohérence d'extension" in res_err.get("message", "")
     assert not os.path.exists(conflict_file)
 
-    # 4. Cas de sécurité : rejet si output_path est un répertoire existant
+
+def test_gui_take_screenshot_output_path_directory_rejected(tmp_path):
+    """Teste le rejet strict si output_path correspond à un répertoire existant."""
+    import os
+
     existing_dir = str(tmp_path / "existing_dir")
     os.makedirs(existing_dir, exist_ok=True)
     res_dir_err = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_dir)
     assert res_dir_err.get("status") == "error"
     assert "est un dossier existant" in res_dir_err.get("message", "")
 
-    # 5. Cas de sécurité : protection contre l'écrasement de fichier existant (renommage (1), (2)...)
+
+def test_gui_take_screenshot_output_path_collision_suffixes(tmp_path):
+    """Teste la protection anti-écrasement par incrémentation atomique des suffixes (1), (2)..."""
+    import os
+
     existing_file = str(tmp_path / "protected_screenshot.png")
     with open(existing_file, "w", encoding="utf-8") as f:
         f.write("contenu_original_intact")
@@ -167,11 +183,9 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert res_collision.get("screenshot_path") == expected_renamed
     assert os.path.isfile(expected_renamed)
 
-    # Vérification que le fichier initial n'a pas été altéré
     with open(existing_file, encoding="utf-8") as f:
         assert f.read() == "contenu_original_intact"
 
-    # Deuxième collision -> progression du suffixe vers (2)
     res_collision_2 = gui_agent.gui_take_screenshot(apply_grid=False, output_path=existing_file)
     assert res_collision_2.get("status") == "success"
     assert res_collision_2.get("renamed_due_to_conflict") is True
@@ -179,64 +193,101 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert res_collision_2.get("screenshot_path") == expected_renamed_2
     assert os.path.isfile(expected_renamed_2)
 
-    # 6. Cas de configuration : vérification du chemin absolu avec GUI_AGENT_SCREENSHOTS_DIR relatif
-    orig_screenshots_dir = gui_agent.server.SCREENSHOTS_DIR
-    orig_cwd_dir = os.getcwd()
-    try:
-        custom_workdir = tmp_path / "custom_workdir"
-        custom_workdir.mkdir(parents=True, exist_ok=True)
-        os.chdir(custom_workdir)
-        gui_agent.server.SCREENSHOTS_DIR = "relative_screenshots_dir"
-        os.makedirs(gui_agent.server.SCREENSHOTS_DIR, exist_ok=True)
 
-        res_default = gui_agent.gui_take_screenshot(apply_grid=False, output_path=None)
-        assert res_default.get("status") == "success"
-        scr_path = res_default.get("screenshot_path")
-        raw_scr_path = res_default.get("raw_screenshot_path")
-        assert os.path.isabs(scr_path), f"screenshot_path doit être absolu : {scr_path}"
-        assert os.path.isabs(raw_scr_path), f"raw_screenshot_path doit être absolu : {raw_scr_path}"
-        assert os.path.isfile(scr_path)
-        assert os.path.isfile(raw_scr_path)
-    finally:
-        gui_agent.server.SCREENSHOTS_DIR = orig_screenshots_dir
-        os.chdir(orig_cwd_dir)
+def test_gui_take_screenshot_relative_screenshots_dir(tmp_path, monkeypatch):
+    """Teste la normalisation absolue lorsque GUI_AGENT_SCREENSHOTS_DIR est configuré avec un chemin relatif."""
+    import os
 
-    # 7. Cas de résilience : nettoyage strict des réservations de fichiers en cas d'erreur de sauvegarde
-    failure_target = str(tmp_path / "failure_cleanup" / "capture.png")
+    custom_workdir = tmp_path / "custom_workdir"
+    custom_workdir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(custom_workdir)
+    monkeypatch.setattr(gui_agent.server, "SCREENSHOTS_DIR", "relative_screenshots_dir")
+    os.makedirs("relative_screenshots_dir", exist_ok=True)
+
+    res_default = gui_agent.gui_take_screenshot(apply_grid=False, output_path=None)
+    assert res_default.get("status") == "success"
+    scr_path = res_default.get("screenshot_path")
+    raw_scr_path = res_default.get("raw_screenshot_path")
+    assert os.path.isabs(scr_path), f"screenshot_path doit être absolu : {scr_path}"
+    assert os.path.isabs(raw_scr_path), f"raw_screenshot_path doit être absolu : {raw_scr_path}"
+    assert os.path.isfile(scr_path)
+    assert os.path.isfile(raw_scr_path)
+
+
+def test_gui_take_screenshot_failure_cleanup(tmp_path):
+    """Teste le nettoyage strict des réservations lors d'un échec de sauvegarde."""
+    import os
+    from PIL import Image
     from unittest.mock import patch
 
+    failure_target = str(tmp_path / "failure_cleanup" / "capture.png")
+
     def fail_save(self, *args, **kwargs):
-        """Mock provoquant une exception d'enregistrement d'image."""
         raise OSError("Simulation d'erreur disque lors de l'enregistrement")
 
     with patch.object(Image.Image, "save", fail_save):
         res_fail = gui_agent.gui_take_screenshot(apply_grid=False, output_path=failure_target)
         assert res_fail.get("status") == "error"
 
-    # Le fichier final réservé a été nettoyé
     assert not os.path.exists(failure_target), "Le fichier réservé n'a pas été nettoyé après l'échec"
 
-    # La nouvelle tentative ultérieure ne subit aucune fausse collision et utilise le nom d'origine
     res_retry = gui_agent.gui_take_screenshot(apply_grid=False, output_path=failure_target)
     assert res_retry.get("status") == "success"
     assert res_retry.get("screenshot_path") == failure_target
     assert res_retry.get("renamed_due_to_conflict") is False
     assert os.path.isfile(failure_target)
 
-    # 8. Cas de sécurité anti-race-condition : protection contre la substitution malveillante de fichier
-    # Vérifie que si un fichier étranger remplace la réservation, aucune suppression ni écrasement destructif n'a lieu
+
+def test_gui_take_screenshot_raw_reservation_failure_cleanup(tmp_path):
+    """Teste le rollback de final_path si la réservation de raw_path échoue."""
+    import os
+    from unittest.mock import patch
+
+    target_file = str(tmp_path / "raw_fail" / "capture.png")
+    orig_reserve = gui_agent.server._reserve_unique_file_path
+    call_count = 0
+
+    def mock_reserve(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:  # Échec sur la réservation du fichier brut
+            raise OSError("Erreur simulée sur la réservation brute")
+        return orig_reserve(*args, **kwargs)
+
+    with patch.object(gui_agent.server, "_reserve_unique_file_path", side_effect=mock_reserve):
+        res = gui_agent.gui_take_screenshot(apply_grid=False, output_path=target_file)
+        assert res.get("status") == "error"
+
+    assert not os.path.exists(target_file), "Le fichier final_path n'a pas été libéré après échec de raw_path"
+
+
+def test_gui_take_screenshot_foreign_file_substitution_protection(tmp_path):
+    """Teste la protection anti-race-condition contre la substitution malveillante de fichier."""
+    import os
+
     subst_target = str(tmp_path / "subst_test" / "capture.png")
     os.makedirs(os.path.dirname(subst_target), exist_ok=True)
-    # On simule un fichier légitime étranger créé par un autre processus avec un contenu spécifique
     with open(subst_target, "w", encoding="utf-8") as f_foreign:
         f_foreign.write("FOREIGN_FILE_MUST_NOT_BE_TOUCHED")
 
     foreign_stat = os.stat(subst_target)
     foreign_identity = (foreign_stat.st_dev, foreign_stat.st_ino)
 
-    # Tentative de nettoyage avec une fausse identité différente
     dummy_fake_identity = (foreign_identity[0], foreign_identity[1] + 999999)
     gui_agent.server._cleanup_reserved_file_safely(subst_target, dummy_fake_identity)
     assert os.path.isfile(subst_target), "Le fichier étranger ne doit pas être supprimé si son inode ne correspond pas"
     with open(subst_target, encoding="utf-8") as f_check:
         assert f_check.read() == "FOREIGN_FILE_MUST_NOT_BE_TOUCHED"
+
+
+def test_gui_take_screenshot_include_base64_nominal_and_protection(tmp_path):
+    """Teste le retour Base64 nominal et la protection contre la substitution de fichier à la réouverture."""
+    import base64
+
+    target_file = str(tmp_path / "base64_test" / "capture.png")
+    res = gui_agent.gui_take_screenshot(apply_grid=False, output_path=target_file, include_base64=True)
+    assert res.get("status") == "success"
+    assert "base64_data" in res
+    with open(target_file, "rb") as f:
+        expected_b64 = base64.b64encode(f.read()).decode("utf-8")
+    assert res["base64_data"] == expected_b64
