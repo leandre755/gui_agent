@@ -41,7 +41,8 @@
       "write_file(install.sh)",
       "write_file(install.ps1)",
       "write_file(uninstall.sh)",
-      "write_file(uninstall.ps1)"
+      "write_file(uninstall.ps1)",
+      "write_file(ci.sh)"
     ]
   }
 }
