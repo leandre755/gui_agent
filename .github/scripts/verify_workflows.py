@@ -150,6 +150,20 @@ class WorkflowVerifier:
         self.text: str = "\n".join(self.lines)
         self.errors: list[str] = []
         self.warnings: list[str] = []
+        self.anchors: dict[str, set[str]] = self._scan_yaml_anchors()
+
+    def _scan_yaml_anchors(self) -> dict[str, set[str]]:
+        """Scanne les ancres YAML simples (&anchor_name value) pour résoudre les alias (*anchor_name)."""
+        anchors: dict[str, set[str]] = {}
+        for line in self.lines:
+            stripped = strip_yaml_comment(line).strip()
+            anchor_match = re.search(r"&([a-zA-Z0-9_-]+)\s*(.*)$", stripped)
+            if anchor_match:
+                name = anchor_match.group(1)
+                val = anchor_match.group(2).strip()
+                if val:
+                    anchors[name] = parse_inline_yaml_triggers(val)
+        return anchors
 
     def log_error(self, message: str, line_no: int | None = None) -> None:
         prefix = f"{self.path}:{line_no}: " if line_no is not None else f"{self.path}: "
@@ -158,6 +172,19 @@ class WorkflowVerifier:
     def log_warning(self, message: str, line_no: int | None = None) -> None:
         prefix = f"{self.path}:{line_no}: " if line_no is not None else f"{self.path}: "
         self.warnings.append(f"{prefix}{message}")
+
+    def _resolve_trigger_token(self, token: str) -> set[str]:
+        tok = token.strip()
+        if not tok:
+            return set()
+        # Résolution d'alias YAML (ex: *unsafe_events)
+        if tok.startswith("*"):
+            alias_name = tok[1:].strip()
+            return self.anchors.get(alias_name, set())
+        # Déclaration inline flow-style
+        if (tok.startswith("[") and tok.endswith("]")) or (tok.startswith("{") and tok.endswith("}")):
+            return parse_inline_yaml_triggers(tok)
+        return {decode_yaml_key(tok)}
 
     def _parse_triggers(self) -> set[str]:
         """Extrait et décode l'ensemble des événements déclencheurs sous la directive top-level 'on:'."""
@@ -180,7 +207,7 @@ class WorkflowVerifier:
                         in_on = True
                         inline_val = top_match.group(2).strip()
                         if inline_val:
-                            return parse_inline_yaml_triggers(inline_val)
+                            return self._resolve_trigger_token(inline_val)
                         continue
                     elif in_on:
                         break
@@ -206,7 +233,15 @@ class WorkflowVerifier:
                 # Séquence YAML (ex: '- push' ou '- "push"')
                 if stripped.startswith("-"):
                     item = stripped[1:].strip()
-                    triggers.add(decode_yaml_key(item))
+                    triggers.update(self._resolve_trigger_token(item))
+                elif (stripped.startswith("[") and stripped.endswith("]")) or (
+                    stripped.startswith("{") and stripped.endswith("}")
+                ):
+                    # Block-form flow collection (ex: '  [pull_request_target]' ou '  {push: null}')
+                    triggers.update(parse_inline_yaml_triggers(stripped))
+                elif stripped.startswith("*"):
+                    # Alias YAML en bloc (ex: '  *unsafe_events')
+                    triggers.update(self._resolve_trigger_token(stripped))
                 else:
                     # Mapping direct (ex: 'push:' ou '"pull_request_target":')
                     key_match = re.match(r"^([^:]+):", stripped)
@@ -335,14 +370,19 @@ class WorkflowVerifier:
                     if inline_val and not inline_val.startswith("#"):
                         has_runs_on = True
                     else:
-                        # Forme imbriquée sous runs-on: (séquence YAML ou mapping de labels/group)
+                        # Forme imbriquée sous runs-on: séquence indentée OU séquence sans indentation (même niveau que runs-on) OU mapping
                         for _next_idx, next_line in lines[i + 1 :]:
                             next_indent = len(next_line) - len(next_line.lstrip(" "))
-                            if next_indent <= direct_prop_indent:
-                                break
                             next_stripped = strip_yaml_comment(next_line).strip()
-                            if next_stripped:
+                            if not next_stripped:
+                                continue
+                            # Si séquence sans indentation supplémentaire ou valeur indentée (séquence/mapping)
+                            if (
+                                next_indent == direct_prop_indent and next_stripped.startswith("-")
+                            ) or next_indent > direct_prop_indent:
                                 has_runs_on = True
+                                break
+                            else:
                                 break
 
         if not has_runs_on:

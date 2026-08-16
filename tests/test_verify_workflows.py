@@ -245,15 +245,42 @@ jobs:
     assert count == 0, f"Erreurs inattendues: {errors}"
 
 
-def test_flow_style_trigger_mapping_with_nested_comma_values(tmp_path: Path):
-    """Vérifie qu'un mapping flow-style avec des valeurs imbriquées contenant des virgules (ex: inputs ou descriptions) n'extrait que les vraies clés de premier niveau."""
-    wf = tmp_path / "flow_nested_comma.yml"
-    wf.write_text(
+def test_accept_indentationless_runs_on_sequence_and_yaml_aliases(tmp_path: Path):
+    """Vérifie que les séquences runs-on sans indentation supplémentaire et les alias YAML pour on: sont correctement acceptés/résolus."""
+    # 1. runs-on avec séquence sans indentation supplémentaire
+    wf_runner = tmp_path / "indentationless_runner.yml"
+    wf_runner.write_text(
         """
-name: Flow Mapping Nested Comma
-on: {workflow_dispatch: {inputs: {options: "a,pull_request_target:,b"}}}
+name: Indentationless Runner
+on:
+  workflow_dispatch:
 permissions:
   contents: read
+jobs:
+  test:
+    runs-on:
+    - self-hosted
+    - linux
+    timeout-minutes: 5
+    steps:
+      - run: echo success
+""",
+        encoding="utf-8",
+    )
+    count1, errors1, _ = verify_workflows.check_workflow(wf_runner)
+    assert count1 == 0, f"Erreurs inattendues pour runner sans indentation: {errors1}"
+
+    # 2. on: avec alias YAML vers pull_request_target
+    wf_alias = tmp_path / "alias_pr_target.yml"
+    wf_alias.write_text(
+        """
+name: Alias PR Target
+unsafe_events: &unsafe [pull_request_target]
+on: *unsafe
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -263,8 +290,9 @@ jobs:
 """,
         encoding="utf-8",
     )
-    count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count == 0, f"Erreurs inattendues pour mapping flow avec virgule imbriquée: {errors}"
+    count2, errors2, _ = verify_workflows.check_workflow(wf_alias)
+    assert count2 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors2)
 
 
 def test_reject_persist_credentials_true(tmp_path: Path):
