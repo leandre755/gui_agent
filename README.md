@@ -30,7 +30,7 @@
 
 Autonomous AI agents interacting with modern graphical user interfaces are frequently burdened by fragmented architectures, fragile micro-servers, and exorbitant memory footprints. Traditional automation setups force models to juggle disparate processes for screen capture, input emulation, window management, and optical character recognition. This fragmentation introduces latency, high failure rates on dynamic desktop environments, and excessive resource consumption that quickly overwhelms memory-constrained workstations.
 
-**gui-agent** resolves this architectural friction by providing a unified, monolithic FastMCP server engineered specifically for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments. Consolidating twenty-one high-performance tools into a single resilient stdio connection, **gui-agent** operates with a minimal memory footprint below 50 MB RAM, enabling seamless execution on dual-core CPUs and virtualized environments without requiring bloated browser automation stacks or external cloud vision dependencies.
+**gui-agent** resolves this architectural friction by providing a unified, monolithic FastMCP server engineered specifically for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments. Consolidating twenty-one high-performance tools into a single resilient stdio connection, **gui-agent** operates with a minimal memory footprint below 50 MB RAM, enabling seamless execution on dual-core CPUs and virtualized environments without requiring external browser runtimes for desktop tools (browser automation is strictly localized to `gui_web_action`) or external cloud vision dependencies.
 
 Under the hood, **gui-agent** couples millisecond-level screen acquisition with an intelligent Cartesian coordinate grid overlay, allowing large language models to accurately locate visual targets without spatial hallucinations. By combining native OS input dispatchers, window hierarchy introspection, OpenCV template matching, and local OCR parsing with automated fallback pipelines, the system guarantees deterministic execution, zero-leak process lifecycle management, and pixel-precise control across complex desktop workflows.
 
@@ -220,9 +220,9 @@ Captures full-screen or cropped images with an optional Cartesian coordinate gri
   - `grid_interval` (`int`, default `100`): Interval in pixels between grid lines (minimum 20).
   - `format` (`str`, default `"png"`): Output image format (`"png"` or `"jpeg"`).
   - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
-  - `save_to_artifacts` (`bool`, default `False`): Flag for artifact-specific directory storage.
+  - `output_path` (`str | None`, default `None`): Destination file path. Relative paths are resolved to absolute paths and missing parent directories are created. Empty paths and existing directories are rejected. If the path lacks an extension, the extension corresponding to `format` is automatically appended. Incompatible extensions are rejected. If the target file already exists, atomic reservation with incremental suffixes such as `(1)` and `(2)` protects existing files from overwrite. `screenshot_path` returns the actual resolved absolute path used. If omitted, defaults to a timestamped image in the screenshots directory.
   - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
-- **Returns**: `dict` containing `screenshot_path`, `raw_screenshot_path`, `resolution`, and `grid_applied`.
+- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message`, and `base64_data` (present when `include_base64` is enabled).
 
 #### `gui_mouse_move`
 Smoothly translates the mouse cursor to target coordinates.

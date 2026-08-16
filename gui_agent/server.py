@@ -35,9 +35,11 @@ logger = logging.getLogger("mcp_gui_server")
 mcp = FastMCP("GUI Agent Server")
 
 # Répertoire de stockage des captures d'écran (configurable via GUI_AGENT_SCREENSHOTS_DIR)
-SCREENSHOTS_DIR = os.environ.get(
-    "GUI_AGENT_SCREENSHOTS_DIR",
-    os.path.join(os.path.expanduser("~"), ".local", "share", "gui-agent", "screenshots"),
+SCREENSHOTS_DIR = os.path.abspath(
+    os.environ.get(
+        "GUI_AGENT_SCREENSHOTS_DIR",
+        os.path.join(os.path.expanduser("~"), ".local", "share", "gui-agent", "screenshots"),
+    )
 )
 os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
@@ -200,6 +202,272 @@ def gui_get_screen_info() -> dict[str, Any]:
         return {"status": "error", "message": f"Impossible d'obtenir les dimensions de l'écran : {e!s}"}
 
 
+def _reserve_unique_file_path(
+    base_dir: str, stem: str, ext: str, original_candidate: str | None = None
+) -> tuple[str, bool, tuple[int, int]]:
+    """Réserve atomiquement un chemin de fichier unique sur disque et enregistre son identifiant (dev, ino).
+
+    Crée un fichier vide via os.O_CREAT | os.O_EXCL pour garantir qu'aucun
+    autre processus concurrent ne puisse s'approprier le même nom de fichier.
+    Retourne le chemin, le booléen de renommage et la signature inode (st_dev, st_ino)
+    pour sécuriser les opérations ultérieures contre les substitutions de fichiers.
+    """
+    os.makedirs(base_dir, exist_ok=True)
+    counter = 0
+    renamed = False
+
+    while True:
+        if counter == 0:
+            candidate = original_candidate or os.path.join(base_dir, f"{stem}.{ext}")
+        else:
+            candidate = os.path.join(base_dir, f"{stem} ({counter}).{ext}")
+
+        try:
+            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            try:
+                st = os.fstat(fd)
+                file_identity = (st.st_dev, st.st_ino)
+            finally:
+                os.close(fd)
+
+            if counter > 0:
+                renamed = True
+            return candidate, renamed, file_identity
+        except FileExistsError as err:
+            counter += 1
+            if counter > 10000:
+                raise RuntimeError(
+                    f"Impossible de trouver un nom de fichier libre après {counter} tentatives dans {base_dir}"
+                ) from err
+
+
+def _write_pil_image_safely(
+    img: Any, target_path: str, expected_identity: tuple[int, int], pil_format: str, save_kwargs: dict[str, Any]
+) -> None:
+    """Écrit une image PIL dans un fichier réservé en garantissant l'identité de l'inode."""
+    # Ouvre le descripteur et vérifie que le fichier correspond exactement au descripteur réservé (pas de substitution)
+    fd = os.open(target_path, os.O_WRONLY)
+    try:
+        st = os.fstat(fd)
+        if (st.st_dev, st.st_ino) != expected_identity:
+            raise RuntimeError(
+                f"Détection d'une substitution de fichier concurrente sur '{target_path}'. Écriture annulée."
+            )
+        os.ftruncate(fd, 0)
+        os.lseek(fd, 0, os.SEEK_SET)
+        with open(fd, "wb", closefd=False) as f:
+            img.save(f, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+            f.flush()
+    finally:
+        os.close(fd)
+
+
+def _copy_file_safely(
+    src_path: str, dst_path: str, expected_src_identity: tuple[int, int], expected_dst_identity: tuple[int, int]
+) -> None:
+    """Copie le contenu d'un fichier source dans un fichier destination réservé en vérifiant les deux identités d'inodes."""
+    fd_src = os.open(src_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        st_src = os.fstat(fd_src)
+        if (st_src.st_dev, st_src.st_ino) != expected_src_identity:
+            raise RuntimeError(
+                f"Détection d'une substitution de fichier concurrente sur la source '{src_path}'. Copie annulée."
+            )
+
+        fd_dst = os.open(dst_path, os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            st_dst = os.fstat(fd_dst)
+            if (st_dst.st_dev, st_dst.st_ino) != expected_dst_identity:
+                raise RuntimeError(
+                    f"Détection d'une substitution de fichier concurrente sur la destination '{dst_path}'. Copie annulée."
+                )
+            os.ftruncate(fd_dst, 0)
+            os.lseek(fd_dst, 0, os.SEEK_SET)
+            with open(fd_src, "rb", closefd=False) as f_src, open(fd_dst, "wb", closefd=False) as f_dst:
+                shutil.copyfileobj(f_src, f_dst)
+                f_dst.flush()
+        finally:
+            os.close(fd_dst)
+    finally:
+        os.close(fd_src)
+
+
+def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
+    """Supprime uniquement la réservation possédée, sans suppression TOCTOU d'un fichier étranger.
+
+    Une vérification suivie de ``unlink(target_path)`` ne peut pas être atomique : une autre
+    écriture peut remplacer l'entrée entre les deux appels. Le rollback déplace donc d'abord
+    l'entrée vers un répertoire de quarantaine privé, créé avec le mode 0700. Le fichier déplacé
+    est ensuite identifié par son descripteur.
+
+    Si l'identité correspond à la réservation détenue, le fichier est tronqué à 0 octet via son
+    descripteur (s'il est accessible en écriture) puis supprimé via son descripteur de répertoire
+    quarantaine. Si une substitution concurrente a eu lieu avant le déplacement (mismatch),
+    l'entrée n'est JAMAIS supprimée : elle est restaurée sans écrasement (via ``os.link``), et en cas
+    de collision lors de la restauration, le fichier reste en quarantaine sans destruction pour
+    garantir l'absence totale de perte de données d'un écrivain concurrent.
+    """
+    if not target_path or not expected_identity:
+        return
+
+    parent_dir = os.path.dirname(target_path) or "."
+    filename = os.path.basename(target_path)
+    dir_fd = None
+    quarantine_dir = None
+    quarantine_fd = None
+    file_fd = None
+    quarantine_name = "reserved"
+
+    try:
+        dir_flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            dir_flags |= os.O_DIRECTORY
+        dir_fd = os.open(parent_dir, dir_flags)
+
+        file_flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            file_flags |= os.O_NOFOLLOW
+        file_fd = os.open(filename, file_flags, dir_fd=dir_fd)
+        st_file = os.fstat(file_fd)
+        if (st_file.st_dev, st_file.st_ino) != expected_identity:
+            return
+
+        # Le répertoire privé est créé sous le parent avec mode 0700.
+        quarantine_dir = tempfile.mkdtemp(prefix=".gui-agent-rollback-", dir=parent_dir)
+        quarantine_flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            quarantine_flags |= os.O_DIRECTORY
+        quarantine_fd = os.open(quarantine_dir, quarantine_flags)
+
+        # rename est atomique pour l'entrée source. Le fichier déplacé est ensuite vérifié
+        # dans la quarantaine.
+        os.rename(filename, quarantine_name, src_dir_fd=dir_fd, dst_dir_fd=quarantine_fd)
+        moved_fd = None
+        try:
+            moved_fd = os.open(quarantine_name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=quarantine_fd)
+            moved_stat = os.fstat(moved_fd)
+            moved_identity = (moved_stat.st_dev, moved_stat.st_ino)
+        finally:
+            if moved_fd is not None:
+                with contextlib.suppress(OSError):
+                    os.close(moved_fd)
+
+        if moved_identity == expected_identity:
+            # Tronquer à 0 octet via descripteur si accessible en écriture avant suppression
+            trunc_fd = None
+            try:
+                trunc_fd = os.open(quarantine_name, os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=quarantine_fd)
+                st_trunc = os.fstat(trunc_fd)
+                if (st_trunc.st_dev, st_trunc.st_ino) == expected_identity:
+                    os.ftruncate(trunc_fd, 0)
+            except OSError:
+                pass
+            finally:
+                if trunc_fd is not None:
+                    with contextlib.suppress(OSError):
+                        os.close(trunc_fd)
+
+            # Suppression du fichier de quarantaine vérifié
+            os.unlink(quarantine_name, dir_fd=quarantine_fd)
+        else:
+            # La réservation a été remplacée avant le rename. Restaurer sans jamais écraser
+            # une nouvelle entrée concurrente ; en cas de collision, laisser en quarantaine
+            # et ne jamais supprimer le fichier substitué.
+            try:
+                os.link(
+                    quarantine_name,
+                    filename,
+                    src_dir_fd=quarantine_fd,
+                    dst_dir_fd=dir_fd,
+                    follow_symlinks=False,
+                )
+            except FileExistsError:
+                # Collision lors de la restauration : laisser le fichier dans le dossier de quarantaine
+                # sans le supprimer pour préserver l'intégrité absolue des données.
+                return
+            else:
+                # Restauration réussie, nettoyer l'entrée de quarantaine
+                os.unlink(quarantine_name, dir_fd=quarantine_fd)
+    except OSError:
+        # Un rollback ne doit jamais supprimer un chemin qui n'a pas été vérifié.
+        return
+    finally:
+        if file_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(file_fd)
+        if quarantine_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(quarantine_fd)
+        if quarantine_dir is not None:
+            with contextlib.suppress(OSError):
+                os.rmdir(quarantine_dir)
+        if dir_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(dir_fd)
+
+
+def _resolve_screenshot_destination(
+    output_path: str | None, fmt_clean: str, ext: str
+) -> tuple[str, str, bool, str | None, tuple[int, int], tuple[int, int]] | dict[str, Any]:
+    """Résout et réserve atomiquement le chemin cible final et le chemin brut avec leurs identifiants inode."""
+    renamed_due_to_conflict = False
+    original_requested_path = None
+
+    if output_path is not None:
+        clean_out = str(output_path).strip()
+        if not clean_out:
+            return {
+                "status": "error",
+                "message": "output_path ne peut pas être une chaîne vide.",
+            }
+        final_path_cand = os.path.abspath(clean_out)
+        if os.path.isdir(final_path_cand):
+            return {
+                "status": "error",
+                "message": f"output_path '{final_path_cand}' est un dossier existant, un chemin de fichier est requis.",
+            }
+        _, out_ext = os.path.splitext(final_path_cand)
+        out_ext_clean = out_ext.lower().lstrip(".")
+        if not out_ext_clean:
+            final_path_cand = f"{final_path_cand}.{ext}"
+        else:
+            valid_exts = {"jpg": ["jpg", "jpeg"], "jpeg": ["jpg", "jpeg"], "png": ["png"]}[fmt_clean]
+            if out_ext_clean not in valid_exts:
+                return {
+                    "status": "error",
+                    "message": (
+                        f"Incohérence d'extension de fichier : l'extension '{out_ext}' de output_path "
+                        f"ne correspond pas au format encodé '{fmt_clean}' (attendu: {', '.join('.' + e for e in valid_exts)})."
+                    ),
+                }
+
+        parent_dir = os.path.dirname(final_path_cand)
+        stem, ext_part = os.path.splitext(os.path.basename(final_path_cand))
+        target_ext = ext_part.lstrip(".") or ext
+
+        # Réservation atomique (O_CREAT | O_EXCL) avec incrémentation (1), (2)...
+        original_requested_path = final_path_cand
+        final_path, renamed_due_to_conflict, final_identity = _reserve_unique_file_path(
+            parent_dir, stem, target_ext, original_candidate=final_path_cand
+        )
+    else:
+        configured_dir = os.path.abspath(SCREENSHOTS_DIR)
+        timestamp = int(time.time())
+        stem = f"screenshot_{timestamp}"
+        final_path, _, final_identity = _reserve_unique_file_path(configured_dir, stem, ext)
+
+    configured_raw_dir = os.path.abspath(SCREENSHOTS_DIR)
+    timestamp_raw = int(time.time())
+    stem_raw = f"raw_screenshot_{timestamp_raw}"
+    try:
+        raw_path, _, raw_identity = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
+    except Exception:
+        _cleanup_reserved_file_safely(final_path, final_identity)
+        raise
+
+    return final_path, raw_path, renamed_due_to_conflict, original_requested_path, final_identity, raw_identity
+
+
 @mcp.tool()
 def gui_take_screenshot(
     monitor_index: int = 1,
@@ -208,7 +476,7 @@ def gui_take_screenshot(
     grid_interval: int = 100,
     format: str = "png",
     quality: int = 80,
-    save_to_artifacts: bool = False,
+    output_path: str | None = None,
     include_base64: bool = False,
 ) -> dict[str, Any]:
     """
@@ -221,6 +489,11 @@ def gui_take_screenshot(
     raw_img = None
     cropped_img = None
     grid_img = None
+    final_path = None
+    raw_path = None
+    final_identity = None
+    raw_identity = None
+    success = False
     try:
         raw_img = capture_screen_pil(monitor_index=monitor_index)
         working_img = raw_img
@@ -250,6 +523,12 @@ def gui_take_screenshot(
         width, height = working_img.size
 
         fmt_clean = str(format).lower().strip()
+        if fmt_clean not in ["png", "jpeg", "jpg"]:
+            return {
+                "status": "error",
+                "message": f"Format non supporté '{format}'. Formats supportés : 'png', 'jpeg', 'jpg'.",
+            }
+
         if fmt_clean in ["jpeg", "jpg"]:
             ext = "jpg"
             pil_format = "JPEG"
@@ -260,15 +539,16 @@ def gui_take_screenshot(
             pil_format = "PNG"
             save_kwargs = {"format": pil_format, "optimize": True}
 
-        timestamp = int(time.time())
-        filename = f"screenshot_{timestamp}.{ext}"
-        raw_filename = f"raw_screenshot_{timestamp}.{ext}"
+        dest_result = _resolve_screenshot_destination(output_path, fmt_clean, ext)
+        if isinstance(dest_result, dict):
+            return dest_result
 
-        raw_path = os.path.join(SCREENSHOTS_DIR, raw_filename)
-        final_path = os.path.join(SCREENSHOTS_DIR, filename)
+        final_path, raw_path, renamed_due_to_conflict, original_requested_path, final_identity, raw_identity = (
+            dest_result
+        )
 
-        # Sauvegarde de l'image brute
-        working_img.save(raw_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+        # Sauvegarde sécurisée de l'image brute (avec vérification de l'inode)
+        _write_pil_image_safely(working_img, raw_path, raw_identity, pil_format, save_kwargs)
 
         if apply_grid:
             grid_interval = max(20, int(grid_interval))
@@ -312,21 +592,39 @@ def gui_take_screenshot(
                     )
                     draw.text((x + 6, y + 5), lbl, fill=(255, 255, 255, 255))
 
-            # Sauvegarde de l'image avec grille
-            grid_img.save(final_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+            # Sauvegarde sécurisée de l'image avec grille (avec vérification de l'inode)
+            _write_pil_image_safely(grid_img, final_path, final_identity, pil_format, save_kwargs)
         else:
-            # Pas de grille, l'image finale est identique à l'image brute
-            if os.path.exists(final_path):
-                with contextlib.suppress(OSError):
-                    os.remove(final_path)
-            shutil.copy2(raw_path, final_path)
+            # Pas de grille, copie sécurisée de l'image brute vers le fichier final en vérifiant les deux inodes
+            _copy_file_safely(raw_path, final_path, raw_identity, final_identity)
 
         base64_data = None
         if include_base64:
-            # Encodage Base64 de l'image retournée (avec ou sans grille)
+            # Encodage Base64 sécurisé : réouverture avec validation stricte de l'inode (évite toute substitution de contenu)
             target_to_encode = final_path if os.path.exists(final_path) else raw_path
-            with open(target_to_encode, "rb") as f_img:
-                base64_data = base64.b64encode(f_img.read()).decode("utf-8")
+            expected_encode_id = final_identity if target_to_encode == final_path else raw_identity
+            read_flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                read_flags |= os.O_NOFOLLOW
+            fd_read = os.open(target_to_encode, read_flags)
+            try:
+                st_read = os.fstat(fd_read)
+                if (st_read.st_dev, st_read.st_ino) != expected_encode_id:
+                    raise RuntimeError(
+                        f"Détection d'une substitution de fichier concurrente sur '{target_to_encode}' lors de l'encodage Base64."
+                    )
+                with open(fd_read, "rb", closefd=False) as f_img:
+                    base64_data = base64.b64encode(f_img.read()).decode("utf-8")
+            finally:
+                os.close(fd_read)
+
+        if renamed_due_to_conflict and original_requested_path:
+            success_msg = (
+                f"Capture d'écran générée avec succès. Le fichier existant a été protégé contre l'écrasement ; "
+                f"la capture a été enregistrée sous le nom '{os.path.basename(final_path)}'."
+            )
+        else:
+            success_msg = "Capture d'écran générée avec succès."
 
         res_dict = {
             "status": "success",
@@ -337,16 +635,21 @@ def gui_take_screenshot(
             "cropped": (crop_box is not None),
             "grid_applied": apply_grid,
             "grid_interval": grid_interval if apply_grid else None,
-            "message": "Capture d'écran générée avec succès.",
+            "renamed_due_to_conflict": renamed_due_to_conflict,
+            "message": success_msg,
         }
         if include_base64 and base64_data:
             res_dict["base64_data"] = base64_data
 
+        success = True
         return res_dict
     except Exception as e:
         logger.error(f"Erreur capture d'écran : {e!s}")
         return {"status": "error", "message": f"Échec de la capture d'écran : {e!s}"}
     finally:
+        if not success:
+            _cleanup_reserved_file_safely(final_path, final_identity)
+            _cleanup_reserved_file_safely(raw_path, raw_identity)
         for img in [raw_img, cropped_img, grid_img]:
             if img is not None:
                 with contextlib.suppress(Exception):
@@ -1164,6 +1467,7 @@ async def gui_web_action(
         url_clean = "https://" + url_clean
 
     def _sync_playwright_work() -> dict[str, Any]:
+        """Exécute les opérations synchrones Playwright dans un thread isolé."""
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:

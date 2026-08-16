@@ -48,9 +48,11 @@
 | **Automated Installer (PowerShell)** | `pwsh -File ./install.ps1 -DryRun` | AST syntax check + garde d'exécution Windows | AST validé, garde d'environnement opérationnelle | **PASS** |
 | **Windows Skill** | `skills/gui-agent-windows-install/SKILL.md` | Structure standard Agent Skills (agentskills.io) | Frontmatter, Rôle, 5 Règles, 2 Few-shot, Checklist validés | **PASS** |
 | **Zero-Slop Pre-Commit** | `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` | 8 couches de validation (Anti-leak, CVE, Ruff, Mypy, Sonar, Bandit, Semgrep) | 100% PASS (0 warning, 0 error) | **PASS** |
+| **Screenshot Output Security & Rollback (PR #7)** | `pytest -k test_gui_take_screenshot` | Rejet conflits format/ext, anti-écrasement incrémental (1)/(2), répertoires rejetés, chemins relatifs normalisés, réservation atomique O_CREAT/O_EXCL, suppression liée au descripteur de répertoire parent (dir_fd / O_DIRECTORY) avec O_NOFOLLOW, double vérification d'inode, protection contre la substitution de source dans _copy_file_safely, rollback sur échec de réservation brute, encodage Base64 sécurisé par inode | 15/15 tests passés (61.69s) | **PASS** |
 
 ---
 
 ## 🟢 Conclusion & Qualification
-La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1` et du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`.
+La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1`, du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`, ainsi que du correctif de sécurité et de conformité du chemin de sortie pour `gui_take_screenshot` (PR #7).
+
 
