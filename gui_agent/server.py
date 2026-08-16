@@ -279,6 +279,34 @@ def _copy_file_safely(src_path: str, dst_path: str, expected_dst_identity: tuple
         os.close(fd_dst)
 
 
+def _restore_trash_safely(trash_path: str, target_path: str) -> bool:
+    """Restaure de manière atomique sans remplacement (no-replace) un fichier temporaire vers target_path.
+
+    Si target_path a été recréé entre-temps par un tiers, conserve trash_path intact
+    sans écraser le nouveau fichier occupant target_path.
+    """
+    try:
+        os.link(trash_path, target_path)
+        with contextlib.suppress(OSError):
+            os.remove(trash_path)
+        return True
+    except FileExistsError:
+        # target_path est déjà réoccupé : on conserve le fichier dans trash_path sans écraser le tiers
+        logger.warning(
+            f"Impossible de restaurer '{trash_path}' vers '{target_path}' : l'emplacement est déjà occupé par un nouveau fichier tiers."
+        )
+        return False
+    except OSError:
+        # Fallback pour les systèmes de fichiers ne supportant pas hardlink
+        if not os.path.exists(target_path):
+            try:
+                os.rename(trash_path, target_path)
+                return True
+            except OSError:
+                return False
+        return False
+
+
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
     """Supprime un fichier réservé en cas d'erreur de manière atomique sans risque de supprimer un fichier substitué."""
     if not target_path or not expected_identity or not os.path.exists(target_path):
@@ -303,18 +331,16 @@ def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tu
             trash_fd = None
             os.remove(trash_path)
         else:
-            # Substitution détectée : on restaure immédiatement le fichier à sa place sans le supprimer
+            # Substitution détectée : on restaure de façon atomique sans écraser un éventuel nouveau fichier créé
             os.close(trash_fd)
             trash_fd = None
-            with contextlib.suppress(OSError):
-                os.rename(trash_path, target_path)
+            _restore_trash_safely(trash_path, target_path)
     except OSError:
         if trash_fd is not None:
             with contextlib.suppress(OSError):
                 os.close(trash_fd)
-        with contextlib.suppress(OSError):
-            if os.path.exists(trash_path) and not os.path.exists(target_path):
-                os.rename(trash_path, target_path)
+        if os.path.exists(trash_path):
+            _restore_trash_safely(trash_path, target_path)
 
 
 def _resolve_screenshot_destination(

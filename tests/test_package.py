@@ -280,6 +280,38 @@ def test_gui_take_screenshot_foreign_file_substitution_protection(tmp_path):
         assert f_check.read() == "FOREIGN_FILE_MUST_NOT_BE_TOUCHED"
 
 
+def test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target(tmp_path):
+    """Teste que la restauration lors d'un mismatch d'inode n'écrase jamais un nouveau fichier créé."""
+    import os
+    from unittest.mock import patch
+
+    subst_target = str(tmp_path / "subst_overwrite_test" / "capture.png")
+    os.makedirs(os.path.dirname(subst_target), exist_ok=True)
+    with open(subst_target, "w", encoding="utf-8") as f1:
+        f1.write("OLD_SUBSTITUTED_FILE")
+
+    foreign_stat = os.stat(subst_target)
+    foreign_identity = (foreign_stat.st_dev, foreign_stat.st_ino)
+    dummy_fake_identity = (foreign_identity[0], foreign_identity[1] + 888888)
+
+    orig_open = os.open
+
+    def mock_open_inject_race(path, flags, *args, **kwargs):
+        # Dès que le fichier trash est ouvert pour fstat, on simule un processus tiers qui recrée subst_target
+        if isinstance(path, str) and ".cleanup_" in path:
+            with open(subst_target, "w", encoding="utf-8") as f2:
+                f2.write("NEW_CONCURRENT_FOREIGN_TARGET")
+        return orig_open(path, flags, *args, **kwargs)
+
+    with patch("os.open", side_effect=mock_open_inject_race):
+        gui_agent.server._cleanup_reserved_file_safely(subst_target, dummy_fake_identity)
+
+    # Le nouveau fichier créé ne doit absolument pas avoir été écrasé
+    assert os.path.isfile(subst_target)
+    with open(subst_target, encoding="utf-8") as f_res:
+        assert f_res.read() == "NEW_CONCURRENT_FOREIGN_TARGET"
+
+
 def test_gui_take_screenshot_include_base64_nominal_and_protection(tmp_path):
     """Teste le retour Base64 nominal et la protection contre la substitution de fichier à la réouverture."""
     import base64

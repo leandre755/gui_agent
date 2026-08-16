@@ -10,25 +10,25 @@
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
   1. [`ci.sh`](../ci.sh) s'exécute avec 100% de succès :
-     - Compilation Bytecode Python : **PASS** (125ms)
-     - Linter Ruff : **PASS** (46ms)
-     - Formatage Ruff : **PASS** (40ms)
-     - Typage Mypy : **PASS** (369ms)
-     - Suite Pytest sous `xvfb-run -a` : **18/18 tests passés avec succès** (8873ms)
+     - Compilation Bytecode Python : **PASS** (153ms)
+     - Linter Ruff : **PASS** (356ms)
+     - Formatage Ruff : **PASS** (56ms)
+     - Typage Mypy : **PASS** (760ms)
+     - Suite Pytest sous `xvfb-run -a` : **19/19 tests passés avec succès** (55155ms)
   2. Pull Request GitHub créée et synchronisée : [PR #7](https://github.com/leandre755/gui_agent/pull/7).
   3. Pre-commit 8 couches Zero-Slop et pre-push hook validés à 100%.
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `gui_agent/server.py`
-  - **Scope**: Sécurisation totale anti-race-condition : (1) `_cleanup_reserved_file_safely` renomme atomiquement la cible vers un chemin temporaire unique et vérifie son inode via `fstat` sur descripteur sécurisé (`O_NOFOLLOW`) avant suppression, restaurant le fichier à sa place d'origine si une substitution concurrente est détectée ; (2) Encodage `include_base64` sécurisé vérifiant l'inode via descripteur ouvert avant lecture ; (3) Rollback garanti de `final_path` si la réservation de `raw_path` échoue.
+  - **Scope**: Sécurisation totale anti-race-condition : (1) `_restore_trash_safely` pour restauration atomique sans écrasement (no-replace via `os.link` / `FileExistsError` handling) en cas de mismatch d'inode, protégeant tout nouveau fichier tiers recréé sur `target_path` ; (2) `_cleanup_reserved_file_safely` atomique par renommage vers fichier temporaire et validation `fstat` ; (3) Protection de l'encodage `include_base64` vérifiant l'inode via descripteur ouvert ; (4) Rollback de `final_path` si la réservation de `raw_path` échoue.
 - **File**: `tests/test_package.py`
-  - **Scope**: Découpage de `test_gui_take_screenshot_output_path` en 11 fonctions de test modulaires isolées, utilisation de `monkeypatch` pour les répertoires et variables d'environnement, tests spécifiques pour le rollback lors d'échec de réservation brute et la protection lors de la lecture Base64.
+  - **Scope**: Ajout du test de régression `test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target` validant la non-écrasement lors de la réoccupation concurrente de `target_path` pendant le mismatch recovery (19/19 tests).
 - **File**: `examples/test_evolutions.py`
   - **Scope**: Résolution portable de `sys.path` sans chemin absolu spécifique à l'hôte, et fermeture propre de l'image source avec le context manager `with Image.open(...)`.
 - **File**: `README.md` & `README.fr.md`
   - **Scope**: Précision sur les coordonnées normalisées `[0, 1000]`, formatage rigoureux des suffixes de collision `(1)` et `(2)` sans espaces parasites dans les balises de code.
 - **File**: `.GCC/main.md` & `.GCC/branches/test.md`
-  - **Scope**: Mise à jour du journal de qualification (18 tests) et documentation des garanties d'atomicité et de protection contre les substitutions concurrentes.
+  - **Scope**: Mise à jour du journal de qualification (19 tests) et documentation de la restauration atomique sans écrasement.
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh && ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit`
