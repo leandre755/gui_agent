@@ -49,9 +49,9 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
-- ✅ Done: Correctif `output_path` pour `gui_take_screenshot` implémenté, documenté et testé (PR #7 ouverte et poussée avec résolution des remarques CodeRabbit et Greptile) ; 22/22 tests Pytest passés sous Xvfb.
-- 🔄 In progress: Gel temporaire de la structure à la demande de l'utilisateur pour préserver la validité de son audit et traitement point par point des retours.
-- ⏳ Pending: Reprise des points suivants de l'audit de l'utilisateur lors de la prochaine session.
+- ✅ Done: Implémentation du paramètre `output_path`, validation d'extensions, protection anti-écrasement incrémentale, et sécurisation des copies/Base64 par validation d'inodes (PR #7, 22/22 tests unitaires validés).
+- 🔄 In progress: Reprise et refonte de la gestion du cycle de vie des descripteurs pour la suppression/rollback sur échec (élimination des courses TOCTOU résiduelles relevées par Greptile et CodeRabbit).
+- ⏳ Pending: Obtention du Confidence Score 5/5 sur Greptile et CodeRabbit sans aucun échec de sécurité restant.
 
 ## 👉 Next Session Direction
 Poursuivre la correction des points relevés dans l'audit utilisateur (sur la base de la PR #7 ou de la branche de travail convenue) en appliquant le protocole de vérification irréfutable et en maintenant la structure du dépôt alignée.
