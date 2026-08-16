@@ -6,6 +6,7 @@
 - [2026-08-15] Complete README Overhaul: Landing Page UX, Hosted Excalidraw SVGs, Official Transparent Logo & Landscape Hero Banner, Bilingual Line-for-Line Isomorphism (475 lines), and De-AI Humanization Pass
 - [2026-08-15] Local CI Runner (`ci.sh`) & Exhaustive Multi-Agent Repository Audit (`organize-repos`)
 - [2026-08-16] Parameter `output_path` Migration, Inode Security Hardening & Zero-Slop Rollback (PR #7, Confidence Score 5/5)
+- [2026-08-16] Atomic xdotool Chaining & Input Boundaries in `gui_window_resize_move` (PR #8, Confidence Score 5/5 Greptile & CodeRabbit, 27/27 Tests)
 
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -29,6 +30,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-08-16] Chaînage de commandes `xdotool` dans `gui_window_resize_move` (PR #8)
+  - **Context**: L'exécution de deux appels `subprocess.run` séparés (`windowsize` puis `windowmove`) créait un état intermédiaire et un surcoût de processus.
+  - **Discarded Options**: Conserver deux appels distincts ; exécuter via un script shell intermédiaire.
+  - **Rationale**: Une commande xdotool unique chaînée regroupe les arguments dans une seule invocation, supprime le surcoût de démarrage de processus et réduit la fenêtre de course tout en maintenant la compatibilité sur l'ensemble des gestionnaires de fenêtres X11.
 - [2026-08-14] Monolithic FastMCP Architecture over Multi-Microservice Topology
   - **Context**: LLM context limits and port conflict risks under multiple concurrent tool servers.
   - **Discarded Options**: Dynamic subprocess spawning per tool group; separated multi-server endpoints.
@@ -63,7 +68,7 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `main` : Stable production release with complete bilingual landing pages, 25/25 Zero-Slop test harness, and hardened screenshot rollback lifecycle.
+- `main` : Stable production release with complete bilingual landing pages, 27/27 Zero-Slop test harness, hardened screenshot rollback lifecycle and atomic window resize/move chaining.
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status

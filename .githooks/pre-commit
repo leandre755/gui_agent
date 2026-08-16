@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "[Pre-Commit] Démarrage des 8 couches de validation Zero-Slop (Python/FastMCP)..."
+echo "[Quality-Gate] Initialisation du pipeline de validation multi-étapes (Python/FastMCP)..."
 
 # 1. Scan Anti-Fuite de Secrets et Fichiers Critiques (.env, git_credential*.json)
 echo "[Pre-Commit] 1/8 - Scan Anti-Fuite de Secrets et fichiers sensibles..."
@@ -113,4 +113,4 @@ $UV_CMD run --with semgrep semgrep scan --config auto --quiet --error || {
   exit 1
 }
 
-echo "[Pre-Commit] Les 8 couches de validation Zero-Slop (Anti-leak, CVE, Ruff Lint, Format, Mypy, Sonar/Smells, Bandit, Semgrep) sont 100% validées."
+echo "[Quality-Gate] Pipeline validé avec succès (Secrets, CVE, Lint, Typage, Qualité, SAST). Commit autorisé."
