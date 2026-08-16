@@ -14,8 +14,9 @@ from pathlib import Path
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 USES_PATTERN = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(.+))?\s*$")
 JOB_HEADER_PATTERN = re.compile(r"^ {2}([a-zA-Z0-9_-]+):\s*$")
-TIMEOUT_PATTERN = re.compile(r"^\s*timeout-minutes:\s*([0-9]+)\s*$")
-RUNS_ON_PATTERN = re.compile(r"^\s*runs-on:\s*([a-zA-Z0-9_.-]+)\s*$")
+TIMEOUT_PATTERN = re.compile(r"^\s*timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$")
+RUNS_ON_PATTERN = re.compile(r"^\s*runs-on:\s*\S.*$")
+PERSIST_CREDENTIALS_TRUE_PATTERN = re.compile(r"^\s*persist-credentials:\s*true\b(?:\s*#.*)?$")
 
 
 class WorkflowVerifier:
@@ -34,13 +35,25 @@ class WorkflowVerifier:
         prefix = f"{self.path}:{line_no}: " if line_no is not None else f"{self.path}: "
         self.warnings.append(f"{prefix}{message}")
 
+    def _extract_on_section(self) -> str:
+        """Extrait les lignes correspondant à la directive top-level 'on:'."""
+        in_on = False
+        on_lines: list[str] = []
+        for line in self.lines:
+            if re.match(r"^on:\s*", line):
+                in_on = True
+                on_lines.append(line)
+                continue
+            if in_on:
+                if line and not line.startswith(" ") and not line.startswith("#"):
+                    break
+                on_lines.append(line)
+        return "\n".join(on_lines)
+
     def verify_forbidden_triggers(self) -> None:
-        for idx, line in enumerate(self.lines, start=1):
-            if re.search(r"^\s*pull_request_target\s*:", line):
-                self.log_error(
-                    "pull_request_target est formellement interdit pour des raisons de sécurité.",
-                    line_no=idx,
-                )
+        on_text = self._extract_on_section()
+        if re.search(r"\bpull_request_target\b", on_text):
+            self.log_error("pull_request_target est formellement interdit pour des raisons de sécurité.")
 
     def verify_top_level_permissions(self) -> None:
         # Vérifie la présence d'un bloc top-level permissions
@@ -48,14 +61,18 @@ class WorkflowVerifier:
         if not has_top_permissions:
             self.log_error("Bloc top-level 'permissions:' manquant (least-privilege obligatoire).")
 
-        # Interdiction absolue de write-all
+        # Interdiction absolue de write-all ou write scalaire
         for idx, line in enumerate(self.lines, start=1):
-            if re.search(r"permissions:\s*write-all\b", line):
-                self.log_error("L'utilisation de 'permissions: write-all' est strictement interdite.", line_no=idx)
+            if re.search(r"^permissions:\s*(?:write-all|write)\b", line):
+                self.log_error(
+                    "L'utilisation de 'permissions: write-all' ou 'permissions: write' est strictement interdite.",
+                    line_no=idx,
+                )
 
     def verify_concurrency(self) -> None:
-        # Si le workflow écoute sur pull_request ou push, la clé concurrency top-level doit être définie
-        has_pr_or_push = bool(re.search(r"^\s*(?:pull_request|push)\s*:", self.text, flags=re.MULTILINE))
+        on_text = self._extract_on_section()
+        # Détecte pull_request et push sous toutes leurs formes (mapping, flow style list, scalaire)
+        has_pr_or_push = bool(re.search(r"\b(?:pull_request|push)\b", on_text))
         if has_pr_or_push:
             has_concurrency = bool(re.search(r"^concurrency:\s*(?:#.*)?$", self.text, flags=re.MULTILINE))
             if not has_concurrency:
@@ -108,7 +125,7 @@ class WorkflowVerifier:
 
     def verify_action_pins_and_credentials(self) -> None:
         for idx, line in enumerate(self.lines, start=1):
-            if "persist-credentials: true" in line:
+            if PERSIST_CREDENTIALS_TRUE_PATTERN.match(line):
                 self.log_error("persist-credentials: true est formellement interdit.", line_no=idx)
 
             match = USES_PATTERN.match(line)

@@ -22,7 +22,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo ""
     echo "Options:"
     echo "  -h, --help       Affiche cette aide et quitte."
-    echo "  --quick          Exécute uniquement la compilation, le linter et les tests (ignore mypy et le formatage)."
+    echo "  --quick          Exécute la compilation, la validation des workflows, le linter et les tests (ignore mypy et le formatage)."
     echo "  --no-headless    Désactive l'exécution sous xvfb-run pour les tests."
     exit 0
 fi

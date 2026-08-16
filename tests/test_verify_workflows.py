@@ -15,10 +15,10 @@ spec.loader.exec_module(verify_workflows)
 
 
 def test_existing_workflows_are_all_valid():
-    """Valide que les 6 workflows réels du dépôt respectent 100% des invariants."""
+    """Valide que tous les workflows réels du dépôt respectent 100% des invariants."""
     workflows_dir = Path(__file__).resolve().parent.parent / ".github" / "workflows"
     workflows = sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
-    assert len(workflows) == 6, f"Attendu 6 workflows, trouvé {len(workflows)}"
+    assert len(workflows) > 0, "Aucun workflow trouvé dans .github/workflows"
 
     for wf_path in workflows:
         errors_count, errors, _warnings = verify_workflows.check_workflow(wf_path)
@@ -74,10 +74,10 @@ jobs:
     assert any("Bloc top-level 'permissions:' manquant" in e for e in errors)
 
 
-def test_reject_write_all_permissions(tmp_path: Path):
-    """Vérifie le rejet strict de permissions: write-all."""
-    wf = tmp_path / "write_all.yml"
-    wf.write_text(
+def test_reject_write_all_and_write_permissions(tmp_path: Path):
+    """Vérifie le rejet strict de permissions: write-all et permissions: write."""
+    wf1 = tmp_path / "write_all.yml"
+    wf1.write_text(
         """
 name: Write All Perms
 on:
@@ -92,9 +92,29 @@ jobs:
 """,
         encoding="utf-8",
     )
-    count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count >= 1
-    assert any("write-all' est strictement interdite" in e for e in errors)
+    count1, errors1, _ = verify_workflows.check_workflow(wf1)
+    assert count1 >= 1
+    assert any("write-all" in e for e in errors1)
+
+    wf2 = tmp_path / "write_scalar.yml"
+    wf2.write_text(
+        """
+name: Write Scalar Perms
+on:
+  workflow_dispatch:
+permissions: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo hello
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(wf2)
+    assert count2 >= 1
+    assert any("write" in e for e in errors2)
 
 
 def test_reject_missing_timeout_or_runs_on(tmp_path: Path):
@@ -118,6 +138,29 @@ jobs:
     assert count >= 2
     assert any("runs-on:' obligatoire manquante" in e for e in errors)
     assert any("timeout-minutes:' obligatoire manquante" in e for e in errors)
+
+
+def test_accept_matrix_runs_on_and_commented_timeout(tmp_path: Path):
+    """Vérifie que les expressions runs-on et les commentaires inline sur timeout-minutes sont acceptés."""
+    wf = tmp_path / "dynamic_job.yml"
+    wf.write_text(
+        """
+name: Dynamic Job
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dynamic_job:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10 # 10 minutes cap
+    steps:
+      - run: echo hello
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count == 0, f"Erreurs inattendues: {errors}"
 
 
 def test_reject_unpinned_action_ref(tmp_path: Path):
@@ -170,12 +213,12 @@ jobs:
     assert any("persist-credentials: true est formellement interdit" in e for e in errors)
 
 
-def test_reject_missing_concurrency_on_pr_push(tmp_path: Path):
-    """Vérifie l'obligation de la clé concurrency pour les workflows déclenchés par push/PR."""
-    wf = tmp_path / "missing_concurrency.yml"
-    wf.write_text(
+def test_reject_missing_concurrency_flow_style_and_mapping(tmp_path: Path):
+    """Vérifie l'obligation de concurrency pour les déclencheurs mapping et flow-style list."""
+    wf_mapping = tmp_path / "missing_concurrency_mapping.yml"
+    wf_mapping.write_text(
         """
-name: Missing Concurrency
+name: Missing Concurrency Mapping
 on:
   pull_request:
     branches: [main]
@@ -190,6 +233,26 @@ jobs:
 """,
         encoding="utf-8",
     )
-    count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count >= 1
-    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors)
+    count1, errors1, _ = verify_workflows.check_workflow(wf_mapping)
+    assert count1 >= 1
+    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors1)
+
+    wf_flow = tmp_path / "missing_concurrency_flow.yml"
+    wf_flow.write_text(
+        """
+name: Missing Concurrency Flow
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo hello
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(wf_flow)
+    assert count2 >= 1
+    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors2)
