@@ -2,7 +2,7 @@
 name: Documentation
 about: Improve documentation, examples, or guides
 title: "[DOCS] "
-labels: ["documentation", "needs-triage"]
+labels: ["documentation"]
 ---
 
 ## 📖 Documentation Issue

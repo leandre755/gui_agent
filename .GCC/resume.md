@@ -17,7 +17,7 @@
 ## ⚡ Technical Diffs / Atomic Modifications
 - **Branch**: `main` (commit [`6c111b8`](https://github.com/leandre755/gui_agent/commit/6c111b8))
 - **File**: `gui_agent/server.py`
-  - **Scope**: Chaînage atomique de `windowsize` et `windowmove` dans un unique appel `subprocess.run([xdotool_bin, "windowsize", str(window_id), str(width), str(height), "windowmove", str(window_id), str(x), str(y)])`.
+  - **Scope**: Chaînage de `windowsize` et `windowmove` dans une invocation unique de sous-processus `subprocess.run([xdotool_bin, "windowsize", str(window_id), str(width), str(height), "windowmove", str(window_id), str(x), str(y)])` afin de réduire la fenêtre de course.
 - **File**: `tests/test_package.py`
   - **Scope**: Tests unitaires `test_gui_window_resize_move_atomic_command` et `test_gui_window_resize_move_invalid_params` sans directives d'inhibition.
 - **File**: `README.md` & `README.fr.md`
@@ -39,6 +39,6 @@
 - **Blocker / Failure Explanation**: Aucun. Tous les objectifs de la session ont été complétés, testés et validés à 100%.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target Branch**: `main` (ou nouvelle branche thématique pour les prochains chantiers).
-2. **Next Epic**: Poursuivre le plan d'organisation du dépôt ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) selon les directives validées.
+1. **Target Branch**: `fix/issue-triage-template-compliance` (branche de PR dédiée).
+2. **Next Epic**: Poursuivre le plan d'organisation du dépôt ([plan_organize_repo.md](branches/plan_organize_repo.md)) selon les directives validées.
 3. **Verification Command**: `./ci.sh`

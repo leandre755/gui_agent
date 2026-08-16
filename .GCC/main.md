@@ -69,7 +69,7 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 
 ## 🌿 Active Branches / Plans
 - `main` : Stable production release with complete bilingual landing pages, 27/27 Zero-Slop test harness, hardened screenshot rollback lifecycle and atomic window resize/move chaining.
-- `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](file:///home/omni/Code/gui_agent/.GCC/branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
+- `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
 - ✅ Done:
