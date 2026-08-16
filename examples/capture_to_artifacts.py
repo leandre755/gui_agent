@@ -8,7 +8,6 @@ import mcp_gui_server
 
 
 def main():
-    """Effectue une capture d'écran d'exemple et la copie vers un dossier cible."""
     print("Prise de la capture d'écran...")
     res = mcp_gui_server.gui_take_screenshot(apply_grid=True, grid_interval=100)
     if res.get("status") != "success":

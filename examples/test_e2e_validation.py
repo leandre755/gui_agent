@@ -27,7 +27,6 @@ from mcp_gui_server import (
 
 
 def run_e2e_validation():
-    """Exécute l'ensemble des scénarios de validation bout-en-bout (E2E) du serveur."""
     print("=" * 70)
     print("      DÉBUT DU TEST D'INTÉGRATION END-TO-END (E2E) - MCP GUI SERVER")
     print("=" * 70)
