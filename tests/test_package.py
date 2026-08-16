@@ -469,3 +469,51 @@ def test_gui_take_screenshot_cleanup_quarantine_collision_preserves_foreign_file
     assert os.path.isfile(target)
     with open(target, "rb") as check_f:
         assert check_f.read() == b"collision_file_on_target"
+
+
+def test_gui_window_resize_move_atomic_command(monkeypatch):
+    """Vérifie que gui_window_resize_move exécute un unique appel subprocess.run chaîné."""
+    import subprocess
+    from unittest.mock import MagicMock
+
+    calls = []
+
+    def mock_run(cmd, *args, **kwargs):
+        calls.append(cmd)
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        return mock_res
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+
+    res = gui_agent.server.gui_window_resize_move(window_id=12345, x=100, y=200, width=800, height=600)
+
+    assert res["status"] == "success"
+    assert res["window_id"] == 12345
+    assert res["x"] == 100
+    assert res["y"] == 200
+    assert res["width"] == 800
+    assert res["height"] == 600
+    assert len(calls) == 1
+    assert calls[0] == [
+        "/usr/bin/xdotool",
+        "windowsize",
+        "12345",
+        "800",
+        "600",
+        "windowmove",
+        "12345",
+        "100",
+        "200",
+    ]
+
+
+def test_gui_window_resize_move_invalid_params():
+    """Vérifie les validations de paramètres pour gui_window_resize_move."""
+    bad_y: int = "bad"  # type checked dynamically at runtime
+    assert gui_agent.server.gui_window_resize_move(-1, 0, 0, 100, 100)["status"] == "error"
+    assert gui_agent.server.gui_window_resize_move(1, bad_y, 0, 100, 100)["status"] == "error"
+    assert gui_agent.server.gui_window_resize_move(1, 0, 0, 0, 100)["status"] == "error"
+    assert gui_agent.server.gui_window_resize_move(1, 0, 0, 100, -5)["status"] == "error"

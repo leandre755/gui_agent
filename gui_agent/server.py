@@ -978,9 +978,20 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
 
     try:
         subprocess.run(
-            [xdotool_bin, "windowsize", str(window_id), str(width), str(height)], check=True, stderr=subprocess.PIPE
+            [
+                xdotool_bin,
+                "windowsize",
+                str(window_id),
+                str(width),
+                str(height),
+                "windowmove",
+                str(window_id),
+                str(x),
+                str(y),
+            ],
+            check=True,
+            stderr=subprocess.PIPE,
         )
-        subprocess.run([xdotool_bin, "windowmove", str(window_id), str(x), str(y)], check=True, stderr=subprocess.PIPE)
         return {
             "status": "success",
             "message": f"Fenêtre {window_id} déplacée à ({x}, {y}) et redimensionnée à {width}x{height}",
