@@ -33,9 +33,16 @@
       "write_file(.github/workflows/)",
       "write_file(.github/scripts/)",
       "write_file(.github/CODEOWNERS)",
-      "write_file(githooks/)",
-      "write_file(setup.sh)",
-      "write_file(setup.ps1)"
+      "write_file(AUTONOMY.md)",
+      "write_file(.devin/)",
+      "write_file(.windsurf/)",
+      "write_file(.coding-stuff/)",
+      "write_file(.githooks/)",
+      "write_file(install.sh)",
+      "write_file(install.ps1)",
+      "write_file(uninstall.sh)",
+      "write_file(uninstall.ps1)",
+      "write_file(ci.sh)"
     ]
   }
 }
