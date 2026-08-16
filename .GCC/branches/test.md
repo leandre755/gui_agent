@@ -48,7 +48,7 @@
 | **Automated Installer (PowerShell)** | `pwsh -File ./install.ps1 -DryRun` | AST syntax check + garde d'exécution Windows | AST validé, garde d'environnement opérationnelle | **PASS** |
 | **Windows Skill** | `skills/gui-agent-windows-install/SKILL.md` | Structure standard Agent Skills (agentskills.io) | Frontmatter, Rôle, 5 Règles, 2 Few-shot, Checklist validés | **PASS** |
 | **Zero-Slop Pre-Commit** | `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` | 8 couches de validation (Anti-leak, CVE, Ruff, Mypy, Sonar, Bandit, Semgrep) | 100% PASS (0 warning, 0 error) | **PASS** |
-| **Screenshot Output Security & Rollback (PR #7)** | `pytest -k test_gui_take_screenshot` | Rejet conflits format/ext, anti-écrasement incrémental (1)/(2), répertoires rejetés, chemins relatifs normalisés, réservation atomique O_CREAT/O_EXCL, suppression liée au descripteur de répertoire parent (dir_fd / O_DIRECTORY) avec O_NOFOLLOW et fstat(file_fd), rollback sur échec de réservation brute, encodage Base64 sécurisé par inode | 13/13 tests passés (60.55s) | **PASS** |
+| **Screenshot Output Security & Rollback (PR #7)** | `pytest -k test_gui_take_screenshot` | Rejet conflits format/ext, anti-écrasement incrémental (1)/(2), répertoires rejetés, chemins relatifs normalisés, réservation atomique O_CREAT/O_EXCL, suppression liée au descripteur de répertoire parent (dir_fd / O_DIRECTORY) avec O_NOFOLLOW, double vérification d'inode, protection contre la substitution de source dans _copy_file_safely, rollback sur échec de réservation brute, encodage Base64 sécurisé par inode | 15/15 tests passés (61.69s) | **PASS** |
 
 ---
 

@@ -296,6 +296,39 @@ def test_gui_take_screenshot_cleanup_matching_identity_safely_unlinked(tmp_path)
     assert not os.path.exists(target), "Le fichier réservé avec inode correspondant doit être supprimé"
 
 
+def test_gui_take_screenshot_cleanup_race_substitution_after_fstat_preserved(tmp_path):
+    """Teste qu'une substitution concurrente survenant après le fstat est détectée et protégée."""
+    import os
+    from unittest.mock import patch
+
+    target = str(tmp_path / "race_cleanup" / "capture.png")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "w", encoding="utf-8") as f:
+        f.write("RESERVED_ORIGINAL")
+
+    st = os.stat(target)
+    orig_identity = (st.st_dev, st.st_ino)
+
+    orig_fstat = os.fstat
+
+    def mock_fstat_inject_substitution(fd):
+        res = orig_fstat(fd)
+        # Dès que fstat est exécuté, simuler une substitution concurrente du chemin par un fichier étranger
+        if (res.st_dev, res.st_ino) == orig_identity:
+            os.remove(target)
+            with open(target, "w", encoding="utf-8") as f_new:
+                f_new.write("NEW_CONCURRENT_FOREIGN_FILE")
+        return res
+
+    with patch("os.fstat", side_effect=mock_fstat_inject_substitution):
+        gui_agent.server._cleanup_reserved_file_safely(target, orig_identity)
+
+    # Le fichier substitué après le premier fstat ne doit pas avoir été supprimé
+    assert os.path.isfile(target)
+    with open(target, encoding="utf-8") as f_check:
+        assert f_check.read() == "NEW_CONCURRENT_FOREIGN_FILE"
+
+
 def test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target(tmp_path):
     """Teste que la détection d'un mismatch d'inode protège totalement le fichier étranger."""
     import os
@@ -315,6 +348,29 @@ def test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target(tmp_path):
     assert os.path.isfile(subst_target)
     with open(subst_target, encoding="utf-8") as f_res:
         assert f_res.read() == "FOREIGN_CONCURRENT_FILE"
+
+
+def test_gui_take_screenshot_copy_safely_source_substitution_protection(tmp_path):
+    """Teste que _copy_file_safely rejette et interrompt la copie si la source a été substituée."""
+    import os
+    import pytest
+
+    src = str(tmp_path / "copy_test" / "src.png")
+    dst = str(tmp_path / "copy_test" / "dst.png")
+    os.makedirs(os.path.dirname(src), exist_ok=True)
+    with open(src, "w") as f:
+        f.write("SRC")
+    with open(dst, "w") as f:
+        f.write("DST")
+
+    st_src = os.stat(src)
+    st_dst = os.stat(dst)
+    src_id = (st_src.st_dev, st_src.st_ino)
+    dst_id = (st_dst.st_dev, st_dst.st_ino)
+
+    fake_src_id = (src_id[0], src_id[1] + 777777)
+    with pytest.raises(RuntimeError, match="substitution de fichier concurrente sur la source"):
+        gui_agent.server._copy_file_safely(src, dst, fake_src_id, dst_id)
 
 
 def test_gui_take_screenshot_include_base64_nominal_and_protection(tmp_path):

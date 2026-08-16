@@ -262,20 +262,34 @@ def _write_pil_image_safely(
         os.close(fd)
 
 
-def _copy_file_safely(src_path: str, dst_path: str, expected_dst_identity: tuple[int, int]) -> None:
-    """Copie le contenu d'un fichier source dans un fichier destination réservé en vérifiant son identité."""
-    fd_dst = os.open(dst_path, os.O_WRONLY)
+def _copy_file_safely(
+    src_path: str, dst_path: str, expected_src_identity: tuple[int, int], expected_dst_identity: tuple[int, int]
+) -> None:
+    """Copie le contenu d'un fichier source dans un fichier destination réservé en vérifiant les deux identités d'inodes."""
+    fd_src = os.open(src_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
     try:
-        st = os.fstat(fd_dst)
-        if (st.st_dev, st.st_ino) != expected_dst_identity:
-            raise RuntimeError(f"Détection d'une substitution de fichier concurrente sur '{dst_path}'. Copie annulée.")
-        os.ftruncate(fd_dst, 0)
-        os.lseek(fd_dst, 0, os.SEEK_SET)
-        with open(src_path, "rb") as f_src, open(fd_dst, "wb", closefd=False) as f_dst:
-            shutil.copyfileobj(f_src, f_dst)
-            f_dst.flush()
+        st_src = os.fstat(fd_src)
+        if (st_src.st_dev, st_src.st_ino) != expected_src_identity:
+            raise RuntimeError(
+                f"Détection d'une substitution de fichier concurrente sur la source '{src_path}'. Copie annulée."
+            )
+
+        fd_dst = os.open(dst_path, os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            st_dst = os.fstat(fd_dst)
+            if (st_dst.st_dev, st_dst.st_ino) != expected_dst_identity:
+                raise RuntimeError(
+                    f"Détection d'une substitution de fichier concurrente sur la destination '{dst_path}'. Copie annulée."
+                )
+            os.ftruncate(fd_dst, 0)
+            os.lseek(fd_dst, 0, os.SEEK_SET)
+            with open(fd_src, "rb", closefd=False) as f_src, open(fd_dst, "wb", closefd=False) as f_dst:
+                shutil.copyfileobj(f_src, f_dst)
+                f_dst.flush()
+        finally:
+            os.close(fd_dst)
     finally:
-        os.close(fd_dst)
+        os.close(fd_src)
 
 
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
@@ -286,7 +300,6 @@ def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tu
     parent_dir = os.path.dirname(target_path) or "."
     filename = os.path.basename(target_path)
 
-    # Suppression atomique liée au descripteur de répertoire (élimine toute fenêtre TOCTOU de renommage)
     dir_fd = None
     file_fd = None
     try:
@@ -300,9 +313,12 @@ def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tu
             file_flags |= os.O_NOFOLLOW
 
         file_fd = os.open(filename, file_flags, dir_fd=dir_fd)
-        st = os.fstat(file_fd)
-        if (st.st_dev, st.st_ino) == expected_identity:
-            os.unlink(filename, dir_fd=dir_fd)
+        st_file = os.fstat(file_fd)
+        if (st_file.st_dev, st_file.st_ino) == expected_identity:
+            # Vérification atomique supplémentaire de l'entrée répertoire avant unlink
+            st_entry = os.stat(filename, dir_fd=dir_fd)
+            if (st_entry.st_dev, st_entry.st_ino) == expected_identity:
+                os.unlink(filename, dir_fd=dir_fd)
     except OSError:
         pass
     finally:
@@ -503,8 +519,8 @@ def gui_take_screenshot(
             # Sauvegarde sécurisée de l'image avec grille (avec vérification de l'inode)
             _write_pil_image_safely(grid_img, final_path, final_identity, pil_format, save_kwargs)
         else:
-            # Pas de grille, copie sécurisée de l'image brute vers le fichier final en vérifiant l'inode destination
-            _copy_file_safely(raw_path, final_path, final_identity)
+            # Pas de grille, copie sécurisée de l'image brute vers le fichier final en vérifiant les deux inodes
+            _copy_file_safely(raw_path, final_path, raw_identity, final_identity)
 
         base64_data = None
         if include_base64:

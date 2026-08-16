@@ -222,7 +222,7 @@ Captures full-screen or cropped images with an optional Cartesian coordinate gri
   - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
   - `output_path` (`str | None`, default `None`): Destination file path. Relative paths are resolved to absolute paths and missing parent directories are created. Empty paths and existing directories are rejected. If the path lacks an extension, the extension corresponding to `format` is automatically appended. Incompatible extensions are rejected. If the target file already exists, atomic reservation with incremental suffixes such as `(1)` and `(2)` protects existing files from overwrite. `screenshot_path` returns the actual resolved absolute path used. If omitted, defaults to a timestamped image in the screenshots directory.
   - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
-- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `resolution`, `grid_applied`, and `renamed_due_to_conflict`.
+- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message`, and `base64_data` (present when `include_base64` is enabled).
 
 #### `gui_mouse_move`
 Smoothly translates the mouse cursor to target coordinates.

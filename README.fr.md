@@ -222,7 +222,7 @@ Capture des images plein écran ou rognées avec incrustation optionnelle d'une 
   - `quality` (`int`, valeur par défaut `80`) : Qualité de compression (1-100) pour la sortie JPEG.
   - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination. Les chemins relatifs sont résolus en chemins absolus et les dossiers parents manquants sont créés. Les chemins vides et les répertoires existants sont rejetés. Si le chemin n'a pas d'extension, l'extension correspondant à `format` est automatiquement ajoutée. Une extension incompatible est rejetée. Si le fichier existe déjà, une réservation atomique et l'ajout de suffixes incrémentaux tels que `(1)` et `(2)` protègent le fichier existant contre l'écrasement. `screenshot_path` contient le chemin absolu effectivement utilisé. Par défaut : image horodatée dans le dossier des captures.
   - `include_base64` (`bool`, valeur par défaut `False`) : Renvoie la représentation textuelle encodée en Base64.
-- **Retourne** : `dict` contenant `screenshot_path` (chemin absolu résolu), `raw_screenshot_path`, `resolution`, `grid_applied` et `renamed_due_to_conflict`.
+- **Retourne** : `dict` contenant `screenshot_path` (chemin absolu résolu), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message` et `base64_data` (présent lorsque `include_base64` est activé).
 
 #### `gui_mouse_move`
 Déplace de manière fluide le curseur de la souris vers les coordonnées cibles.
