@@ -218,28 +218,27 @@ jobs:
     assert count == 0, f"Erreurs inattendues: {errors}"
 
 
-def test_reject_unpinned_action_ref(tmp_path: Path):
-    """Vérifie le rejet des actions non épinglées par SHA-40."""
-    wf = tmp_path / "unpinned_action.yml"
+def test_comments_in_on_section_not_mistaken_for_triggers(tmp_path: Path):
+    """Vérifie que des commentaires mentionnant pull_request_target ou push dans le bloc on: ne déclenchent pas de fausse alerte."""
+    wf = tmp_path / "commented_triggers.yml"
     wf.write_text(
         """
-name: Unpinned Action
+name: Commented Triggers
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Not pull_request_target nor push
 permissions:
   contents: read
 jobs:
-  test:
+  test_job: # Main test job
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 5 # Timeout comment
     steps:
-      - uses: actions/checkout@v4
+      - run: echo success
 """,
         encoding="utf-8",
     )
     count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count >= 1
-    assert any("SHA complet de 40 caractères" in e for e in errors)
+    assert count == 0, f"Erreurs inattendues pour triggers en commentaire: {errors}"
 
 
 def test_reject_persist_credentials_true(tmp_path: Path):

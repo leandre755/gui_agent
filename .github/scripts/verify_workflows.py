@@ -32,6 +32,27 @@ def decode_yaml_key(raw_key: str) -> str:
     return key
 
 
+def strip_yaml_comment(line: str) -> str:
+    """Supprime les commentaires YAML en fin de ligne en préservant le contenu entre guillemets."""
+    in_single = False
+    in_double = False
+    escaped = False
+    for idx, char in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and in_double:
+            escaped = True
+            continue
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif char == "#" and not in_single and not in_double:
+            return line[:idx].rstrip()
+    return line
+
+
 class WorkflowVerifier:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -49,33 +70,31 @@ class WorkflowVerifier:
         self.warnings.append(f"{prefix}{message}")
 
     def _extract_on_section(self) -> str:
-        """Extrait les lignes correspondant à la directive top-level 'on:'."""
+        """Extrait les lignes correspondant à la directive top-level 'on:' en dépouillant les commentaires."""
         in_on = False
         on_lines: list[str] = []
         for line in self.lines:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                if in_on:
-                    on_lines.append(line)
+            stripped_code = strip_yaml_comment(line).rstrip()
+            if not stripped_code.strip():
                 continue
 
             current_indent = len(line) - len(line.lstrip(" "))
 
             # Vérification de clé top-level (indentation 0)
             if current_indent == 0:
-                top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                 if top_match:
                     raw_k = top_match.group(1).strip()
                     decoded_k = decode_yaml_key(raw_k)
                     if decoded_k == "on":
                         in_on = True
-                        on_lines.append(line)
+                        on_lines.append(stripped_code)
                         continue
                     elif in_on:
                         break
 
             if in_on:
-                on_lines.append(line)
+                on_lines.append(stripped_code)
         return "\n".join(on_lines)
 
     def verify_forbidden_triggers(self) -> None:
@@ -86,9 +105,10 @@ class WorkflowVerifier:
     def verify_top_level_permissions(self) -> None:
         has_top_permissions = False
         for idx, line in enumerate(self.lines, start=1):
+            stripped_code = strip_yaml_comment(line).rstrip()
             current_indent = len(line) - len(line.lstrip(" "))
             if current_indent == 0:
-                top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                 if top_match:
                     raw_k = top_match.group(1).strip()
                     val = top_match.group(2).strip()
@@ -110,9 +130,10 @@ class WorkflowVerifier:
         if has_pr_or_push:
             has_concurrency = False
             for line in self.lines:
+                stripped_code = strip_yaml_comment(line).rstrip()
                 current_indent = len(line) - len(line.lstrip(" "))
                 if current_indent == 0:
-                    top_match = re.match(r"^([^:]+):\s*(.*)$", line)
+                    top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                     if top_match:
                         raw_k = top_match.group(1).strip()
                         decoded_k = decode_yaml_key(raw_k)
@@ -131,8 +152,8 @@ class WorkflowVerifier:
         job_direct_properties: dict[str, list[tuple[int, str]]] = {}
 
         for idx, line in enumerate(self.lines, start=1):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
+            stripped_code = strip_yaml_comment(line).rstrip()
+            if not stripped_code.strip():
                 continue
 
             current_line_indent = len(line) - len(line.lstrip(" "))
@@ -140,7 +161,7 @@ class WorkflowVerifier:
             # Détection de la section top-level 'jobs:'
             if not in_jobs_block:
                 if current_line_indent == 0:
-                    top_match = re.match(r"^([^:]+):\s*(?:#.*)?$", line)
+                    top_match = re.match(r"^([^:]+):\s*(?:#.*)?$", stripped_code)
                     if top_match and decode_yaml_key(top_match.group(1).strip()) == "jobs":
                         in_jobs_block = True
                         jobs_indent = current_line_indent
@@ -152,8 +173,8 @@ class WorkflowVerifier:
                 current_job = None
                 continue
 
-            # Détection d'un en-tête de job
-            header_match = re.match(r"^(\s+)([^:]+):\s*$", line)
+            # Détection d'un en-tête de job avec gestion des commentaires inline
+            header_match = re.match(r"^(\s+)([^:]+):\s*(?:#.*)?$", stripped_code)
             if header_match and (job_indent is None or current_line_indent == job_indent):
                 job_indent = len(header_match.group(1))
                 current_job = decode_yaml_key(header_match.group(2).strip())
@@ -200,8 +221,8 @@ class WorkflowVerifier:
                             next_indent = len(next_line) - len(next_line.lstrip(" "))
                             if next_indent <= direct_prop_indent:
                                 break
-                            next_stripped = next_line.strip()
-                            if next_stripped and not next_stripped.startswith("#"):
+                            next_stripped = strip_yaml_comment(next_line).strip()
+                            if next_stripped:
                                 has_runs_on = True
                                 break
 
