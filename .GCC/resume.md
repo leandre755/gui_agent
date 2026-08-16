@@ -20,9 +20,9 @@
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `gui_agent/server.py`
-  - **Scope**: Suppression de `save_to_artifacts`, ajout de `output_path`, création de `_reserve_unique_file_path` (atomique via `os.O_CREAT | os.O_EXCL`), normalisation absolue de `SCREENSHOTS_DIR`, validation stricte d'extension / format d'encodage, protection anti-écrasement incrémentale `(1)`, `(2)`, et rollback garanti (nettoyage des réservations) en cas d'échec de sauvegarde.
+  - **Scope**: Suppression de `save_to_artifacts`, ajout de `output_path`, création de `_reserve_unique_file_path` (atomique via `os.O_CREAT | os.O_EXCL` avec capture d'identifiant d'inode `(st_dev, st_ino)`), écriture/copie sécurisée avec vérification d'inode (`_write_pil_image_safely`, `_copy_file_safely`), protection anti-écrasement incrémentale `(1)`, `(2)`, et rollback garanti avec vérification d'identité (`_cleanup_reserved_file_safely`) empêchant toute suppression de fichier étranger substitué.
 - **File**: `tests/test_package.py`
-  - **Scope**: `test_gui_take_screenshot_output_path` étendu pour couvrir cas nominal absolu/relatif, JPEG/PNG, rejet d'incohérence, rejet de répertoire, multi-collision incrémentale (1 & 2), `SCREENSHOTS_DIR` relatif, et nettoyage des réservations sur simulation d'erreur disque.
+  - **Scope**: `test_gui_take_screenshot_output_path` étendu pour couvrir cas nominal absolu/relatif, JPEG/PNG, rejet d'incohérence, rejet de répertoire, multi-collision incrémentale (1 & 2), `SCREENSHOTS_DIR` relatif, nettoyage des réservations sur erreur disque et test de non-suppression sur substitution d'inode.
 - **File**: `examples/test_evolutions.py`
   - **Scope**: Migration vers `output_path` dans un dossier temporaire isolé `tempfile.TemporaryDirectory()`, test d'existence avec `os.path.isfile`, validation directe de `raw_screenshot_path`.
 - **File**: `README.md` & `README.fr.md`

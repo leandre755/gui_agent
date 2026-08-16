@@ -204,11 +204,13 @@ def gui_get_screen_info() -> dict[str, Any]:
 
 def _reserve_unique_file_path(
     base_dir: str, stem: str, ext: str, original_candidate: str | None = None
-) -> tuple[str, bool]:
-    """Réserve atomiquement un chemin de fichier unique sur disque en évitant les race conditions.
+) -> tuple[str, bool, tuple[int, int]]:
+    """Réserve atomiquement un chemin de fichier unique sur disque et enregistre son identifiant (dev, ino).
 
-    Crée un fichier vide verrouillé via os.O_CREAT | os.O_EXCL pour garantir qu'aucun
+    Crée un fichier vide via os.O_CREAT | os.O_EXCL pour garantir qu'aucun
     autre processus concurrent ne puisse s'approprier le même nom de fichier.
+    Retourne le chemin, le booléen de renommage et la signature inode (st_dev, st_ino)
+    pour sécuriser les opérations ultérieures contre les substitutions de fichiers.
     """
     os.makedirs(base_dir, exist_ok=True)
     counter = 0
@@ -222,10 +224,15 @@ def _reserve_unique_file_path(
 
         try:
             fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-            os.close(fd)
+            try:
+                st = os.fstat(fd)
+                file_identity = (st.st_dev, st.st_ino)
+            finally:
+                os.close(fd)
+
             if counter > 0:
                 renamed = True
-            return candidate, renamed
+            return candidate, renamed, file_identity
         except FileExistsError as err:
             counter += 1
             if counter > 10000:
@@ -234,10 +241,58 @@ def _reserve_unique_file_path(
                 ) from err
 
 
+def _write_pil_image_safely(
+    img: Any, target_path: str, expected_identity: tuple[int, int], pil_format: str, save_kwargs: dict[str, Any]
+) -> None:
+    """Écrit une image PIL dans un fichier réservé en garantissant l'identité de l'inode."""
+    # Ouvre le descripteur et vérifie que le fichier correspond exactement au descripteur réservé (pas de substitution)
+    fd = os.open(target_path, os.O_WRONLY)
+    try:
+        st = os.fstat(fd)
+        if (st.st_dev, st.st_ino) != expected_identity:
+            raise RuntimeError(
+                f"Détection d'une substitution de fichier concurrente sur '{target_path}'. Écriture annulée."
+            )
+        os.ftruncate(fd, 0)
+        os.lseek(fd, 0, os.SEEK_SET)
+        with open(fd, "wb", closefd=False) as f:
+            img.save(f, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+            f.flush()
+    finally:
+        os.close(fd)
+
+
+def _copy_file_safely(src_path: str, dst_path: str, expected_dst_identity: tuple[int, int]) -> None:
+    """Copie le contenu d'un fichier source dans un fichier destination réservé en vérifiant son identité."""
+    fd_dst = os.open(dst_path, os.O_WRONLY)
+    try:
+        st = os.fstat(fd_dst)
+        if (st.st_dev, st.st_ino) != expected_dst_identity:
+            raise RuntimeError(f"Détection d'une substitution de fichier concurrente sur '{dst_path}'. Copie annulée.")
+        os.ftruncate(fd_dst, 0)
+        os.lseek(fd_dst, 0, os.SEEK_SET)
+        with open(src_path, "rb") as f_src, open(fd_dst, "wb", closefd=False) as f_dst:
+            shutil.copyfileobj(f_src, f_dst)
+            f_dst.flush()
+    finally:
+        os.close(fd_dst)
+
+
+def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
+    """Supprime un fichier réservé en cas d'erreur uniquement s'il correspond à l'inode originel."""
+    if not target_path or not expected_identity or not os.path.exists(target_path):
+        return
+    with contextlib.suppress(OSError):
+        # Vérification de l'identité avant suppression pour éviter de supprimer un fichier étranger substitué
+        st = os.stat(target_path)
+        if (st.st_dev, st.st_ino) == expected_identity:
+            os.remove(target_path)
+
+
 def _resolve_screenshot_destination(
     output_path: str | None, fmt_clean: str, ext: str
-) -> tuple[str, str, bool, str | None] | dict[str, Any]:
-    """Résout et réserve atomiquement le chemin cible final et le chemin brut en évitant tout écrasement accidentel."""
+) -> tuple[str, str, bool, str | None, tuple[int, int], tuple[int, int]] | dict[str, Any]:
+    """Résout et réserve atomiquement le chemin cible final et le chemin brut avec leurs identifiants inode."""
     renamed_due_to_conflict = False
     original_requested_path = None
 
@@ -275,21 +330,21 @@ def _resolve_screenshot_destination(
 
         # Réservation atomique (O_CREAT | O_EXCL) avec incrémentation (1), (2)...
         original_requested_path = final_path_cand
-        final_path, renamed_due_to_conflict = _reserve_unique_file_path(
+        final_path, renamed_due_to_conflict, final_identity = _reserve_unique_file_path(
             parent_dir, stem, target_ext, original_candidate=final_path_cand
         )
     else:
         configured_dir = os.path.abspath(SCREENSHOTS_DIR)
         timestamp = int(time.time())
         stem = f"screenshot_{timestamp}"
-        final_path, _ = _reserve_unique_file_path(configured_dir, stem, ext)
+        final_path, _, final_identity = _reserve_unique_file_path(configured_dir, stem, ext)
 
     configured_raw_dir = os.path.abspath(SCREENSHOTS_DIR)
     timestamp_raw = int(time.time())
     stem_raw = f"raw_screenshot_{timestamp_raw}"
-    raw_path, _ = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
+    raw_path, _, raw_identity = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
 
-    return final_path, raw_path, renamed_due_to_conflict, original_requested_path
+    return final_path, raw_path, renamed_due_to_conflict, original_requested_path, final_identity, raw_identity
 
 
 @mcp.tool()
@@ -365,10 +420,12 @@ def gui_take_screenshot(
         if isinstance(dest_result, dict):
             return dest_result
 
-        final_path, raw_path, renamed_due_to_conflict, original_requested_path = dest_result
+        final_path, raw_path, renamed_due_to_conflict, original_requested_path, final_identity, raw_identity = (
+            dest_result
+        )
 
-        # Sauvegarde de l'image brute
-        working_img.save(raw_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+        # Sauvegarde sécurisée de l'image brute (avec vérification de l'inode)
+        _write_pil_image_safely(working_img, raw_path, raw_identity, pil_format, save_kwargs)
 
         if apply_grid:
             grid_interval = max(20, int(grid_interval))
@@ -412,11 +469,11 @@ def gui_take_screenshot(
                     )
                     draw.text((x + 6, y + 5), lbl, fill=(255, 255, 255, 255))
 
-            # Sauvegarde de l'image avec grille
-            grid_img.save(final_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
+            # Sauvegarde sécurisée de l'image avec grille (avec vérification de l'inode)
+            _write_pil_image_safely(grid_img, final_path, final_identity, pil_format, save_kwargs)
         else:
-            # Pas de grille, l'image finale est identique à l'image brute
-            shutil.copy2(raw_path, final_path)
+            # Pas de grille, copie sécurisée de l'image brute vers le fichier final en vérifiant l'inode destination
+            _copy_file_safely(raw_path, final_path, final_identity)
 
         base64_data = None
         if include_base64:
@@ -455,11 +512,8 @@ def gui_take_screenshot(
         return {"status": "error", "message": f"Échec de la capture d'écran : {e!s}"}
     finally:
         if not success:
-            for reserved_file in [final_path, raw_path]:
-                if reserved_file and os.path.exists(reserved_file):
-                    with contextlib.suppress(OSError):
-                        # Nettoie les réservations de fichiers créées (ex: 0 octet ou partiellement écrites) en cas d'erreur
-                        os.remove(reserved_file)
+            _cleanup_reserved_file_safely(final_path, locals().get("final_identity"))
+            _cleanup_reserved_file_safely(raw_path, locals().get("raw_identity"))
         for img in [raw_img, cropped_img, grid_img]:
             if img is not None:
                 with contextlib.suppress(Exception):

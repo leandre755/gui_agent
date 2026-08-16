@@ -206,6 +206,7 @@ def test_gui_take_screenshot_output_path(tmp_path):
     from unittest.mock import patch
 
     def fail_save(self, *args, **kwargs):
+        """Mock provoquant une exception d'enregistrement d'image."""
         raise OSError("Simulation d'erreur disque lors de l'enregistrement")
 
     with patch.object(Image.Image, "save", fail_save):
@@ -221,3 +222,21 @@ def test_gui_take_screenshot_output_path(tmp_path):
     assert res_retry.get("screenshot_path") == failure_target
     assert res_retry.get("renamed_due_to_conflict") is False
     assert os.path.isfile(failure_target)
+
+    # 8. Cas de sécurité anti-race-condition : protection contre la substitution malveillante de fichier
+    # Vérifie que si un fichier étranger remplace la réservation, aucune suppression ni écrasement destructif n'a lieu
+    subst_target = str(tmp_path / "subst_test" / "capture.png")
+    os.makedirs(os.path.dirname(subst_target), exist_ok=True)
+    # On simule un fichier légitime étranger créé par un autre processus avec un contenu spécifique
+    with open(subst_target, "w", encoding="utf-8") as f_foreign:
+        f_foreign.write("FOREIGN_FILE_MUST_NOT_BE_TOUCHED")
+
+    foreign_stat = os.stat(subst_target)
+    foreign_identity = (foreign_stat.st_dev, foreign_stat.st_ino)
+
+    # Tentative de nettoyage avec une fausse identité différente
+    dummy_fake_identity = (foreign_identity[0], foreign_identity[1] + 999999)
+    gui_agent.server._cleanup_reserved_file_safely(subst_target, dummy_fake_identity)
+    assert os.path.isfile(subst_target), "Le fichier étranger ne doit pas être supprimé si son inode ne correspond pas"
+    with open(subst_target, encoding="utf-8") as f_check:
+        assert f_check.read() == "FOREIGN_FILE_MUST_NOT_BE_TOUCHED"
