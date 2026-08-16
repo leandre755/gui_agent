@@ -20,13 +20,13 @@
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `gui_agent/server.py`
-  - **Scope**: Suppression de `save_to_artifacts`, ajout de `output_path`, création de `_resolve_screenshot_destination`, normalisation absolue de `SCREENSHOTS_DIR`, validation stricte d'extension / format d'encodage, protection anti-écrasement incrémentale `(1)`, `(2)`.
+  - **Scope**: Suppression de `save_to_artifacts`, ajout de `output_path`, création de `_reserve_unique_file_path` (atomique via `os.O_CREAT | os.O_EXCL`), normalisation absolue de `SCREENSHOTS_DIR`, validation stricte d'extension / format d'encodage, protection anti-écrasement incrémentale `(1)`, `(2)`, et rollback garanti (nettoyage des réservations) en cas d'échec de sauvegarde.
 - **File**: `tests/test_package.py`
-  - **Scope**: `test_gui_take_screenshot_output_path` étendu pour couvrir cas nominal absolu/relatif, JPEG/PNG, rejet d'incohérence, rejet de répertoire, multi-collision incrémentale (1 & 2), et `SCREENSHOTS_DIR` relatif.
+  - **Scope**: `test_gui_take_screenshot_output_path` étendu pour couvrir cas nominal absolu/relatif, JPEG/PNG, rejet d'incohérence, rejet de répertoire, multi-collision incrémentale (1 & 2), `SCREENSHOTS_DIR` relatif, et nettoyage des réservations sur simulation d'erreur disque.
 - **File**: `examples/test_evolutions.py`
   - **Scope**: Migration vers `output_path` dans un dossier temporaire isolé `tempfile.TemporaryDirectory()`, test d'existence avec `os.path.isfile`, validation directe de `raw_screenshot_path`.
 - **File**: `README.md` & `README.fr.md`
-  - **Scope**: Mise à jour de la documentation de `gui_take_screenshot` (paramètre `output_path`, résolution absolue, création des répertoires) et clarification sur l'absence de runtime navigateur pour les outils desktop (sauf `gui_web_action`).
+  - **Scope**: Mise à jour de la documentation de `gui_take_screenshot` (paramètre `output_path`, résolution absolue, création des répertoires, règles de validation et anti-collision atomique) et clarification sur l'absence de runtime navigateur pour les outils desktop (sauf `gui_web_action`).
 - **File**: `.GCC/main.md` & `.GCC/branches/test.md`
   - **Scope**: Journalisation de la décision technique, indexation de la PR #7 et mise à jour du journal de qualification des tests.
 

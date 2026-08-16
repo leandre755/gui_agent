@@ -313,6 +313,9 @@ def gui_take_screenshot(
     raw_img = None
     cropped_img = None
     grid_img = None
+    final_path = None
+    raw_path = None
+    success = False
     try:
         raw_img = capture_screen_pil(monitor_index=monitor_index)
         working_img = raw_img
@@ -445,11 +448,18 @@ def gui_take_screenshot(
         if include_base64 and base64_data:
             res_dict["base64_data"] = base64_data
 
+        success = True
         return res_dict
     except Exception as e:
         logger.error(f"Erreur capture d'écran : {e!s}")
         return {"status": "error", "message": f"Échec de la capture d'écran : {e!s}"}
     finally:
+        if not success:
+            for reserved_file in [final_path, raw_path]:
+                if reserved_file and os.path.exists(reserved_file):
+                    with contextlib.suppress(OSError):
+                        # Nettoie les réservations de fichiers créées (ex: 0 octet ou partiellement écrites) en cas d'erreur
+                        os.remove(reserved_file)
         for img in [raw_img, cropped_img, grid_img]:
             if img is not None:
                 with contextlib.suppress(Exception):

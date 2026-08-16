@@ -30,10 +30,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - **Context**: Generic LLM prose often contains repetitive promotional fluff, superficial analysis, and heavy connectives.
   - **Discarded Options**: Keeping default generated marketing text.
   - **Rationale**: Direct systems engineering prose improves clarity, readability, and authority.
-- [2026-08-15] Remplacement de `save_to_artifacts` par `output_path` et Sécurisation Strict du Nommage (PR #7)
+- [2026-08-15] Remplacement de `save_to_artifacts` par `output_path`, Réservation Atomique et Rollback sur Échec (PR #7)
   - **Context**: `save_to_artifacts` était un vestige mort non lu. `output_path` permet d'enregistrer les captures à n'importe quel emplacement.
-  - **Discarded Options**: Conserver le flag mort ; écraser les fichiers existants sans contrôle ; accepter des extensions contradictoires (ex: JPEG sauvé en .png).
-  - **Rationale**: Rejet strict des incohérences format/extension, protection des fichiers existants par renommage incrémental `(1)`, `(2)`, rejet des répertoires, et normalisation absolue de tous les chemins retournés.
+  - **Discarded Options**: Conserver le flag mort ; écraser les fichiers existants sans contrôle ; accepter des extensions contradictoires (ex: JPEG sauvé en .png) ; laisser des fichiers vides réservés après un échec d'écriture.
+  - **Rationale**: Rejet strict des incohérences format/extension, réservation atomique par `os.O_CREAT | os.O_EXCL`, protection des fichiers existants par renommage incrémental `(1)`, `(2)`, rejet des répertoires, normalisation absolue des chemins et nettoyage garanti (rollback) des fichiers réservés en cas d'erreur de sauvegarde.
 - [2026-08-15] Préservation Intégrale de `git_credential.json` et Coexistence `CLAUDE.md` / `AGENTS.md`
   - **Context**: `git_credential.json` est strictement local et exclu de Git ; `CLAUDE.md` et `AGENTS.md` desservent des écosystèmes clients distincts (Claude Code CLI vs assistants standards).
   - **Discarded Options**: Suppression du fichier d'identifiants ; déduplication/suppression de `CLAUDE.md`.

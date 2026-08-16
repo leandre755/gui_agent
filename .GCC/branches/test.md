@@ -48,7 +48,7 @@
 | **Automated Installer (PowerShell)** | `pwsh -File ./install.ps1 -DryRun` | AST syntax check + garde d'exécution Windows | AST validé, garde d'environnement opérationnelle | **PASS** |
 | **Windows Skill** | `skills/gui-agent-windows-install/SKILL.md` | Structure standard Agent Skills (agentskills.io) | Frontmatter, Rôle, 5 Règles, 2 Few-shot, Checklist validés | **PASS** |
 | **Zero-Slop Pre-Commit** | `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` | 8 couches de validation (Anti-leak, CVE, Ruff, Mypy, Sonar, Bandit, Semgrep) | 100% PASS (0 warning, 0 error) | **PASS** |
-| **Screenshot Output Security (PR #7)** | `pytest -k test_gui_take_screenshot_output_path` | Rejet conflits format/ext, anti-écrasement incrémental (1)/(2), répertoires rejetés, chemins relatifs normalisés, réservation atomique O_CREAT/O_EXCL | 8/8 tests passés (5.62s) | **PASS** |
+| **Screenshot Output Security & Rollback (PR #7)** | `pytest -k test_gui_take_screenshot_output_path` | Rejet conflits format/ext, anti-écrasement incrémental (1)/(2), répertoires rejetés, chemins relatifs normalisés, réservation atomique O_CREAT/O_EXCL, rollback/nettoyage strict sur échec | 8/8 tests passés (7.17s) | **PASS** |
 
 ---
 

@@ -192,3 +192,24 @@ def test_gui_take_screenshot_output_path(tmp_path):
     finally:
         gui_agent.server.SCREENSHOTS_DIR = orig_screenshots_dir
         os.chdir(orig_cwd_dir)
+
+    # 7. Cas de résilience : nettoyage strict des réservations de fichiers en cas d'erreur de sauvegarde
+    failure_target = str(tmp_path / "failure_cleanup" / "capture.png")
+    from unittest.mock import patch
+
+    def fail_save(self, *args, **kwargs):
+        raise OSError("Simulation d'erreur disque lors de l'enregistrement")
+
+    with patch.object(Image.Image, "save", fail_save):
+        res_fail = gui_agent.gui_take_screenshot(apply_grid=False, output_path=failure_target)
+        assert res_fail.get("status") == "error"
+
+    # Le fichier final réservé a été nettoyé
+    assert not os.path.exists(failure_target), "Le fichier réservé n'a pas été nettoyé après l'échec"
+
+    # La nouvelle tentative ultérieure ne subit aucune fausse collision et utilise le nom d'origine
+    res_retry = gui_agent.gui_take_screenshot(apply_grid=False, output_path=failure_target)
+    assert res_retry.get("status") == "success"
+    assert res_retry.get("screenshot_path") == failure_target
+    assert res_retry.get("renamed_due_to_conflict") is False
+    assert os.path.isfile(failure_target)
