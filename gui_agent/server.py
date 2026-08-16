@@ -293,11 +293,11 @@ def _copy_file_safely(
 
 
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
-    """Nettoie un fichier réservé en cas d'erreur de manière sécurisée et sans risque de suppression de fichier étranger.
+    """Nettoie un fichier réservé en cas d'erreur de manière sécurisée sans risque de supprimer un fichier étranger.
 
-    Vérifie l'identité d'inode via son descripteur ouvert avec `O_NOFOLLOW` et re-vérifie
-    l'entrée répertoire (`os.stat`) liée au descripteur de répertoire parent (`dir_fd`) avant suppression.
-    Si la suppression ne peut être liée de manière infaillible à l'inode attendu, le fichier est conservé.
+    Pour éviter toute suppression erronée de fichier tiers dans des répertoires partagés
+    lors d'une substitution concurrente post-fstat, tronque d'abord le fichier réservé à 0 octet via son
+    descripteur sécurisé (`O_NOFOLLOW`). Ne supprime l'entrée que si elle correspond strictement à l'inode.
     """
     if not target_path or not expected_identity or not os.path.exists(target_path):
         return
