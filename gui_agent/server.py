@@ -293,7 +293,12 @@ def _copy_file_safely(
 
 
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
-    """Supprime un fichier réservé en cas d'erreur avec liaison au descripteur de répertoire (directory-entry-bound)."""
+    """Nettoie un fichier réservé en cas d'erreur de manière sécurisée et sans risque de suppression de fichier étranger.
+
+    Vérifie l'identité d'inode via son descripteur ouvert avec `O_NOFOLLOW` et re-vérifie
+    l'entrée répertoire (`os.stat`) liée au descripteur de répertoire parent (`dir_fd`) avant suppression.
+    Si la suppression ne peut être liée de manière infaillible à l'inode attendu, le fichier est conservé.
+    """
     if not target_path or not expected_identity or not os.path.exists(target_path):
         return
 
@@ -308,14 +313,18 @@ def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tu
             dir_flags |= os.O_DIRECTORY
         dir_fd = os.open(parent_dir, dir_flags)
 
-        file_flags = os.O_RDONLY
+        file_flags = os.O_RDWR if hasattr(os, "O_RDWR") else os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
             file_flags |= os.O_NOFOLLOW
 
         file_fd = os.open(filename, file_flags, dir_fd=dir_fd)
         st_file = os.fstat(file_fd)
         if (st_file.st_dev, st_file.st_ino) == expected_identity:
-            # Vérification atomique supplémentaire de l'entrée répertoire avant unlink
+            # Tronquer le fichier réservé à 0 octet via son descripteur vérifié
+            with contextlib.suppress(OSError):
+                os.ftruncate(file_fd, 0)
+
+            # Re-vérification stricte de l'entrée répertoire avant unlink
             st_entry = os.stat(filename, dir_fd=dir_fd)
             if (st_entry.st_dev, st_entry.st_ino) == expected_identity:
                 os.unlink(filename, dir_fd=dir_fd)
