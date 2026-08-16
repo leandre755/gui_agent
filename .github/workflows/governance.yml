@@ -58,7 +58,7 @@ jobs:
           protected=false
           while IFS= read -r -d '' path; do
             case "$path" in
-              .github/workflows/*|.github/scripts/*|.github/CODEOWNERS|AGENTS.md|AGENT_POLICY.md|AUTONOMY.md|.claude/*|.cursor/*|.agents/*|.devin/*|.windsurf/*|githooks/*|setup.sh|setup.ps1)
+              .github/workflows/*|.github/scripts/*|.github/CODEOWNERS|AGENTS.md|AGENT_POLICY.md|AUTONOMY.md|.claude/*|.cursor/*|.agents/*|.devin/*|.windsurf/*|.coding-stuff/*|.githooks/*|install.sh|install.ps1|uninstall.sh|uninstall.ps1)
                 protected=true
                 ;;
             esac
