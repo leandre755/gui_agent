@@ -7,6 +7,7 @@
 - [2026-08-15] Local CI Runner (`ci.sh`) & Exhaustive Multi-Agent Repository Audit (`organize-repos`)
 - [2026-08-16] Parameter `output_path` Migration, Inode Security Hardening & Zero-Slop Rollback (PR #7, Confidence Score 5/5)
 - [2026-08-16] Atomic xdotool Chaining & Input Boundaries in `gui_window_resize_move` (PR #8, Confidence Score 5/5 Greptile & CodeRabbit, 27/27 Tests)
+- [2026-08-16] Dynamic Issue Template Compliance & Triage Labeling Hardening (PR #16, Confidence Score 5/5 Greptile & CodeRabbit)
 
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -75,6 +76,7 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 - ✅ Done:
   - Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
+  - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Standardisation de la terminologie Quality-Gate et correction de l'alignement du logo H1 dans les READMEs.
 - 🔄 In progress: Préparation du chantier d'harmonisation de l'arborescence (plan_organize_repo.md).
 - ⏳ Pending: Exécution des points complémentaires d'audit du dépôt.
