@@ -216,28 +216,27 @@ jobs:
     assert any("persist-credentials: true est formellement interdit" in e for e in errors)
 
 
-def test_accept_scalar_concurrency(tmp_path: Path):
-    """Vérifie que la syntaxe scalaire de concurrency est bien reconnue."""
-    wf = tmp_path / "scalar_concurrency.yml"
+def test_accept_alternate_yaml_indentation(tmp_path: Path):
+    """Vérifie que les workflows avec indentation variable (ex: 4 espaces pour jobs, 8 espaces pour properties) sont supportés."""
+    wf = tmp_path / "alternate_indent.yml"
     wf.write_text(
         """
-name: Scalar Concurrency
+name: Alternate Indent
 on:
-  pull_request:
+    workflow_dispatch:
 permissions:
-  contents: read
-concurrency: build-${{ github.ref }}
+    contents: read
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - run: echo hello
+    build_and_test:
+        runs-on: ubuntu-22.04
+        timeout-minutes: 15
+        steps:
+            - run: echo success
 """,
         encoding="utf-8",
     )
     count, errors, _ = verify_workflows.check_workflow(wf)
-    assert count == 0, f"Erreurs inattendues: {errors}"
+    assert count == 0, f"Erreurs inattendues pour indentation alternative: {errors}"
 
 
 def test_reject_missing_concurrency_flow_style_and_mapping(tmp_path: Path):

@@ -13,9 +13,6 @@ from pathlib import Path
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 USES_PATTERN = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)(?:\s+#\s*(.+))?\s*$")
-JOB_HEADER_PATTERN = re.compile(r"^ {2}([a-zA-Z0-9_-]+):\s*$")
-TIMEOUT_PATTERN = re.compile(r"^ {4}timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$")
-RUNS_ON_PATTERN = re.compile(r"^ {4}runs-on:\s*\S.*$")
 PERSIST_CREDENTIALS_TRUE_PATTERN = re.compile(r"^\s*persist-credentials:\s*true\b(?:\s*#.*)?$")
 
 
@@ -88,43 +85,87 @@ class WorkflowVerifier:
 
     def verify_jobs_and_steps(self) -> None:
         in_jobs_block = False
+        jobs_indent: int | None = None
         current_job: str | None = None
-        job_lines: dict[str, list[tuple[int, str]]] = {}
+        job_indent: int | None = None
+        # job_direct_properties: job_name -> list of direct properties (indented strictly below job header, before any steps)
+        job_direct_properties: dict[str, list[tuple[int, str]]] = {}
 
         for idx, line in enumerate(self.lines, start=1):
-            if re.match(r"^(?:jobs|\"jobs\"|'jobs'):\s*(?:#.*)?$", line):
-                in_jobs_block = True
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
                 continue
 
+            current_line_indent = len(line) - len(line.lstrip(" "))
+
+            # Détection de la section top-level 'jobs:'
+            if not in_jobs_block:
+                if re.match(r"^(?:jobs|\"jobs\"|'jobs'):\s*(?:#.*)?$", line):
+                    in_jobs_block = True
+                    jobs_indent = current_line_indent
+                continue
+
+            # Si on est dans la section jobs
             if in_jobs_block:
-                # Si on rencontre une nouvelle clé de premier niveau (non indentée)
-                if line and not line.startswith(" ") and not line.startswith("#"):
+                # Si on rencontre une nouvelle clé de premier niveau (indentation <= jobs_indent)
+                if jobs_indent is not None and current_line_indent <= jobs_indent:
                     in_jobs_block = False
                     current_job = None
                     continue
 
-                job_match = JOB_HEADER_PATTERN.match(line)
-                if job_match:
-                    current_job = job_match.group(1)
-                    job_lines[current_job] = []
-                    continue
+                # Détection d'un en-tête de job (ex: '  validate:' ou '    job1:')
+                # Un en-tête de job est un mapping sans clé parente active au même niveau ou un nouveau niveau
+                if job_indent is None or current_line_indent == job_indent:
+                    job_header_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*$", line)
+                    if job_header_match and (jobs_indent is None or len(job_header_match.group(1)) > jobs_indent):
+                        job_indent = len(job_header_match.group(1))
+                        current_job = job_header_match.group(2)
+                        job_direct_properties[current_job] = []
+                        continue
 
-                if current_job is not None:
-                    job_lines[current_job].append((idx, line))
+                # Si on est à l'intérieur d'un job
+                if current_job is not None and job_indent is not None:
+                    # Si l'indentation revient au niveau du job ou au-dessus
+                    if current_line_indent < job_indent:
+                        in_jobs_block = False
+                        current_job = None
+                        continue
+                    elif current_line_indent == job_indent:
+                        # Nouveau job au même niveau d'indentation
+                        job_header_match = re.match(r"^(\s+)([a-zA-Z0-9_-]+):\s*$", line)
+                        if job_header_match:
+                            current_job = job_header_match.group(2)
+                            job_direct_properties[current_job] = []
+                            continue
 
-        if not job_lines:
+                    # Propriété directe du job : indentation > job_indent mais propriété directe de premier niveau du job
+                    # Détecte les clés directes du job (runs-on, timeout-minutes, steps, permissions, etc.)
+                    # Les propriétés directes du job ont une indentation uniforme (property_indent)
+                    job_direct_properties[current_job].append((idx, line))
+
+        if not job_direct_properties:
             self.log_error("Aucun job défini sous la section 'jobs:'.")
             return
 
-        for job_name, lines in job_lines.items():
+        for job_name, lines in job_direct_properties.items():
             has_timeout = False
             has_runs_on = False
 
+            # Détecter le niveau d'indentation des propriétés directes du job
+            direct_prop_indent: int | None = None
             for _idx, line in lines:
-                if TIMEOUT_PATTERN.match(line):
-                    has_timeout = True
-                if RUNS_ON_PATTERN.match(line):
-                    has_runs_on = True
+                indent = len(line) - len(line.lstrip(" "))
+                if direct_prop_indent is None or indent < direct_prop_indent:
+                    direct_prop_indent = indent
+
+            for _idx, line in lines:
+                indent = len(line) - len(line.lstrip(" "))
+                # Ne vérifier que les propriétés directes du job (au niveau direct_prop_indent) pour éviter les fuites dans les scripts de steps
+                if direct_prop_indent is not None and indent == direct_prop_indent:
+                    if re.match(r"^\s*timeout-minutes:\s*(\d+|\$\{\{.+?\}\})(?:\s*#.*)?$", line):
+                        has_timeout = True
+                    if re.match(r"^\s*runs-on:\s*\S.*$", line):
+                        has_runs_on = True
 
             if not has_runs_on:
                 self.log_error(f"Job '{job_name}' : directive 'runs-on:' obligatoire manquante au niveau du job.")
