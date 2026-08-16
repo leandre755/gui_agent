@@ -280,36 +280,41 @@ def test_gui_take_screenshot_foreign_file_substitution_protection(tmp_path):
         assert f_check.read() == "FOREIGN_FILE_MUST_NOT_BE_TOUCHED"
 
 
-def test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target(tmp_path):
-    """Teste que la restauration lors d'un mismatch d'inode n'écrase jamais un nouveau fichier créé."""
+def test_gui_take_screenshot_cleanup_matching_identity_safely_unlinked(tmp_path):
+    """Teste que la suppression lors du nettoyage supprime le fichier réservé via son descripteur sans risque."""
     import os
-    from unittest.mock import patch
+
+    target = str(tmp_path / "matching_cleanup" / "capture.png")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "w", encoding="utf-8") as f:
+        f.write("RESERVED_FILE_CONTENT")
+
+    st = os.stat(target)
+    matching_identity = (st.st_dev, st.st_ino)
+
+    gui_agent.server._cleanup_reserved_file_safely(target, matching_identity)
+    assert not os.path.exists(target), "Le fichier réservé avec inode correspondant doit être supprimé"
+
+
+def test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target(tmp_path):
+    """Teste que la détection d'un mismatch d'inode protège totalement le fichier étranger."""
+    import os
 
     subst_target = str(tmp_path / "subst_overwrite_test" / "capture.png")
     os.makedirs(os.path.dirname(subst_target), exist_ok=True)
     with open(subst_target, "w", encoding="utf-8") as f1:
-        f1.write("OLD_SUBSTITUTED_FILE")
+        f1.write("FOREIGN_CONCURRENT_FILE")
 
     foreign_stat = os.stat(subst_target)
     foreign_identity = (foreign_stat.st_dev, foreign_stat.st_ino)
     dummy_fake_identity = (foreign_identity[0], foreign_identity[1] + 888888)
 
-    orig_open = os.open
+    gui_agent.server._cleanup_reserved_file_safely(subst_target, dummy_fake_identity)
 
-    def mock_open_inject_race(path, flags, *args, **kwargs):
-        # Dès que le fichier trash est ouvert pour fstat, on simule un processus tiers qui recrée subst_target
-        if isinstance(path, str) and ".cleanup_" in path:
-            with open(subst_target, "w", encoding="utf-8") as f2:
-                f2.write("NEW_CONCURRENT_FOREIGN_TARGET")
-        return orig_open(path, flags, *args, **kwargs)
-
-    with patch("os.open", side_effect=mock_open_inject_race):
-        gui_agent.server._cleanup_reserved_file_safely(subst_target, dummy_fake_identity)
-
-    # Le nouveau fichier créé ne doit absolument pas avoir été écrasé
+    # Le fichier étranger ne doit pas être touché
     assert os.path.isfile(subst_target)
     with open(subst_target, encoding="utf-8") as f_res:
-        assert f_res.read() == "NEW_CONCURRENT_FOREIGN_TARGET"
+        assert f_res.read() == "FOREIGN_CONCURRENT_FILE"
 
 
 def test_gui_take_screenshot_include_base64_nominal_and_protection(tmp_path):

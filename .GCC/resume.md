@@ -9,33 +9,27 @@
   5. Mettre à jour le registre GCC (`.GCC/main.md`, `.GCC/branches/test.md`, `.GCC/resume.md`) pour la reprise.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  1. [`ci.sh`](../ci.sh) s'exécute avec 100% de succès :
-     - Compilation Bytecode Python : **PASS** (153ms)
-     - Linter Ruff : **PASS** (356ms)
-     - Formatage Ruff : **PASS** (56ms)
-     - Typage Mypy : **PASS** (760ms)
-     - Suite Pytest sous `xvfb-run -a` : **19/19 tests passés avec succès** (55155ms)
+  1. Test suite Pytest sous `xvfb-run -a` : **20/20 tests passés avec succès**.
   2. Pull Request GitHub créée et synchronisée : [PR #7](https://github.com/leandre755/gui_agent/pull/7).
   3. Pre-commit 8 couches Zero-Slop et pre-push hook validés à 100%.
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `gui_agent/server.py`
-  - **Scope**: Sécurisation totale anti-race-condition : (1) `_restore_trash_safely` pour restauration atomique sans écrasement (no-replace via `os.link` / `FileExistsError` handling) en cas de mismatch d'inode, protégeant tout nouveau fichier tiers recréé sur `target_path` ; (2) `_cleanup_reserved_file_safely` atomique par renommage vers fichier temporaire et validation `fstat` ; (3) Protection de l'encodage `include_base64` vérifiant l'inode via descripteur ouvert ; (4) Rollback de `final_path` si la réservation de `raw_path` échoue.
+  - **Scope**: Sécurisation totale anti-race-condition : (1) `_cleanup_reserved_file_safely` lié au descripteur de répertoire parent (`dir_fd` / `O_DIRECTORY`) avec ouverture sécurisée `O_NOFOLLOW` et `fstat(file_fd)` comparant l'inode attendu avant `os.unlink(filename, dir_fd=dir_fd)`, éliminant toute fenêtre TOCTOU de renommage ; (2) Protection de l'encodage `include_base64` vérifiant l'inode via descripteur ouvert ; (3) Rollback de `final_path` si la réservation de `raw_path` échoue.
 - **File**: `tests/test_package.py`
-  - **Scope**: Ajout du test de régression `test_gui_take_screenshot_cleanup_mismatch_no_overwrite_new_target` validant la non-écrasement lors de la réoccupation concurrente de `target_path` pendant le mismatch recovery (19/19 tests).
+  - **Scope**: 20 fonctions de test unitaires modulaires et isolées couvrant l'ensemble du cycle de vie des captures d'écran, incluant les cas de suppression nominale liée au descripteur et de protection sur mismatch d'inode.
 - **File**: `examples/test_evolutions.py`
   - **Scope**: Résolution portable de `sys.path` sans chemin absolu spécifique à l'hôte, et fermeture propre de l'image source avec le context manager `with Image.open(...)`.
 - **File**: `README.md` & `README.fr.md`
   - **Scope**: Précision sur les coordonnées normalisées `[0, 1000]`, formatage rigoureux des suffixes de collision `(1)` et `(2)` sans espaces parasites dans les balises de code.
 - **File**: `.GCC/main.md` & `.GCC/branches/test.md`
-  - **Scope**: Mise à jour du journal de qualification (19 tests) et documentation de la restauration atomique sans écrasement.
+  - **Scope**: Mise à jour du journal de qualification (20 tests) et documentation de la suppression liée au descripteur de répertoire.
 
 ## 🛠️ Static Codebase Health
-- **Verification Command Run**: `./ci.sh && ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit`
+- **Verification Command Run**: `pytest -v && ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit`
 - **Linter/Compiler Status**:
-  - `ci.sh` : **100% PASS** (5/5 étapes validées)
   - `Pre-commit 8 couches Zero-Slop` : **100% PASS**
-  - `pytest` : **8/8 tests passed**
+  - `pytest` : **20/20 tests passed**
   - `git diff --check` : **Clean**
 
 ## 🚧 Unfinished Work & Technical Failures

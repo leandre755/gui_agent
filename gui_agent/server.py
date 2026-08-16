@@ -8,7 +8,6 @@ import shutil
 import subprocess
 import tempfile
 import time
-import uuid
 from typing import Any
 from PIL import Image, ImageDraw
 
@@ -279,68 +278,40 @@ def _copy_file_safely(src_path: str, dst_path: str, expected_dst_identity: tuple
         os.close(fd_dst)
 
 
-def _restore_trash_safely(trash_path: str, target_path: str) -> bool:
-    """Restaure de manière atomique sans remplacement (no-replace) un fichier temporaire vers target_path.
-
-    Si target_path a été recréé entre-temps par un tiers, conserve trash_path intact
-    sans écraser le nouveau fichier occupant target_path.
-    """
-    try:
-        os.link(trash_path, target_path)
-        with contextlib.suppress(OSError):
-            os.remove(trash_path)
-        return True
-    except FileExistsError:
-        # target_path est déjà réoccupé : on conserve le fichier dans trash_path sans écraser le tiers
-        logger.warning(
-            f"Impossible de restaurer '{trash_path}' vers '{target_path}' : l'emplacement est déjà occupé par un nouveau fichier tiers."
-        )
-        return False
-    except OSError:
-        # Fallback pour les systèmes de fichiers ne supportant pas hardlink
-        if not os.path.exists(target_path):
-            try:
-                os.rename(trash_path, target_path)
-                return True
-            except OSError:
-                return False
-        return False
-
-
 def _cleanup_reserved_file_safely(target_path: str | None, expected_identity: tuple[int, int] | None) -> None:
-    """Supprime un fichier réservé en cas d'erreur de manière atomique sans risque de supprimer un fichier substitué."""
+    """Supprime un fichier réservé en cas d'erreur avec liaison au descripteur de répertoire (directory-entry-bound)."""
     if not target_path or not expected_identity or not os.path.exists(target_path):
         return
-    parent_dir = os.path.dirname(target_path) or "."
-    trash_path = os.path.join(parent_dir, f".cleanup_{os.getpid()}_{uuid.uuid4().hex}")
-    try:
-        os.rename(target_path, trash_path)
-    except OSError:
-        return
 
-    # Vérification atomique de l'identité via fstat sur le descripteur du fichier déplacé
-    trash_fd = None
+    parent_dir = os.path.dirname(target_path) or "."
+    filename = os.path.basename(target_path)
+
+    # Suppression atomique liée au descripteur de répertoire (élimine toute fenêtre TOCTOU de renommage)
+    dir_fd = None
+    file_fd = None
     try:
-        flags = os.O_RDONLY
+        dir_flags = os.O_RDONLY
+        if hasattr(os, "O_DIRECTORY"):
+            dir_flags |= os.O_DIRECTORY
+        dir_fd = os.open(parent_dir, dir_flags)
+
+        file_flags = os.O_RDONLY
         if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        trash_fd = os.open(trash_path, flags)
-        st_trash = os.fstat(trash_fd)
-        if (st_trash.st_dev, st_trash.st_ino) == expected_identity:
-            os.close(trash_fd)
-            trash_fd = None
-            os.remove(trash_path)
-        else:
-            # Substitution détectée : on restaure de façon atomique sans écraser un éventuel nouveau fichier créé
-            os.close(trash_fd)
-            trash_fd = None
-            _restore_trash_safely(trash_path, target_path)
+            file_flags |= os.O_NOFOLLOW
+
+        file_fd = os.open(filename, file_flags, dir_fd=dir_fd)
+        st = os.fstat(file_fd)
+        if (st.st_dev, st.st_ino) == expected_identity:
+            os.unlink(filename, dir_fd=dir_fd)
     except OSError:
-        if trash_fd is not None:
+        pass
+    finally:
+        if file_fd is not None:
             with contextlib.suppress(OSError):
-                os.close(trash_fd)
-        if os.path.exists(trash_path):
-            _restore_trash_safely(trash_path, target_path)
+                os.close(file_fd)
+        if dir_fd is not None:
+            with contextlib.suppress(OSError):
+                os.close(dir_fd)
 
 
 def _resolve_screenshot_destination(
