@@ -53,29 +53,93 @@ def strip_yaml_comment(line: str) -> str:
     return line
 
 
+def _split_flow_tokens(content: str) -> list[str]:
+    """Divise une chaîne flow-style YAML au niveau d'imbrication 0."""
+    tokens: list[str] = []
+    depth = 0
+    in_single = False
+    in_double = False
+    escaped = False
+    current: list[str] = []
+
+    for char in content:
+        if escaped:
+            escaped = False
+            current.append(char)
+            continue
+        if char == "\\" and in_double:
+            escaped = True
+            current.append(char)
+            continue
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif not in_single and not in_double:
+            if char in "[{":
+                depth += 1
+            elif char in "]}":
+                depth -= 1
+            elif char == "," and depth == 0:
+                tok = "".join(current).strip()
+                if tok:
+                    tokens.append(tok)
+                current = []
+                continue
+        current.append(char)
+
+    last_tok = "".join(current).strip()
+    if last_tok:
+        tokens.append(last_tok)
+    return tokens
+
+
+def _extract_key_from_flow_pair(pair: str) -> str | None:
+    """Extrait la clé d'une paire flow-style au niveau 0 d'imbrication."""
+    p_depth = 0
+    p_in_single = False
+    p_in_double = False
+    p_escaped = False
+    for idx, char in enumerate(pair):
+        if p_escaped:
+            p_escaped = False
+            continue
+        if char == "\\" and p_in_double:
+            p_escaped = True
+            continue
+        if char == "'" and not p_in_double:
+            p_in_single = not p_in_single
+        elif char == '"' and not p_in_single:
+            p_in_double = not p_in_double
+        elif not p_in_single and not p_in_double:
+            if char in "[{":
+                p_depth += 1
+            elif char in "]}":
+                p_depth -= 1
+            elif char == ":" and p_depth == 0:
+                return pair[:idx].strip()
+    return None
+
+
 def parse_inline_yaml_triggers(val: str) -> set[str]:
     """Parse une valeur inline YAML (flow-style sequence, flow-style mapping, ou scalaire)."""
     trimmed = val.strip()
     if not trimmed:
         return set()
 
-    # Flow-style sequence (ex: '[push, pull_request]')
     if trimmed.startswith("[") and trimmed.endswith("]"):
-        items = trimmed[1:-1].split(",")
-        return {decode_yaml_key(item.strip()) for item in items if item.strip()}
+        items = _split_flow_tokens(trimmed[1:-1])
+        return {decode_yaml_key(item) for item in items if item}
 
-    # Flow-style mapping (ex: '{push: null, pull_request: {branches: [main]}}')
     if trimmed.startswith("{") and trimmed.endswith("}"):
-        content = trimmed[1:-1]
+        pairs = _split_flow_tokens(trimmed[1:-1])
         keys: set[str] = set()
-        for pair in content.split(","):
-            if ":" in pair:
-                raw_k = pair.split(":", 1)[0].strip()
-                if raw_k:
-                    keys.add(decode_yaml_key(raw_k))
+        for pair in pairs:
+            raw_k = _extract_key_from_flow_pair(pair)
+            if raw_k:
+                keys.add(decode_yaml_key(raw_k))
         return keys
 
-    # Scalaire simple (ex: 'push')
     return {decode_yaml_key(trimmed)}
 
 
