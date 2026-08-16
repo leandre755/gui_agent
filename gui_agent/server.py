@@ -202,10 +202,42 @@ def gui_get_screen_info() -> dict[str, Any]:
         return {"status": "error", "message": f"Impossible d'obtenir les dimensions de l'écran : {e!s}"}
 
 
+def _reserve_unique_file_path(
+    base_dir: str, stem: str, ext: str, original_candidate: str | None = None
+) -> tuple[str, bool]:
+    """Réserve atomiquement un chemin de fichier unique sur disque en évitant les race conditions.
+
+    Crée un fichier vide verrouillé via os.O_CREAT | os.O_EXCL pour garantir qu'aucun
+    autre processus concurrent ne puisse s'approprier le même nom de fichier.
+    """
+    os.makedirs(base_dir, exist_ok=True)
+    counter = 0
+    renamed = False
+
+    while True:
+        if counter == 0:
+            candidate = original_candidate or os.path.join(base_dir, f"{stem}.{ext}")
+        else:
+            candidate = os.path.join(base_dir, f"{stem} ({counter}).{ext}")
+
+        try:
+            fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            os.close(fd)
+            if counter > 0:
+                renamed = True
+            return candidate, renamed
+        except FileExistsError as err:
+            counter += 1
+            if counter > 10000:
+                raise RuntimeError(
+                    f"Impossible de trouver un nom de fichier libre après {counter} tentatives dans {base_dir}"
+                ) from err
+
+
 def _resolve_screenshot_destination(
     output_path: str | None, fmt_clean: str, ext: str
 ) -> tuple[str, str, bool, str | None] | dict[str, Any]:
-    """Résout le chemin cible final et le chemin brut en évitant tout écrasement accidentel."""
+    """Résout et réserve atomiquement le chemin cible final et le chemin brut en évitant tout écrasement accidentel."""
     renamed_due_to_conflict = False
     original_requested_path = None
 
@@ -216,16 +248,16 @@ def _resolve_screenshot_destination(
                 "status": "error",
                 "message": "output_path ne peut pas être une chaîne vide.",
             }
-        final_path = os.path.abspath(clean_out)
-        if os.path.isdir(final_path):
+        final_path_cand = os.path.abspath(clean_out)
+        if os.path.isdir(final_path_cand):
             return {
                 "status": "error",
-                "message": f"output_path '{final_path}' est un dossier existant, un chemin de fichier est requis.",
+                "message": f"output_path '{final_path_cand}' est un dossier existant, un chemin de fichier est requis.",
             }
-        _, out_ext = os.path.splitext(final_path)
+        _, out_ext = os.path.splitext(final_path_cand)
         out_ext_clean = out_ext.lower().lstrip(".")
         if not out_ext_clean:
-            final_path = f"{final_path}.{ext}"
+            final_path_cand = f"{final_path_cand}.{ext}"
         else:
             valid_exts = {"jpg": ["jpg", "jpeg"], "jpeg": ["jpg", "jpeg"], "png": ["png"]}[fmt_clean]
             if out_ext_clean not in valid_exts:
@@ -237,39 +269,25 @@ def _resolve_screenshot_destination(
                     ),
                 }
 
-        # Protection anti-collision : si le fichier existe déjà, incrémentation (1), (2)...
-        if os.path.exists(final_path):
-            original_requested_path = final_path
-            parent_dir = os.path.dirname(final_path)
-            stem, ext_part = os.path.splitext(os.path.basename(final_path))
-            counter = 1
-            while os.path.exists(final_path):
-                candidate_name = f"{stem} ({counter}){ext_part}"
-                final_path = os.path.join(parent_dir, candidate_name)
-                counter += 1
-            renamed_due_to_conflict = True
+        parent_dir = os.path.dirname(final_path_cand)
+        stem, ext_part = os.path.splitext(os.path.basename(final_path_cand))
+        target_ext = ext_part.lstrip(".") or ext
 
-        os.makedirs(os.path.dirname(final_path), exist_ok=True)
+        # Réservation atomique (O_CREAT | O_EXCL) avec incrémentation (1), (2)...
+        original_requested_path = final_path_cand
+        final_path, renamed_due_to_conflict = _reserve_unique_file_path(
+            parent_dir, stem, target_ext, original_candidate=final_path_cand
+        )
     else:
         configured_dir = os.path.abspath(SCREENSHOTS_DIR)
         timestamp = int(time.time())
-        filename = f"screenshot_{timestamp}.{ext}"
-        final_path = os.path.join(configured_dir, filename)
-        counter = 1
-        while os.path.exists(final_path):
-            filename = f"screenshot_{timestamp} ({counter}).{ext}"
-            final_path = os.path.join(configured_dir, filename)
-            counter += 1
+        stem = f"screenshot_{timestamp}"
+        final_path, _ = _reserve_unique_file_path(configured_dir, stem, ext)
 
     configured_raw_dir = os.path.abspath(SCREENSHOTS_DIR)
     timestamp_raw = int(time.time())
-    raw_filename = f"raw_screenshot_{timestamp_raw}.{ext}"
-    raw_path = os.path.join(configured_raw_dir, raw_filename)
-    counter_raw = 1
-    while os.path.exists(raw_path):
-        raw_filename = f"raw_screenshot_{timestamp_raw} ({counter_raw}).{ext}"
-        raw_path = os.path.join(configured_raw_dir, raw_filename)
-        counter_raw += 1
+    stem_raw = f"raw_screenshot_{timestamp_raw}"
+    raw_path, _ = _reserve_unique_file_path(configured_raw_dir, stem_raw, ext)
 
     return final_path, raw_path, renamed_due_to_conflict, original_requested_path
 
@@ -395,9 +413,6 @@ def gui_take_screenshot(
             grid_img.save(final_path, format=pil_format, **{k: v for k, v in save_kwargs.items() if k != "format"})
         else:
             # Pas de grille, l'image finale est identique à l'image brute
-            if os.path.exists(final_path):
-                with contextlib.suppress(OSError):
-                    os.remove(final_path)
             shutil.copy2(raw_path, final_path)
 
         base64_data = None
