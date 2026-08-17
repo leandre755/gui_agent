@@ -143,6 +143,34 @@ def parse_inline_yaml_triggers(val: str) -> set[str]:
     return {decode_yaml_key(trimmed)}
 
 
+def is_complete_flow_collection(value: str) -> bool:
+    depth = 0
+    in_single = False
+    in_double = False
+    escaped = False
+    saw_collection = False
+
+    for char in value:
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and in_double:
+            escaped = True
+            continue
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif not in_single and not in_double:
+            if char in "[{":
+                depth += 1
+                saw_collection = True
+            elif char in "]}":
+                depth -= 1
+
+    return saw_collection and depth == 0
+
+
 class WorkflowVerifier:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -155,14 +183,36 @@ class WorkflowVerifier:
     def _scan_yaml_anchors(self) -> dict[str, set[str]]:
         """Scanne les ancres YAML simples (&anchor_name value) pour résoudre les alias (*anchor_name)."""
         anchors: dict[str, set[str]] = {}
-        for line in self.lines:
+        for idx, line in enumerate(self.lines):
             stripped = strip_yaml_comment(line).strip()
             anchor_match = re.search(r"&([a-zA-Z0-9_-]+)\s*(.*)$", stripped)
-            if anchor_match:
-                name = anchor_match.group(1)
-                val = anchor_match.group(2).strip()
-                if val:
-                    anchors[name] = parse_inline_yaml_triggers(val)
+            if not anchor_match:
+                continue
+
+            name = anchor_match.group(1)
+            val = anchor_match.group(2).strip()
+            if val:
+                anchors[name] = parse_inline_yaml_triggers(val)
+                continue
+
+            anchor_indent = len(line) - len(line.lstrip(" "))
+            child_lines: list[str] = []
+            for child_line in self.lines[idx + 1 :]:
+                child_stripped = strip_yaml_comment(child_line).rstrip()
+                if not child_stripped.strip():
+                    continue
+                child_indent = len(child_line) - len(child_line.lstrip(" "))
+                if child_indent <= anchor_indent:
+                    break
+                child_lines.append(child_stripped)
+
+            triggers: set[str] = set()
+            for child_line in child_lines:
+                child_stripped = child_line.strip()
+                key_match = re.match(r"^([^:]+):", child_stripped)
+                if key_match:
+                    triggers.add(decode_yaml_key(key_match.group(1).strip()))
+            anchors[name] = triggers
         return anchors
 
     def log_error(self, message: str, line_no: int | None = None) -> None:
@@ -190,6 +240,7 @@ class WorkflowVerifier:
         """Extrait et décode l'ensemble des événements déclencheurs sous la directive top-level 'on:'."""
         in_on = False
         on_child_lines: list[str] = []
+        inline_flow_value: str | None = None
 
         for line in self.lines:
             stripped_code = strip_yaml_comment(line).rstrip()
@@ -198,7 +249,6 @@ class WorkflowVerifier:
 
             current_indent = len(line) - len(line.lstrip(" "))
 
-            # Détection de la clé top-level 'on:'
             if current_indent == 0:
                 top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                 if top_match:
@@ -208,19 +258,29 @@ class WorkflowVerifier:
                         inline_val = top_match.group(2).strip()
                         if inline_val:
                             anchor_match = re.fullmatch(r"&[a-zA-Z0-9_-]+(?:\s+(.*))?", inline_val)
-                            if anchor_match:
-                                anchor_value = anchor_match.group(1)
-                                if anchor_value:
-                                    return self._resolve_trigger_token(anchor_value)
-                            else:
-                                return self._resolve_trigger_token(inline_val)
+                            trigger_value = anchor_match.group(1) if anchor_match else inline_val
+                            if trigger_value:
+                                if is_complete_flow_collection(trigger_value):
+                                    return self._resolve_trigger_token(trigger_value)
+                                if trigger_value.startswith(("[", "{")):
+                                    inline_flow_value = trigger_value
+                                else:
+                                    return self._resolve_trigger_token(trigger_value)
                         continue
-                    elif in_on:
+                    if in_on and inline_flow_value is None:
                         break
 
-            if in_on:
-                on_child_lines.append(stripped_code)
+            if not in_on:
+                continue
+            if inline_flow_value is not None:
+                inline_flow_value = f"{inline_flow_value} {stripped_code.strip()}"
+                if is_complete_flow_collection(inline_flow_value):
+                    return parse_inline_yaml_triggers(inline_flow_value)
+                continue
+            on_child_lines.append(stripped_code)
 
+        if inline_flow_value is not None:
+            return parse_inline_yaml_triggers(inline_flow_value)
         if not on_child_lines:
             return set()
 
@@ -288,21 +348,42 @@ class WorkflowVerifier:
         triggers = self._parse_triggers()
         has_pr_or_push = bool(triggers.intersection({"pull_request", "push"}))
         if has_pr_or_push:
-            has_concurrency = False
-            for line in self.lines:
+            has_concurrency_group = False
+            for idx, line in enumerate(self.lines):
                 stripped_code = strip_yaml_comment(line).rstrip()
                 current_indent = len(line) - len(line.lstrip(" "))
-                if current_indent == 0:
-                    top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
-                    if top_match:
-                        raw_k = top_match.group(1).strip()
-                        decoded_k = decode_yaml_key(raw_k)
-                        if decoded_k == "concurrency":
-                            has_concurrency = True
-                            break
+                if current_indent != 0:
+                    continue
 
-            if not has_concurrency:
-                self.log_error("Bloc top-level 'concurrency:' manquant pour un workflow déclenché par PR ou push.")
+                top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
+                if not top_match or decode_yaml_key(top_match.group(1).strip()) != "concurrency":
+                    continue
+
+                inline_value = top_match.group(2).strip()
+                if inline_value:
+                    if inline_value.startswith("{") and inline_value.endswith("}"):
+                        group_match = re.search(r"(?:^|,)\s*group\s*:\s*([^,}]+)", inline_value[1:-1])
+                        has_concurrency_group = bool(group_match and group_match.group(1).strip())
+                    else:
+                        has_concurrency_group = True
+                    break
+
+                for child_line in self.lines[idx + 1 :]:
+                    child_code = strip_yaml_comment(child_line).rstrip()
+                    if not child_code.strip():
+                        continue
+                    child_indent = len(child_line) - len(child_line.lstrip(" "))
+                    if child_indent == 0:
+                        break
+                    group_match = re.match(r"^\s*group:\s*(\S.*)$", child_code)
+                    if group_match and group_match.group(1).strip():
+                        has_concurrency_group = True
+                    break
+
+            if not has_concurrency_group:
+                self.log_error(
+                    "Bloc top-level 'concurrency:' manquant ou sans groupe non vide pour un workflow déclenché par PR ou push."
+                )
 
     def _parse_job_blocks(self) -> dict[str, list[tuple[int, str]]]:
         in_jobs_block = False

@@ -64,7 +64,11 @@
 | Revue CodeRabbit locale | `coderabbit review --agent --uncommitted --base main --dir .github` | 1 finding major sur le suffixe d’ancre inline, corrigé localement | **CORRIGÉ** |
 | Push | Aucun | Le correctif n'a pas été poussé avant validation locale complète | **NON EFFECTUÉ** |
 | CI locale complète — premier passage | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `40 passed` | **PASS** |
-| CI locale complète — état final | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `41 passed` après la correction d’ancre inline | **PASS** |
+| CI locale complète — état final précédent | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `41 passed` après la correction d’ancre inline | **PASS** |
+| Greptile local sur commit `6976b3a` | `greptile review --agent --branch main` | `Confidence: 0/5` ; 2 constats P1 sécurité et 1 défaut concurrency | **BLOQUÉ puis corrigé** |
+| Régressions Greptile | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `5 passed, 12 deselected` | **PASS** |
+| CI locale complète — nouvel état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `44 passed` | **PASS** |
+| Push | Aucun | Le second correctif reste local avant toute revue distante GitHub | **NON EFFECTUÉ** |
 
 La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
 

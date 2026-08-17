@@ -295,6 +295,59 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors2)
 
 
+def test_reject_block_anchored_trigger_alias(tmp_path: Path):
+    wf = tmp_path / "block_anchor_alias.yml"
+    wf.write_text(
+        """
+name: Block Anchor Alias
+events: &events
+  pull_request_target:
+    types: [opened]
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
+def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
+    wf = tmp_path / "multiline_anchor_mapping.yml"
+    wf.write_text(
+        """
+name: Multiline Anchor Mapping
+on: &events {
+  pull_request_target: null
+}
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
 def test_reject_anchored_trigger_mapping_and_require_concurrency(tmp_path: Path):
     anchored_pr_target = tmp_path / "anchored_pr_target.yml"
     anchored_pr_target.write_text(
@@ -340,6 +393,29 @@ jobs:
     count2, errors2, _ = verify_workflows.check_workflow(anchored_push)
     assert count2 >= 1
     assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors2)
+
+
+def test_reject_empty_concurrency_for_push(tmp_path: Path):
+    wf = tmp_path / "empty_concurrency.yml"
+    wf.write_text(
+        """
+name: Empty Concurrency
+on: push
+permissions:
+  contents: read
+concurrency:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("concurrency" in e for e in errors)
 
 
 def test_reject_inline_anchored_trigger_values(tmp_path: Path):

@@ -68,14 +68,22 @@ RED (avant correctif): 1 failed, 13 deselected
 GREEN (après correctif): 2 passed, 12 deselected
 ```
 
-### Step 7: Validation locale obligatoire avant push et relecture du verdict distant
-- [x] **Action**: Exécuter séquentiellement `./ci.sh`, les tests ciblés, `greptile review --agent --branch main`, `coderabbit review --agent --uncommitted --base main` et vérifier TestSprite si son agent est configuré. Ne pousser qu'après zéro problème actionnable local.
-- [ ] **Verify**: Lire après push la description PR, le résumé Greptile, le bilan CodeRabbit, le bilan Optibot et 100 % des commentaires/threads; atteindre Greptile 5/5, zéro échec de sécurité, zéro commentaire actionnable et zéro blocage.
+### Step 7: Corriger les constats Greptile sur le commit local
+- [x] **Action**: Traiter les trois constats P1 : alias d'ancre bloc résolu à vide, collection flow ancrée multilignes interrompue avant fermeture, et `concurrency:` vide accepté sans groupe.
+- [x] **Verify**: `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` puis `./ci.sh`
 - **Verification Proof**:
 ```text
-./ci.sh : 6 étapes PASS, 41/41 tests.
-CodeRabbit local : review_completed, findings: 0, reviewedFiles: .github/scripts/verify_workflows.py.
-Greptile local : review lancé avec --branch main, mais 8 fichiers non committés ignorés ; résultat 2/5 sur HEAD 1ce6e31, donc non valable pour le correctif actuel.
-TestSprite : CLI disponible et authentifié, agent de vérification non installé ; aucun test distant déclenché.
+Greptile local sur commit 6976b3a : Confidence 0/5, 2 constats P1 sécurité et 1 défaut concurrency.
+RED : alias bloc, mapping multiline et concurrency vide reproduits à 0 erreur.
+GREEN ciblé : 5 passed, 12 deselected.
+CI finale : 6 étapes PASS, 44/44 tests, workflows 6/6 conformes.
 Aucun push effectué.
+```
+
+### Step 8: Commit local et nouvelle revue Greptile sans push
+- [ ] **Action**: Créer un commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
+- [ ] **Verify**: Greptile doit atteindre 5/5 sans finding P1/P2, puis lire le résultat complet avant toute action distante.
+- **Verification Proof**:
+```text
+En attente du commit local et de la revue Greptile.
 ```
