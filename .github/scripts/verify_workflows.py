@@ -209,6 +209,8 @@ class WorkflowVerifier:
                 child_lines.append(child_stripped)
 
             collection_value = " ".join(child_line.strip() for child_line in child_lines)
+            if val.startswith(("[", "{")):
+                collection_value = f"{val} {collection_value}".strip()
             if collection_value.startswith(("[", "{")) and is_complete_flow_collection(collection_value):
                 anchors[name] = parse_inline_yaml_triggers(collection_value)
                 continue

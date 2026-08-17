@@ -373,6 +373,33 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors2)
 
 
+def test_reject_external_multiline_flow_sequence_anchor_alias(tmp_path: Path):
+    wf = tmp_path / "external_multiline_flow_sequence_anchor.yml"
+    wf.write_text(
+        """
+name: External Multiline Flow Sequence Anchor
+events: &events [
+  pull_request_target
+]
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
 def test_accept_concurrency_group_after_cancel_in_progress(tmp_path: Path):
     wf = tmp_path / "concurrency_group_after_cancel.yml"
     wf.write_text(
