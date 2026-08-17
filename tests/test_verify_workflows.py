@@ -470,6 +470,31 @@ jobs:
     assert any("concurrency" in e for e in errors2)
 
 
+def test_reject_multiline_flow_concurrency_without_group(tmp_path: Path):
+    wf = tmp_path / "multiline_flow_concurrency_without_group.yml"
+    wf.write_text(
+        """
+name: Multiline Flow Concurrency
+on: push
+permissions:
+  contents: read
+concurrency: {
+  cancel-in-progress: true
+}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("concurrency" in e for e in errors)
+
+
 def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
     wf = tmp_path / "multiline_anchor_mapping.yml"
     wf.write_text(

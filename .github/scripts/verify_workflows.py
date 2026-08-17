@@ -376,9 +376,19 @@ class WorkflowVerifier:
 
                 inline_value = top_match.group(2).strip()
                 if inline_value:
-                    if inline_value.startswith("{") and inline_value.endswith("}"):
-                        group_match = re.search(r"(?:^|,)\s*group\s*:\s*([^,}]+)", inline_value[1:-1])
-                        has_concurrency_group = bool(group_match and group_match.group(1).strip())
+                    if inline_value.startswith("{"):
+                        flow_value = inline_value
+                        if not is_complete_flow_collection(flow_value):
+                            for flow_line in self.lines[idx + 1 :]:
+                                flow_code = strip_yaml_comment(flow_line).strip()
+                                if not flow_code:
+                                    continue
+                                flow_value = f"{flow_value} {flow_code}"
+                                if is_complete_flow_collection(flow_value):
+                                    break
+                        if is_complete_flow_collection(flow_value):
+                            group_match = re.search(r"(?:^|,)\s*group\s*:\s*([^,}]+)", flow_value[1:-1])
+                            has_concurrency_group = bool(group_match and group_match.group(1).strip())
                     else:
                         has_concurrency_group = True
                     break
