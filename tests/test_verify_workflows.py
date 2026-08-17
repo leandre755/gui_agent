@@ -25,6 +25,32 @@ def test_existing_workflows_are_all_valid():
         assert errors_count == 0, f"Erreurs trouvées dans {wf_path}: {errors}"
 
 
+def test_reject_anchored_top_level_on_key(tmp_path: Path):
+    wf = tmp_path / "anchored_top_level_on.yml"
+    wf.write_text(
+        """
+name: Anchored Top Level On
+&events on:
+  pull_request_target:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
 def test_reject_pull_request_target(tmp_path: Path):
     """Vérifie le rejet strict du déclencheur pull_request_target même sous clé avec guillemets."""
     wf = tmp_path / "bad_pr_target.yml"

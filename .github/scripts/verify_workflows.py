@@ -18,8 +18,8 @@ PERSIST_CREDENTIALS_TRUE_PATTERN = re.compile(r"^\s*persist-credentials:\s*true\
 
 
 def decode_yaml_key(raw_key: str) -> str:
-    """Décode une clé YAML potentiellement entourée de guillemets et contenant des échappements Unicode/Hex."""
-    key = raw_key.strip()
+    """Décode une clé YAML potentiellement ancrée, entourée de guillemets ou échappée."""
+    key = re.sub(r"^&[a-zA-Z0-9_-]+\s+", "", raw_key.strip())
     if (key.startswith('"') and key.endswith('"')) or (key.startswith("'") and key.endswith("'")):
         quote = key[0]
         unquoted = key[1:-1]

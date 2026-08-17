@@ -43,6 +43,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-08-17] Validation finale locale de la PR #36 après corrections Greptile
+  - **Context**: Le parseur texte de `.github/scripts/verify_workflows.py` a nécessité plusieurs corrections pour couvrir les ancres YAML directes, scalaires, flow, multilignes, alias imbriqués et mappings `concurrency`.
+  - **Discarded Options**: Pousser après chaque finding ; relancer Greptile sans lire le retour précédent ; ajouter des regex isolées sans test de reproduction.
+  - **Rationale**: Les findings ont été reproduits localement, corrigés par tests comportementaux, validés par `./ci.sh` et quality gate, puis revus sans push. Le commit local `27c4380` obtient Greptile **5/5**, sans blocage ni commentaire.
 - [2026-08-16] Synchronisation Exhaustive des Chemins Protégés de Gouvernance, Permissions Agent et CI (PR #35)
   - **Context**: La PR #35 a initialement mis à jour `governance.yml`. Les revues automatisées (CodeRabbit, Greptile, Agent-Optibot) ont détecté un désalignement avec `.github/PULL_REQUEST_TEMPLATE.md`, `.agents/settings.json`, `.github/CODEOWNERS` et l'omission de `ci.sh`.
   - **Discarded Options**: Corriger uniquement `governance.yml` en ignorant le template PR et les règles de permissions locales ; maintenir `ci.sh` non protégé en gouvernance.
@@ -95,8 +99,8 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Correction locale du bypass `on: &events` et de sa variante inline `on: &events [push]` / `[pull_request_target]` sur la **PR #36** (`fix/ci-verify-workflows-logic`) ; validation locale `41/41` tests, Greptile distant encore à **3/5** avant push.
-- 🔄 In progress: Validation locale finale du correctif PR #36, puis revue distante uniquement après push autorisé.
+  - Correctif final local de la **PR #36** (`fix/ci-verify-workflows-logic`) : validation CI `54/54` tests, quality gate PASS, Greptile CLI **5/5**, zéro blocage et zéro commentaire ; aucun push effectué.
+- 🔄 In progress: Préparer le push autorisé de la PR #36, puis lire les verdicts distants Greptile, CodeRabbit et Optibot sur le nouveau commit ; le score GitHub distant actuel reste `3/5` tant que ce commit n'est pas poussé.
 - ⏳ Pending:
   - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
