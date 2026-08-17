@@ -181,11 +181,17 @@ Aucun push effectué.
 ```
 
 ### Step 16: Commit local et nouvelle revue Greptile sans push
-- [ ] **Action**: Exécuter `./ci.sh`, créer le commit local incluant le correctif, la régression, le GCC et les deux suppressions de skills, puis relire avec Greptile sans pousser.
-- [ ] **Verify**: CI complète PASS, commit sans fichier parasite, Greptile 5/5 sans blocage/commentaire.
+- [x] **Action**: Exécuter `./ci.sh`, créer le commit local incluant le correctif, la régression, le GCC et les deux suppressions de skills, puis relire avec Greptile sans pousser.
+- [x] **Verify**: CI complète PASS, commit sans fichier parasite, Greptile 5/5 sans blocage/commentaire.
 - **Verification Proof**:
 ```text
-En attente de validation CI, commit local et revue Greptile.
+Commit local : b9f0249.
+CI : 6 étapes PASS, 55/55 tests, 6 workflows conformes.
+Quality gate : Secrets, CVE, Ruff, Ruff Format, Mypy, Sonar/Bugbear/Simplify, Bandit et Semgrep PASS.
+Suppressions incluses : .claude/skills/testsprite-onboard/SKILL.md et .claude/skills/testsprite-verify/SKILL.md.
+Greptile : Confidence 5/5, No blocking failure remains, No review comments.
+.gitignore reste volontairement non committé.
+Aucun push effectué.
 ```
 
 ## 📐 Solution durable recommandée

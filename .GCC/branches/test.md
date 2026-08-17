@@ -101,6 +101,8 @@
 | Correctif `&events on:` | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'anchored_top_level_on_key or nested_escaped_event_keys_and_dispatch_inputs_not_confused or reject_pull_request_target'` | `3 passed, 25 deselected` | **PASS** |
 | Suppression des skills TestSprite | Vérification workspace | `.claude/skills/testsprite-onboard/SKILL.md` et `.claude/skills/testsprite-verify/SKILL.md` absents et à inclure dans le commit | **PRÊT À COMMITTER** |
 | Push | Aucun | Le correctif et les suppressions restent locaux | **NON EFFECTUÉ** |
+| Commit local final | `git show b9f0249 --name-status` | Correctif, test, GCC et 2 suppressions de skills inclus ; `.gitignore` exclu | **PASS** |
+| Revue Greptile finale sur `b9f0249` | `greptile review --agent --branch main` | `Confidence: 5/5`, `No blocking failure remains`, `No review comments` | **PASS** |
 
 La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
 
