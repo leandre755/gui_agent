@@ -80,10 +80,22 @@ CI finale : 6 étapes PASS, 44/44 tests, workflows 6/6 conformes.
 Aucun push effectué.
 ```
 
-### Step 8: Commit local et nouvelle revue Greptile sans push
-- [ ] **Action**: Créer un commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
+### Step 8: Corriger les constats Greptile sur les alias externes et l'ordre concurrency
+- [x] **Action**: Résoudre les ancres flow multilignes et séquences bloc externes référencées par alias, et parcourir tous les enfants de `concurrency:` pour accepter un `group` valide quel que soit son ordre.
+- [x] **Verify**: `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` puis `./ci.sh`
+- **Verification Proof**:
+```text
+Greptile local sur commit 1894b95 : Confidence 2/5, 2 constats P1.
+RED : alias flow/séquence externes et group après cancel-in-progress reproduits.
+GREEN ciblé : 7 passed, 12 deselected.
+CI finale : 6 étapes PASS, 46/46 tests, workflows 6/6 conformes.
+Aucun push effectué.
+```
+
+### Step 9: Commit local et nouvelle revue Greptile sans push
+- [ ] **Action**: Créer un troisième commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
 - [ ] **Verify**: Greptile doit atteindre 5/5 sans finding P1/P2, puis lire le résultat complet avant toute action distante.
 - **Verification Proof**:
 ```text
-En attente du commit local et de la revue Greptile.
+En attente du troisième commit local et de la revue Greptile.
 ```

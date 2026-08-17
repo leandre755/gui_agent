@@ -69,6 +69,10 @@
 | Régressions Greptile | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `5 passed, 12 deselected` | **PASS** |
 | CI locale complète — nouvel état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `44 passed` | **PASS** |
 | Push | Aucun | Le second correctif reste local avant toute revue distante GitHub | **NON EFFECTUÉ** |
+| Greptile local sur commit `1894b95` | `greptile review --agent --branch main` | `Confidence: 2/5` ; 2 constats P1 sur alias externes et ordre du groupe concurrency | **BLOQUÉ puis corrigé** |
+| Régressions Greptile supplémentaires | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `7 passed, 12 deselected` | **PASS** |
+| CI locale complète — troisième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `46 passed` | **PASS** |
+| Push | Aucun | Le troisième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
 
 La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
 

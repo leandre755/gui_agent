@@ -191,7 +191,7 @@ class WorkflowVerifier:
 
             name = anchor_match.group(1)
             val = anchor_match.group(2).strip()
-            if val:
+            if val and is_complete_flow_collection(val):
                 anchors[name] = parse_inline_yaml_triggers(val)
                 continue
 
@@ -203,12 +203,22 @@ class WorkflowVerifier:
                     continue
                 child_indent = len(child_line) - len(child_line.lstrip(" "))
                 if child_indent <= anchor_indent:
+                    if child_indent == anchor_indent and child_stripped.startswith(("]", "}")):
+                        child_lines.append(child_stripped)
                     break
                 child_lines.append(child_stripped)
+
+            collection_value = " ".join(child_line.strip() for child_line in child_lines)
+            if collection_value.startswith(("[", "{")) and is_complete_flow_collection(collection_value):
+                anchors[name] = parse_inline_yaml_triggers(collection_value)
+                continue
 
             triggers: set[str] = set()
             for child_line in child_lines:
                 child_stripped = child_line.strip()
+                if child_stripped.startswith("-"):
+                    triggers.update(self._resolve_trigger_token(child_stripped[1:].strip()))
+                    continue
                 key_match = re.match(r"^([^:]+):", child_stripped)
                 if key_match:
                     triggers.add(decode_yaml_key(key_match.group(1).strip()))
@@ -378,7 +388,6 @@ class WorkflowVerifier:
                     group_match = re.match(r"^\s*group:\s*(\S.*)$", child_code)
                     if group_match and group_match.group(1).strip():
                         has_concurrency_group = True
-                    break
 
             if not has_concurrency_group:
                 self.log_error(

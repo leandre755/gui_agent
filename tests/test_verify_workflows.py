@@ -322,6 +322,81 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors)
 
 
+def test_reject_external_multiline_and_sequence_anchor_aliases(tmp_path: Path):
+    multiline_flow = tmp_path / "external_multiline_flow_anchor.yml"
+    multiline_flow.write_text(
+        """
+name: External Multiline Flow Anchor
+events: &events {
+  pull_request_target: null
+}
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count1, errors1, _ = verify_workflows.check_workflow(multiline_flow)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    block_sequence = tmp_path / "external_block_sequence_anchor.yml"
+    block_sequence.write_text(
+        """
+name: External Block Sequence Anchor
+events: &events
+  - pull_request_target
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(block_sequence)
+    assert count2 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors2)
+
+
+def test_accept_concurrency_group_after_cancel_in_progress(tmp_path: Path):
+    wf = tmp_path / "concurrency_group_after_cancel.yml"
+    wf.write_text(
+        """
+name: Concurrency Group Order
+on: push
+permissions:
+  contents: read
+concurrency:
+  cancel-in-progress: true
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count == 0, f"Erreurs inattendues: {errors}"
+
+
 def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
     wf = tmp_path / "multiline_anchor_mapping.yml"
     wf.write_text(
