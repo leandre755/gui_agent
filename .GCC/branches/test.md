@@ -52,6 +52,60 @@
 
 ---
 
+## 🧪 PR #36 — Issue #26 — Régression Greptile et correctif local (2026-08-17)
+
+| Scénario | Commande | Résultat | Statut |
+|---|---|---|---|
+| Reproduction du bypass `on: &events` | `./venv/bin/pytest -q tests/test_verify_workflows.py -k anchored_trigger_mapping` avant correctif | `1 failed, 12 deselected` : `pull_request_target` ancré accepté avec 0 erreur | **FAIL reproduit** |
+| Correctif des triggers ancrés | `./venv/bin/pytest -q tests/test_verify_workflows.py -k anchored_trigger_mapping` après correctif | `1 passed, 12 deselected` | **PASS** |
+| Reproduction du suffixe d’ancre inline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k inline_anchored_trigger_values` avant correctif | `1 failed, 13 deselected` : `on: &events [pull_request_target]` accepté avec 0 erreur | **FAIL reproduit** |
+| Correctif des ancres inline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'anchored_trigger_mapping or inline_anchored_trigger_values'` après correctif | `2 passed, 12 deselected` | **PASS** |
+| Verdict distant initial PR #36 | Lecture `gh pr view 36` + GraphQL `reviewThreads` | Greptile `Confidence Score: 3/5`, 1 thread P1 non résolu ; Optibot sans blocage ; CodeRabbit rate-limité | **BLOQUÉ avant push** |
+| Revue CodeRabbit locale | `coderabbit review --agent --uncommitted --base main --dir .github` | 1 finding major sur le suffixe d’ancre inline, corrigé localement | **CORRIGÉ** |
+| Push | Aucun | Le correctif n'a pas été poussé avant validation locale complète | **NON EFFECTUÉ** |
+| CI locale complète — premier passage | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `40 passed` | **PASS** |
+| CI locale complète — état final précédent | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `41 passed` après la correction d’ancre inline | **PASS** |
+| Greptile local sur commit `6976b3a` | `greptile review --agent --branch main` | `Confidence: 0/5` ; 2 constats P1 sécurité et 1 défaut concurrency | **BLOQUÉ puis corrigé** |
+| Régressions Greptile | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `5 passed, 12 deselected` | **PASS** |
+| CI locale complète — nouvel état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `44 passed` | **PASS** |
+| Push | Aucun | Le second correctif reste local avant toute revue distante GitHub | **NON EFFECTUÉ** |
+| Greptile local sur commit `1894b95` | `greptile review --agent --branch main` | `Confidence: 2/5` ; 2 constats P1 sur alias externes et ordre du groupe concurrency | **BLOQUÉ puis corrigé** |
+| Régressions Greptile supplémentaires | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `7 passed, 12 deselected` | **PASS** |
+| CI locale complète — troisième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `46 passed` | **PASS** |
+| Push | Aucun | Le troisième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `637e516` | `greptile review --agent --branch main` | `Confidence: 3/5` ; 1 constat P1 sur les ancres flow-séquence multilignes externes | **BLOQUÉ puis corrigé** |
+| Régression du dernier P1 | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `8 passed, 12 deselected` | **PASS** |
+| CI locale complète — quatrième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `47 passed` | **PASS** |
+| Push | Aucun | Le quatrième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `8ed1ddc` | `greptile review --agent --branch main` | `Confidence: 3/5` ; 1 constat P1 sur les ancres scalaires externes | **BLOQUÉ puis corrigé** |
+| Régressions scalaires et précédentes | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `9 passed, 12 deselected` | **PASS** |
+| CI locale complète — cinquième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `48 passed` | **PASS** |
+| Push | Aucun | Le cinquième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| CI locale intermédiaire | `./ci.sh` | 49/49 tests et contrôles statiques passés, mais Ruff Format a signalé 1 ligne à reformater | **CORRIGÉ avant commit** |
+| Greptile local sur commit `e0dac50` | `greptile review --agent --branch main` | `Confidence: 4/5` ; 1 constat P1 sur les mappings concurrency flow multilignes | **BLOQUÉ puis corrigé** |
+| Régression concurrency multiline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `10 passed, 12 deselected` | **PASS** |
+| CI locale complète — sixième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `49 passed` | **PASS** |
+| Push | Aucun | Le sixième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `1236d0a` | `greptile review --agent --branch main` | `Confidence: 0/5` ; 3 constats P1 sur alias flow, collections `on` multilignes et clés `group` quotées | **BLOQUÉ puis corrigé** |
+| Régressions P1 et précédentes | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'flow_sequence_alias_trigger or multiline_flow_triggers or accept_quoted_concurrency_group or multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `13 passed, 12 deselected` | **PASS** |
+| CI locale intermédiaire | `./ci.sh` | 52/52 tests passés, mais Ruff C901 a signalé `_parse_triggers` à `26 > 25` | **CORRIGÉ avant commit** |
+| CI locale complète — septième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `52 passed` | **PASS** |
+| Push | Aucun | Le septième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `cdac9fd` | `greptile review --agent --branch main` | `Confidence: 2/5` ; 2 constats P1 sur alias flow imbriqué et groupe concurrency descendant | **BLOQUÉ puis corrigé** |
+| Régressions imbriquées et précédentes | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'nested_alias_inside_flow_anchor or nested_concurrency_group_without_direct_group or flow_sequence_alias_trigger or multiline_flow_triggers or accept_quoted_concurrency_group or multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `15 passed, 12 deselected` | **PASS** |
+| CI locale complète — huitième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `54 passed` | **PASS** |
+| Push | Aucun | Aucun push effectué après le commit `27c4380` | **NON EFFECTUÉ** |
+| Revue Greptile finale sur commit `27c4380` | `greptile review --agent --branch main` | `Confidence: 5/5`, `No blocking failure remains`, `No review comments` | **PASS** |
+| Greptile distant PR #36 — nouveau verdict | Commentaires PR lus intégralement | `Confidence: 3/5` ; P1 sécurité sur la clé top-level `&events on:` | **BLOQUÉ puis corrigé localement** |
+| Régression `&events on:` | `./venv/bin/pytest -q tests/test_verify_workflows.py -k anchored_top_level_on_key` avant correctif | `1 failed, 27 deselected` | **FAIL reproduit** |
+| Correctif `&events on:` | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'anchored_top_level_on_key or nested_escaped_event_keys_and_dispatch_inputs_not_confused or reject_pull_request_target'` | `3 passed, 25 deselected` | **PASS** |
+| Suppression des skills TestSprite | Vérification workspace | `.claude/skills/testsprite-onboard/SKILL.md` et `.claude/skills/testsprite-verify/SKILL.md` absents et à inclure dans le commit | **PRÊT À COMMITTER** |
+| Push | Aucun | Le correctif et les suppressions restent locaux | **NON EFFECTUÉ** |
+| Commit local final | `git show b9f0249 --name-status` | Correctif, test, GCC et 2 suppressions de skills inclus ; `.gitignore` exclu | **PASS** |
+| Revue Greptile finale sur `b9f0249` | `greptile review --agent --branch main` | `Confidence: 5/5`, `No blocking failure remains`, `No review comments` | **PASS** |
+
+La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
+
 ## 🟢 Conclusion & Qualification
 La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1`, du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`, ainsi que du correctif de sécurité et de conformité du chemin de sortie pour `gui_take_screenshot` (PR #7).
 

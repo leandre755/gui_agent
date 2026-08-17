@@ -22,7 +22,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo ""
     echo "Options:"
     echo "  -h, --help       Affiche cette aide et quitte."
-    echo "  --quick          Exécute uniquement la compilation, le linter et les tests (ignore mypy et le formatage)."
+    echo "  --quick          Exécute la compilation, la validation des workflows, le linter et les tests (ignore mypy et le formatage)."
     echo "  --no-headless    Désactive l'exécution sous xvfb-run pour les tests."
     exit 0
 fi
@@ -167,18 +167,21 @@ run_step() {
 # 1. Compilation Bytecode Python
 run_step "Compilation Bytecode Python (compileall)" "$PYTHON_BIN -m compileall -q -x '(\.venv|venv|\.git|\.GCC|screenshots|dist|build)' ."
 
-# 2. Linter Ruff
+# 2. Vérification de la Logique et Sécurité des Workflows GitHub Actions
+run_step "Validation Workflows GitHub Actions" "$PYTHON_BIN .github/scripts/verify_workflows.py .github/workflows"
+
+# 3. Linter Ruff
 run_step "Linter de Code (Ruff Check)" "$RUFF_CMD check ."
 
 if [ "$QUICK_MODE" -eq 0 ]; then
-    # 3. Formatage de Code
+    # 4. Formatage de Code
     run_step "Formatage de Code (Ruff Format)" "$RUFF_CMD format --check ."
 
-    # 4. Typage Statique
+    # 5. Typage Statique
     run_step "Typage Statique Strict (Mypy)" "$MYPY_CMD gui_agent mcp_gui_server.py"
 fi
 
-# 5. Tests Pytest
+# 6. Tests Pytest
 run_step "Suite de Tests Pytest" "$TEST_RUNNER -v tests/"
 
 # Affichage du tableau récapitulatif
