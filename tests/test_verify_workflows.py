@@ -424,6 +424,52 @@ jobs:
     assert count == 0, f"Erreurs inattendues: {errors}"
 
 
+def test_reject_scalar_trigger_anchor_aliases(tmp_path: Path):
+    scalar_pr_target = tmp_path / "scalar_pr_target_anchor.yml"
+    scalar_pr_target.write_text(
+        """
+name: Scalar PR Target Anchor
+events: &events pull_request_target
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count1, errors1, _ = verify_workflows.check_workflow(scalar_pr_target)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    scalar_push = tmp_path / "scalar_push_anchor.yml"
+    scalar_push.write_text(
+        """
+name: Scalar Push Anchor
+events: &events push
+on: *events
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(scalar_push)
+    assert count2 >= 1
+    assert any("concurrency" in e for e in errors2)
+
+
 def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
     wf = tmp_path / "multiline_anchor_mapping.yml"
     wf.write_text(

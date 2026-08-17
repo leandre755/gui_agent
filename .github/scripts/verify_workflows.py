@@ -194,6 +194,9 @@ class WorkflowVerifier:
             if val and is_complete_flow_collection(val):
                 anchors[name] = parse_inline_yaml_triggers(val)
                 continue
+            if val and not val.startswith(("[", "{")):
+                anchors[name] = parse_inline_yaml_triggers(val)
+                continue
 
             anchor_indent = len(line) - len(line.lstrip(" "))
             child_lines: list[str] = []

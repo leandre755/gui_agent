@@ -77,6 +77,10 @@
 | Régression du dernier P1 | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `8 passed, 12 deselected` | **PASS** |
 | CI locale complète — quatrième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `47 passed` | **PASS** |
 | Push | Aucun | Le quatrième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `8ed1ddc` | `greptile review --agent --branch main` | `Confidence: 3/5` ; 1 constat P1 sur les ancres scalaires externes | **BLOQUÉ puis corrigé** |
+| Régressions scalaires et précédentes | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `9 passed, 12 deselected` | **PASS** |
+| CI locale complète — cinquième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `48 passed` | **PASS** |
+| Push | Aucun | Le cinquième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
 
 La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
 

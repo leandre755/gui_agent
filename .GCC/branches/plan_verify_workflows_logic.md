@@ -104,10 +104,22 @@ CI finale : 6 étapes PASS, 47/47 tests, workflows 6/6 conformes.
 Aucun push effectué.
 ```
 
-### Step 10: Commit local et nouvelle revue Greptile sans push
-- [ ] **Action**: Créer un quatrième commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
+### Step 10: Corriger le P1 sur les ancres scalaires externes
+- [x] **Action**: Enregistrer les valeurs scalaires non vides des ancres externes afin que les alias `on: *events` conservent les triggers `pull_request_target`, `push` et `pull_request`.
+- [x] **Verify**: `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` puis `./ci.sh`
+- **Verification Proof**:
+```text
+Greptile local sur commit 8ed1ddc : Confidence 3/5, 1 constat P1 sur les ancres scalaires.
+RED : alias scalaires pull_request_target et push reproduits à 0 erreur.
+GREEN ciblé : 9 passed, 12 deselected.
+CI finale : 6 étapes PASS, 48/48 tests, workflows 6/6 conformes.
+Aucun push effectué.
+```
+
+### Step 11: Commit local et nouvelle revue Greptile sans push
+- [ ] **Action**: Créer un cinquième commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
 - [ ] **Verify**: Greptile doit atteindre 5/5 sans finding P1/P2, puis lire le résultat complet avant toute action distante.
 - **Verification Proof**:
 ```text
-En attente du quatrième commit local et de la revue Greptile.
+En attente du cinquième commit local et de la revue Greptile.
 ```
