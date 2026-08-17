@@ -178,7 +178,8 @@ class WorkflowVerifier:
         self.text: str = "\n".join(self.lines)
         self.errors: list[str] = []
         self.warnings: list[str] = []
-        self.anchors: dict[str, set[str]] = self._scan_yaml_anchors()
+        self.anchors: dict[str, set[str]] = {}
+        self.anchors = self._scan_yaml_anchors()
 
     def _scan_yaml_anchors(self) -> dict[str, set[str]]:
         """Scanne les ancres YAML simples (&anchor_name value) pour résoudre les alias (*anchor_name)."""
@@ -192,7 +193,7 @@ class WorkflowVerifier:
             name = anchor_match.group(1)
             val = anchor_match.group(2).strip()
             if val and is_complete_flow_collection(val):
-                anchors[name] = parse_inline_yaml_triggers(val)
+                anchors[name] = self._parse_anchor_flow_collection(val, anchors)
                 continue
             if val and not val.startswith(("[", "{")):
                 anchors[name] = parse_inline_yaml_triggers(val)
@@ -215,7 +216,7 @@ class WorkflowVerifier:
             if val.startswith(("[", "{")):
                 collection_value = f"{val} {collection_value}".strip()
             if collection_value.startswith(("[", "{")) and is_complete_flow_collection(collection_value):
-                anchors[name] = parse_inline_yaml_triggers(collection_value)
+                anchors[name] = self._parse_anchor_flow_collection(collection_value, anchors)
                 continue
 
             triggers: set[str] = set()
@@ -229,6 +230,19 @@ class WorkflowVerifier:
                     triggers.add(decode_yaml_key(key_match.group(1).strip()))
             anchors[name] = triggers
         return anchors
+
+    def _parse_anchor_flow_collection(self, value: str, anchors: dict[str, set[str]]) -> set[str]:
+        trimmed = value.strip()
+        if trimmed.startswith("[") and trimmed.endswith("]"):
+            triggers: set[str] = set()
+            for item in _split_flow_tokens(trimmed[1:-1]):
+                token = item.strip()
+                if token.startswith("*"):
+                    triggers.update(anchors.get(token[1:].strip(), set()))
+                else:
+                    triggers.add(decode_yaml_key(token))
+            return triggers
+        return parse_inline_yaml_triggers(trimmed)
 
     def log_error(self, message: str, line_no: int | None = None) -> None:
         prefix = f"{self.path}:{line_no}: " if line_no is not None else f"{self.path}: "
@@ -404,6 +418,7 @@ class WorkflowVerifier:
                         has_concurrency_group = True
                     break
 
+                direct_indent: int | None = None
                 for child_line in self.lines[idx + 1 :]:
                     child_code = strip_yaml_comment(child_line).rstrip()
                     if not child_code.strip():
@@ -411,6 +426,10 @@ class WorkflowVerifier:
                     child_indent = len(child_line) - len(child_line.lstrip(" "))
                     if child_indent == 0:
                         break
+                    if direct_indent is None:
+                        direct_indent = child_indent
+                    if child_indent != direct_indent:
+                        continue
                     child_match = re.match(r"^\s*([^:]+):\s*(\S.*)$", child_code)
                     if child_match:
                         child_key = decode_yaml_key(child_match.group(1).strip())

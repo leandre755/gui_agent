@@ -589,6 +589,57 @@ jobs:
     assert count2 == 0, f"Erreurs inattendues: {errors2}"
 
 
+def test_reject_nested_alias_inside_flow_anchor(tmp_path: Path):
+    wf = tmp_path / "nested_flow_alias_anchor.yml"
+    wf.write_text(
+        """
+name: Nested Flow Alias Anchor
+event: &event pull_request_target
+events: &events [*event]
+on: *events
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
+def test_reject_nested_concurrency_group_without_direct_group(tmp_path: Path):
+    wf = tmp_path / "nested_concurrency_group.yml"
+    wf.write_text(
+        """
+name: Nested Concurrency Group
+on: push
+permissions:
+  contents: read
+concurrency:
+  nested:
+    group: fake
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("concurrency" in e for e in errors)
+
+
 def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
     wf = tmp_path / "multiline_anchor_mapping.yml"
     wf.write_text(
