@@ -495,6 +495,100 @@ jobs:
     assert any("concurrency" in e for e in errors)
 
 
+def test_reject_flow_sequence_alias_trigger(tmp_path: Path):
+    wf = tmp_path / "flow_sequence_alias_trigger.yml"
+    wf.write_text(
+        """
+name: Flow Sequence Alias Trigger
+event: &event pull_request_target
+on: [*event]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
+def test_reject_multiline_flow_triggers(tmp_path: Path):
+    wf = tmp_path / "multiline_flow_triggers.yml"
+    wf.write_text(
+        """
+name: Multiline Flow Triggers
+on: [
+  pull_request_target
+]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors)
+
+
+def test_accept_quoted_concurrency_group(tmp_path: Path):
+    wf = tmp_path / "quoted_concurrency_group.yml"
+    wf.write_text(
+        """
+name: Quoted Concurrency Group
+on: push
+permissions:
+  contents: read
+concurrency: {"group": build-${{ github.ref }}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count, errors, _ = verify_workflows.check_workflow(wf)
+    assert count == 0, f"Erreurs inattendues: {errors}"
+
+    wf_block = tmp_path / "quoted_block_concurrency_group.yml"
+    wf_block.write_text(
+        """
+name: Quoted Block Concurrency Group
+on: push
+permissions:
+  contents: read
+concurrency:
+  "group": build-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(wf_block)
+    assert count2 == 0, f"Erreurs inattendues: {errors2}"
+
+
 def test_reject_multiline_anchored_trigger_mapping(tmp_path: Path):
     wf = tmp_path / "multiline_anchor_mapping.yml"
     wf.write_text(

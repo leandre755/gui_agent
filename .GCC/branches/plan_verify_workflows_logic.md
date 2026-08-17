@@ -129,10 +129,23 @@ Ruff Format intermédiaire échoué sur 1 ligne puis corrigé ; seconde CI enti�
 Aucun push effectué.
 ```
 
-### Step 12: Commit local et nouvelle revue Greptile sans push
-- [ ] **Action**: Créer un sixième commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
+### Step 12: Corriger les P1 sur alias flow, collections on multilignes et group quoté
+- [x] **Action**: Résoudre les alias dans les séquences flow, accumuler les collections flow multilignes sous `on:`, et décoder les clés `group` quotées dans les mappings `concurrency` inline et bloc.
+- [x] **Verify**: `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'flow_sequence_alias_trigger or multiline_flow_triggers or accept_quoted_concurrency_group or multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` puis `./ci.sh`
+- **Verification Proof**:
+```text
+Greptile local sur commit 1236d0a : Confidence 0/5, 3 constats P1.
+RED : alias flow, group quoté et cas on flow multiline reproduits.
+GREEN ciblé : 13 passed, 12 deselected.
+CI finale : 6 étapes PASS, 52/52 tests, workflows 6/6 conformes.
+C901 intermédiaire de _parse_triggers corrigé par extraction helper ; CI finale Ruff PASS.
+Aucun push effectué.
+```
+
+### Step 13: Commit local et nouvelle revue Greptile sans push
+- [ ] **Action**: Créer un septième commit local avec le correctif et exécuter une seule revue Greptile contre `main`; ne pas pousser.
 - [ ] **Verify**: Greptile doit atteindre 5/5 sans finding P1/P2, puis lire le résultat complet avant toute action distante.
 - **Verification Proof**:
 ```text
-En attente du sixième commit local et de la revue Greptile.
+En attente du septième commit local et de la revue Greptile.
 ```

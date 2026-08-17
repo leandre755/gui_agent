@@ -248,8 +248,28 @@ class WorkflowVerifier:
             return self.anchors.get(alias_name, set())
         # Déclaration inline flow-style
         if (tok.startswith("[") and tok.endswith("]")) or (tok.startswith("{") and tok.endswith("}")):
-            return parse_inline_yaml_triggers(tok)
+            return self._parse_inline_trigger_collection(tok)
         return {decode_yaml_key(tok)}
+
+    def _parse_inline_trigger_collection(self, value: str) -> set[str]:
+        trimmed = value.strip()
+        if trimmed.startswith("[") and trimmed.endswith("]"):
+            triggers: set[str] = set()
+            for item in _split_flow_tokens(trimmed[1:-1]):
+                triggers.update(self._resolve_trigger_token(item))
+            return triggers
+        return parse_inline_yaml_triggers(trimmed)
+
+    def _parse_inline_on_value(self, value: str) -> tuple[set[str], str | None]:
+        anchor_match = re.fullmatch(r"&[a-zA-Z0-9_-]+(?:\s+(.*))?", value)
+        trigger_value = anchor_match.group(1) if anchor_match else value
+        if not trigger_value:
+            return set(), None
+        if is_complete_flow_collection(trigger_value):
+            return self._resolve_trigger_token(trigger_value), None
+        if trigger_value.startswith(("[", "{")):
+            return set(), trigger_value
+        return self._resolve_trigger_token(trigger_value), None
 
     def _parse_triggers(self) -> set[str]:
         """Extrait et décode l'ensemble des événements déclencheurs sous la directive top-level 'on:'."""
@@ -263,7 +283,6 @@ class WorkflowVerifier:
                 continue
 
             current_indent = len(line) - len(line.lstrip(" "))
-
             if current_indent == 0:
                 top_match = re.match(r"^([^:]+):\s*(.*)$", stripped_code)
                 if top_match:
@@ -272,15 +291,9 @@ class WorkflowVerifier:
                         in_on = True
                         inline_val = top_match.group(2).strip()
                         if inline_val:
-                            anchor_match = re.fullmatch(r"&[a-zA-Z0-9_-]+(?:\s+(.*))?", inline_val)
-                            trigger_value = anchor_match.group(1) if anchor_match else inline_val
-                            if trigger_value:
-                                if is_complete_flow_collection(trigger_value):
-                                    return self._resolve_trigger_token(trigger_value)
-                                if trigger_value.startswith(("[", "{")):
-                                    inline_flow_value = trigger_value
-                                else:
-                                    return self._resolve_trigger_token(trigger_value)
+                            parsed, inline_flow_value = self._parse_inline_on_value(inline_val)
+                            if parsed:
+                                return parsed
                         continue
                     if in_on and inline_flow_value is None:
                         break
@@ -290,46 +303,40 @@ class WorkflowVerifier:
             if inline_flow_value is not None:
                 inline_flow_value = f"{inline_flow_value} {stripped_code.strip()}"
                 if is_complete_flow_collection(inline_flow_value):
-                    return parse_inline_yaml_triggers(inline_flow_value)
+                    return self._parse_inline_trigger_collection(inline_flow_value)
+                continue
+
+            stripped = stripped_code.strip()
+            if stripped.startswith(("[", "{")):
+                inline_flow_value = stripped
+                if is_complete_flow_collection(inline_flow_value):
+                    return self._parse_inline_trigger_collection(inline_flow_value)
                 continue
             on_child_lines.append(stripped_code)
 
         if inline_flow_value is not None:
-            return parse_inline_yaml_triggers(inline_flow_value)
+            return self._parse_inline_trigger_collection(inline_flow_value)
         if not on_child_lines:
             return set()
 
-        # Identifier le niveau d'indentation direct des événements déclarés sous 'on:'
-        min_child_indent: int | None = None
-        for line in on_child_lines:
-            indent = len(line) - len(line.lstrip(" "))
-            if min_child_indent is None or indent < min_child_indent:
-                min_child_indent = indent
-
+        min_child_indent = min(len(line) - len(line.lstrip(" ")) for line in on_child_lines)
         triggers: set[str] = set()
         for line in on_child_lines:
             indent = len(line) - len(line.lstrip(" "))
-            if min_child_indent is not None and indent == min_child_indent:
-                stripped = line.strip()
-                # Séquence YAML (ex: '- push' ou '- "push"')
-                if stripped.startswith("-"):
-                    item = stripped[1:].strip()
-                    triggers.update(self._resolve_trigger_token(item))
-                elif (stripped.startswith("[") and stripped.endswith("]")) or (
-                    stripped.startswith("{") and stripped.endswith("}")
-                ):
-                    # Block-form flow collection (ex: '  [pull_request_target]' ou '  {push: null}')
-                    triggers.update(parse_inline_yaml_triggers(stripped))
-                elif stripped.startswith("*"):
-                    # Alias YAML en bloc (ex: '  *unsafe_events')
-                    triggers.update(self._resolve_trigger_token(stripped))
-                else:
-                    # Mapping direct (ex: 'push:' ou '"pull_request_target":')
-                    key_match = re.match(r"^([^:]+):", stripped)
-                    if key_match:
-                        raw_event = key_match.group(1).strip()
-                        triggers.add(decode_yaml_key(raw_event))
-
+            if indent != min_child_indent:
+                continue
+            stripped = line.strip()
+            if stripped.startswith("-") or stripped.startswith("*"):
+                triggers.update(self._resolve_trigger_token(stripped.lstrip("-").strip()))
+                continue
+            if (stripped.startswith("[") and stripped.endswith("]")) or (
+                stripped.startswith("{") and stripped.endswith("}")
+            ):
+                triggers.update(self._parse_inline_trigger_collection(stripped))
+                continue
+            key_match = re.match(r"^([^:]+):", stripped)
+            if key_match:
+                triggers.add(decode_yaml_key(key_match.group(1).strip()))
         return triggers
 
     def verify_forbidden_triggers(self) -> None:
@@ -387,8 +394,12 @@ class WorkflowVerifier:
                                 if is_complete_flow_collection(flow_value):
                                     break
                         if is_complete_flow_collection(flow_value):
-                            group_match = re.search(r"(?:^|,)\s*group\s*:\s*([^,}]+)", flow_value[1:-1])
-                            has_concurrency_group = bool(group_match and group_match.group(1).strip())
+                            has_concurrency_group = any(
+                                decode_yaml_key(pair.split(":", 1)[0].strip()) == "group"
+                                and pair.split(":", 1)[1].strip()
+                                for pair in _split_flow_tokens(flow_value[1:-1])
+                                if ":" in pair
+                            )
                     else:
                         has_concurrency_group = True
                     break
@@ -400,9 +411,11 @@ class WorkflowVerifier:
                     child_indent = len(child_line) - len(child_line.lstrip(" "))
                     if child_indent == 0:
                         break
-                    group_match = re.match(r"^\s*group:\s*(\S.*)$", child_code)
-                    if group_match and group_match.group(1).strip():
-                        has_concurrency_group = True
+                    child_match = re.match(r"^\s*([^:]+):\s*(\S.*)$", child_code)
+                    if child_match:
+                        child_key = decode_yaml_key(child_match.group(1).strip())
+                        if child_key == "group" and child_match.group(2).strip():
+                            has_concurrency_group = True
 
             if not has_concurrency_group:
                 self.log_error(

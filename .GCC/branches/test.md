@@ -86,6 +86,11 @@
 | Régression concurrency multiline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `10 passed, 12 deselected` | **PASS** |
 | CI locale complète — sixième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `49 passed` | **PASS** |
 | Push | Aucun | Le sixième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
+| Greptile local sur commit `1236d0a` | `greptile review --agent --branch main` | `Confidence: 0/5` ; 3 constats P1 sur alias flow, collections `on` multilignes et clés `group` quotées | **BLOQUÉ puis corrigé** |
+| Régressions P1 et précédentes | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'flow_sequence_alias_trigger or multiline_flow_triggers or accept_quoted_concurrency_group or multiline_flow_concurrency_without_group or scalar_trigger_anchor_aliases or external_multiline_flow_sequence_anchor_alias or external_multiline_and_sequence_anchor_aliases or accept_concurrency_group_after_cancel_in_progress or block_anchored_trigger_alias or multiline_anchored_trigger_mapping or empty_concurrency_for_push or anchored_trigger_mapping or inline_anchored_trigger_values'` | `13 passed, 12 deselected` | **PASS** |
+| CI locale intermédiaire | `./ci.sh` | 52/52 tests passés, mais Ruff C901 a signalé `_parse_triggers` à `26 > 25` | **CORRIGÉ avant commit** |
+| CI locale complète — septième état | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `52 passed` | **PASS** |
+| Push | Aucun | Le septième correctif reste local avant la revue Greptile suivante | **NON EFFECTUÉ** |
 
 La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
 
