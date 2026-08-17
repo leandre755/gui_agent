@@ -207,7 +207,13 @@ class WorkflowVerifier:
                         in_on = True
                         inline_val = top_match.group(2).strip()
                         if inline_val:
-                            return self._resolve_trigger_token(inline_val)
+                            anchor_match = re.fullmatch(r"&[a-zA-Z0-9_-]+(?:\s+(.*))?", inline_val)
+                            if anchor_match:
+                                anchor_value = anchor_match.group(1)
+                                if anchor_value:
+                                    return self._resolve_trigger_token(anchor_value)
+                            else:
+                                return self._resolve_trigger_token(inline_val)
                         continue
                     elif in_on:
                         break

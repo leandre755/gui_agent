@@ -52,6 +52,22 @@
 
 ---
 
+## 🧪 PR #36 — Issue #26 — Régression Greptile et correctif local (2026-08-17)
+
+| Scénario | Commande | Résultat | Statut |
+|---|---|---|---|
+| Reproduction du bypass `on: &events` | `./venv/bin/pytest -q tests/test_verify_workflows.py -k anchored_trigger_mapping` avant correctif | `1 failed, 12 deselected` : `pull_request_target` ancré accepté avec 0 erreur | **FAIL reproduit** |
+| Correctif des triggers ancrés | `./venv/bin/pytest -q tests/test_verify_workflows.py -k anchored_trigger_mapping` après correctif | `1 passed, 12 deselected` | **PASS** |
+| Reproduction du suffixe d’ancre inline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k inline_anchored_trigger_values` avant correctif | `1 failed, 13 deselected` : `on: &events [pull_request_target]` accepté avec 0 erreur | **FAIL reproduit** |
+| Correctif des ancres inline | `./venv/bin/pytest -q tests/test_verify_workflows.py -k 'anchored_trigger_mapping or inline_anchored_trigger_values'` après correctif | `2 passed, 12 deselected` | **PASS** |
+| Verdict distant initial PR #36 | Lecture `gh pr view 36` + GraphQL `reviewThreads` | Greptile `Confidence Score: 3/5`, 1 thread P1 non résolu ; Optibot sans blocage ; CodeRabbit rate-limité | **BLOQUÉ avant push** |
+| Revue CodeRabbit locale | `coderabbit review --agent --uncommitted --base main --dir .github` | 1 finding major sur le suffixe d’ancre inline, corrigé localement | **CORRIGÉ** |
+| Push | Aucun | Le correctif n'a pas été poussé avant validation locale complète | **NON EFFECTUÉ** |
+| CI locale complète — premier passage | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `40 passed` | **PASS** |
+| CI locale complète — état final | `./ci.sh` | Compilation, validation de 6 workflows, Ruff check, Ruff format, Mypy et `41 passed` après la correction d’ancre inline | **PASS** |
+
+La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile CLI + CodeRabbit CLI (et TestSprite si configuré) avant tout push ; après push, lecture intégrale de la PR et de tous les commentaires avant toute nouvelle relance.
+
 ## 🟢 Conclusion & Qualification
 La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1`, du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`, ainsi que du correctif de sécurité et de conformité du chemin de sortie pour `gui_take_screenshot` (PR #7).
 

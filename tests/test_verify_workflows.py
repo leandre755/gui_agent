@@ -295,6 +295,97 @@ jobs:
     assert any("pull_request_target est formellement interdit" in e for e in errors2)
 
 
+def test_reject_anchored_trigger_mapping_and_require_concurrency(tmp_path: Path):
+    anchored_pr_target = tmp_path / "anchored_pr_target.yml"
+    anchored_pr_target.write_text(
+        """
+name: Anchored PR Target
+on: &events
+  pull_request_target:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count1, errors1, _ = verify_workflows.check_workflow(anchored_pr_target)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    anchored_push = tmp_path / "anchored_push.yml"
+    anchored_push.write_text(
+        """
+name: Anchored Push
+on: &events
+  push:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(anchored_push)
+    assert count2 >= 1
+    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors2)
+
+
+def test_reject_inline_anchored_trigger_values(tmp_path: Path):
+    anchored_pr_target = tmp_path / "inline_anchored_pr_target.yml"
+    anchored_pr_target.write_text(
+        """
+name: Inline Anchored PR Target
+on: &events [pull_request_target]
+permissions:
+  contents: read
+concurrency:
+  group: test-${{ github.ref }}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count1, errors1, _ = verify_workflows.check_workflow(anchored_pr_target)
+    assert count1 >= 1
+    assert any("pull_request_target est formellement interdit" in e for e in errors1)
+
+    anchored_push = tmp_path / "inline_anchored_push.yml"
+    anchored_push.write_text(
+        """
+name: Inline Anchored Push
+on: &events [push]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo test
+""",
+        encoding="utf-8",
+    )
+    count2, errors2, _ = verify_workflows.check_workflow(anchored_push)
+    assert count2 >= 1
+    assert any("Bloc top-level 'concurrency:' manquant" in e for e in errors2)
+
+
 def test_reject_persist_credentials_true(tmp_path: Path):
     """Vérifie le rejet de persist-credentials: true."""
     wf = tmp_path / "persist_creds.yml"

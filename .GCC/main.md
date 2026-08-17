@@ -32,6 +32,12 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
       4. Traiter tous les commentaires spécifiques de lignes (P1/P2/Security) laissés par le bot avec les artefacts T-Rex de reproduction (0 constat restant).
   - 🛠️ **Outillage d'assistance aux revues** : Utiliser proactivement les skills `/greploop` et `/code-review` (CodeRabbit) pour automatiser l'analyse, l'application des correctifs et les cycles itératifs jusqu'à l'obtention du score parfait 5/5.
   - 🚀 **Condition stricte de fusion** : Ce n'est qu'après avoir lu le message de la PR, parcouru tous les commentaires, et obtenu la validation intégrale des 3 moteurs (Optibot, CodeRabbit, Greptile) à **5/5, 0 constat et 0 bloquant** que la fusion (merge) de la PR est autorisée.
+- **Protocole anti-gaspillage pour PR #36 et toute future PR** :
+  - Avant tout `git push`, exécuter localement `./ci.sh`, les tests ciblés, `greptile review --agent --base main` et `coderabbit review --agent --uncommitted --base main` lorsque les CLI sont disponibles et authentifiés. TestSprite CLI peut compléter la validation adaptée au projet ; son agent doit être configuré avant toute exécution distante.
+  - Interdiction de pousser si un test local, Greptile ou CodeRabbit signale un problème actionnable. Corriger localement, puis relancer la validation concernée.
+  - Après un push, lire intégralement la description de la PR, le résumé Greptile le plus récent, le bilan CodeRabbit, le bilan Optibot et 100 % des commentaires/threads avant toute nouvelle modification ou relance.
+  - CodeRabbit distant est déclenché explicitement par un commentaire `@coderabbitai review` uniquement après la validation locale ; ne pas relancer si une revue est déjà en cours ou si le service est rate-limité.
+  - Un nouveau push ou une nouvelle relance est autorisé uniquement lorsqu'un correctif vérifié modifie réellement le résultat précédent. Les check-runs seuls ne valent pas validation ; le critère final reste Greptile **5/5**, zéro échec de sécurité, zéro commentaire actionnable et zéro bloquant Optibot/CodeRabbit. Cette règle vise notamment à éviter la répétition coûteuse de revues distantes déjà facturée sur la PR #36.
 - **Analyse des vulnérabilités de rollback capture identifiées par Greptile (PR #7)** :
   - *P1 - Réservations en lecture seule non nettoyées* : Si un fichier réservé devient read-only, l'ouverture `O_RDWR` échoue et l'erreur étouffée laisse le fichier sur disque, forçant les retentatives vers des suffixes inutiles `(1)`. Solution : ouvrir d'abord en `O_RDONLY` pour vérifier l'identité et ne tronquer que si accessible en écriture.
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
@@ -89,8 +95,8 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Résolution de l'issue #26 via la **PR #36** (`fix/ci-verify-workflows-logic`) avec Confidence Score 5/5 Greptile & 0 commentaire restant (37/37 tests validés).
-- 🔄 In progress: Validation finale et merge de la PR #36.
+  - Correction locale du bypass `on: &events` et de sa variante inline `on: &events [push]` / `[pull_request_target]` sur la **PR #36** (`fix/ci-verify-workflows-logic`) ; validation locale `41/41` tests, Greptile distant encore à **3/5** avant push.
+- 🔄 In progress: Validation locale finale du correctif PR #36, puis revue distante uniquement après push autorisé.
 - ⏳ Pending:
   - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
@@ -99,4 +105,4 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - 5. **Documentation (#29, #14, #15)** : Déploiement de `/documentation` modulaire.
 
 ## 👉 Next Session Direction
-Surveiller les analyses de la PR #35 jusqu'à l'obtention des validations CodeRabbit / Greptile (score 5/5).
+Surveiller la PR #36 après autorisation de push : relire le verdict Greptile, CodeRabbit et Optibot sur le nouveau commit avant toute nouvelle correction ou relance.
