@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from typing import Any
 from PIL import Image, ImageDraw
@@ -70,7 +71,8 @@ def capture_screen_pil(monitor_index: int = 1) -> Image.Image:
                 check=False,
             )
             if res.returncode == 0 and os.path.exists(tmp_path):
-                img = Image.open(tmp_path).convert("RGB")
+                with Image.open(tmp_path) as tmp_img:
+                    img = tmp_img.convert("RGB")
                 with contextlib.suppress(Exception):
                     os.remove(tmp_path)
                 import numpy as np
@@ -1425,6 +1427,7 @@ def gui_click_text(text: str, button: str = "left", clicks: int = 1, monitor_ind
 # Variable globale pour suivre le sous-processus d'enregistrement vidéo actif
 _video_recording_process: subprocess.Popen | None = None
 _video_recording_file: str | None = None
+_video_recording_lock = threading.Lock()
 
 
 @mcp.tool()
@@ -1526,9 +1529,24 @@ async def gui_web_action(
 
                 elif action_clean == "screenshot":
                     timestamp = int(time.time())
-                    screenshot_filename = f"web_screenshot_{timestamp}.png"
-                    screenshot_path = os.path.join(SCREENSHOTS_DIR, screenshot_filename)
-                    page.screenshot(path=screenshot_path, full_page=False)
+                    stem = f"web_screenshot_{timestamp}"
+                    screenshot_path, _, screenshot_identity = _reserve_unique_file_path(SCREENSHOTS_DIR, stem, "png")
+
+                    try:
+                        # Playwright expects a path, we generate it directly to the reserved path
+                        page.screenshot(path=screenshot_path, full_page=False)
+
+                        # Enforce identity validation to prevent TOCTOU substitution
+                        fd = os.open(screenshot_path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+                        try:
+                            st = os.fstat(fd)
+                            if (st.st_dev, st.st_ino) != screenshot_identity:
+                                raise RuntimeError("Détection d'une substitution de fichier concurrente.")
+                        finally:
+                            os.close(fd)
+                    except Exception as e:
+                        _cleanup_reserved_file_safely(screenshot_path, screenshot_identity)
+                        raise e
 
                     result["screenshot_path"] = screenshot_path
                     result["action_performed"] = f"Capture d'écran Web enregistrée à {screenshot_path}"
@@ -1576,24 +1594,25 @@ def gui_start_video_recording(
         except (ValueError, TypeError):
             return {"status": "error", "message": "duration doit être un entier valide."}
 
-    if _video_recording_process is not None:
-        if _video_recording_process.poll() is None:
-            return {
-                "status": "error",
-                "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
-            }
-        else:
-            # Nettoyer les ressources de l'ancien processus terminé/tué
-            with contextlib.suppress(Exception):
-                for stream in [
-                    _video_recording_process.stdin,
-                    _video_recording_process.stdout,
-                    _video_recording_process.stderr,
-                ]:
-                    if stream:
-                        stream.close()
-            _video_recording_process = None
-            _video_recording_file = None
+    with _video_recording_lock:
+        if _video_recording_process is not None:
+            if _video_recording_process.poll() is None:
+                return {
+                    "status": "error",
+                    "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+                }
+            else:
+                # Nettoyer les ressources de l'ancien processus terminé/tué
+                with contextlib.suppress(Exception):
+                    for stream in [
+                        _video_recording_process.stdin,
+                        _video_recording_process.stdout,
+                        _video_recording_process.stderr,
+                    ]:
+                        if stream:
+                            stream.close()
+                _video_recording_process = None
+                _video_recording_file = None
 
     check_display_env()
 
@@ -1647,34 +1666,42 @@ def gui_start_video_recording(
 
     cmd.append(output_path)
 
-    try:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
-        )
-        time.sleep(0.2)
-        if proc.poll() is not None:
-            # Le processus a échoué au démarrage
-            for stream in [proc.stdin, proc.stdout, proc.stderr]:
-                if stream:
-                    with contextlib.suppress(Exception):
-                        stream.close()
-            return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
+    with _video_recording_lock:
+        # Re-check state inside the critical section just before spawning
+        if _video_recording_process is not None and _video_recording_process.poll() is None:
+            return {
+                "status": "error",
+                "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+            }
 
-        _video_recording_process = proc
-        _video_recording_file = output_path
+        try:
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+            )
+            time.sleep(0.2)
+            if proc.poll() is not None:
+                # Le processus a échoué au démarrage
+                for stream in [proc.stdin, proc.stdout, proc.stderr]:
+                    if stream:
+                        with contextlib.suppress(Exception):
+                            stream.close()
+                return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
 
-        return {
-            "status": "success",
-            "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
-            "output_path": output_path,
-            "fps": fps_val,
-            "pid": proc.pid,
-        }
-    except Exception as e:
-        logger.error(f"Erreur lors du démarrage de l'enregistrement vidéo: {e}")
-        _video_recording_process = None
-        _video_recording_file = None
-        return {"status": "error", "message": f"Échec du démarrage de l'enregistrement vidéo : {e!s}"}
+            _video_recording_process = proc
+            _video_recording_file = output_path
+
+            return {
+                "status": "success",
+                "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
+                "output_path": output_path,
+                "fps": fps_val,
+                "pid": proc.pid,
+            }
+        except Exception as e:
+            logger.error(f"Erreur lors du démarrage de l'enregistrement vidéo: {e}")
+            _video_recording_process = None
+            _video_recording_file = None
+            return {"status": "error", "message": f"Échec du démarrage de l'enregistrement vidéo : {e!s}"}
 
 
 @mcp.tool()
@@ -1684,14 +1711,15 @@ def gui_stop_video_recording() -> dict[str, Any]:
     """
     global _video_recording_process, _video_recording_file
 
-    if _video_recording_process is None:
-        return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
+    with _video_recording_lock:
+        if _video_recording_process is None:
+            return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
 
-    proc = _video_recording_process
-    filepath = _video_recording_file
+        proc = _video_recording_process
+        filepath = _video_recording_file
 
-    _video_recording_process = None
-    _video_recording_file = None
+        _video_recording_process = None
+        _video_recording_file = None
 
     try:
         if proc.poll() is None:
