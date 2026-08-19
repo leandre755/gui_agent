@@ -1594,25 +1594,24 @@ def gui_start_video_recording(
         except (ValueError, TypeError):
             return {"status": "error", "message": "duration doit être un entier valide."}
 
-    with _video_recording_lock:
-        if _video_recording_process is not None:
-            if _video_recording_process.poll() is None:
-                return {
-                    "status": "error",
-                    "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
-                }
-            else:
-                # Nettoyer les ressources de l'ancien processus terminé/tué
-                with contextlib.suppress(Exception):
-                    for stream in [
-                        _video_recording_process.stdin,
-                        _video_recording_process.stdout,
-                        _video_recording_process.stderr,
-                    ]:
-                        if stream:
-                            stream.close()
-                _video_recording_process = None
-                _video_recording_file = None
+    if _video_recording_process is not None:
+        if _video_recording_process.poll() is None:
+            return {
+                "status": "error",
+                "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+            }
+        else:
+            # Nettoyer les ressources de l'ancien processus terminé/tué
+            with contextlib.suppress(Exception):
+                for stream in [
+                    _video_recording_process.stdin,
+                    _video_recording_process.stdout,
+                    _video_recording_process.stderr,
+                ]:
+                    if stream:
+                        stream.close()
+            _video_recording_process = None
+            _video_recording_file = None
 
     check_display_env()
 
