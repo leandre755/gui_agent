@@ -756,7 +756,7 @@ def run_xdotool(args: list) -> bool:
         env = os.environ.copy()
         env["DISPLAY"] = env.get("DISPLAY", ":0")
         xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
-        res = subprocess.run([xdotool_bin, *args], env=env, capture_output=True, check=False)
+        res = subprocess.run([xdotool_bin, *args], env=env, capture_output=True, check=False, timeout=5)
         stderr_txt = res.stderr.decode("utf-8", errors="replace").strip()
         if res.returncode != 0 or "No such key name" in stderr_txt or "Ignoring it" in stderr_txt:
             logger.error(f"Erreur xdotool {args}: exit code {res.returncode}, stderr: {stderr_txt}")
@@ -880,9 +880,13 @@ def gui_window_list() -> dict[str, Any]:
     xprop_bin = shutil.which("xprop") or "/usr/bin/xprop"
 
     try:
+        deadline = time.monotonic() + 5.0
         if wmctrl_bin:
             try:
-                out = subprocess.check_output([wmctrl_bin, "-lx"], stderr=subprocess.DEVNULL).decode("utf-8")
+                remaining = max(0.1, deadline - time.monotonic())
+                out = subprocess.check_output([wmctrl_bin, "-lx"], stderr=subprocess.DEVNULL, timeout=remaining).decode(
+                    "utf-8"
+                )
                 for line in out.splitlines():
                     parts = line.split(maxsplit=4)
                     if len(parts) >= 5:
@@ -898,41 +902,54 @@ def gui_window_list() -> dict[str, Any]:
             except Exception as e_wmctrl:
                 logger.warning(f"Échec wmctrl -lx: {e_wmctrl}")
 
-        if not windows:
+        if not windows and time.monotonic() < deadline:
+            remaining = max(0.1, deadline - time.monotonic())
             out = subprocess.check_output(
-                [xdotool_bin, "search", "--onlyvisible", "--name", ".*"], stderr=subprocess.DEVNULL
+                [xdotool_bin, "search", "--onlyvisible", "--name", ".*"], stderr=subprocess.DEVNULL, timeout=remaining
             ).decode("utf-8")
             win_ids = [line.strip() for line in out.splitlines() if line.strip().isdigit()]
             for wid_str in win_ids:
+                if time.monotonic() >= deadline:
+                    break
                 wid = int(wid_str)
                 title = ""
                 pid = None
                 win_class = ""
 
-                with contextlib.suppress(Exception):
-                    title = (
-                        subprocess.check_output([xdotool_bin, "getwindowname", str(wid)], stderr=subprocess.DEVNULL)
-                        .decode("utf-8")
-                        .strip()
-                    )
+                if time.monotonic() < deadline:
+                    with contextlib.suppress(Exception):
+                        remaining = max(0.1, deadline - time.monotonic())
+                        title = (
+                            subprocess.check_output(
+                                [xdotool_bin, "getwindowname", str(wid)], stderr=subprocess.DEVNULL, timeout=remaining
+                            )
+                            .decode("utf-8")
+                            .strip()
+                        )
 
-                with contextlib.suppress(Exception):
-                    pid_out = (
-                        subprocess.check_output([xdotool_bin, "getwindowpid", str(wid)], stderr=subprocess.DEVNULL)
-                        .decode("utf-8")
-                        .strip()
-                    )
-                    if pid_out.isdigit():
-                        pid = int(pid_out)
+                if time.monotonic() < deadline:
+                    with contextlib.suppress(Exception):
+                        remaining = max(0.1, deadline - time.monotonic())
+                        pid_out = (
+                            subprocess.check_output(
+                                [xdotool_bin, "getwindowpid", str(wid)], stderr=subprocess.DEVNULL, timeout=remaining
+                            )
+                            .decode("utf-8")
+                            .strip()
+                        )
+                        if pid_out.isdigit():
+                            pid = int(pid_out)
 
-                with contextlib.suppress(Exception):
-                    class_out = subprocess.check_output(
-                        [xprop_bin, "-id", str(wid), "WM_CLASS"], stderr=subprocess.DEVNULL
-                    ).decode("utf-8")
-                    if "=" in class_out:
-                        raw_classes = class_out.split("=", 1)[1].strip()
-                        classes = [c.strip(' ",') for c in raw_classes.split(",") if c.strip(' ",')]
-                        win_class = ".".join(classes) if classes else raw_classes
+                if time.monotonic() < deadline:
+                    with contextlib.suppress(Exception):
+                        remaining = max(0.1, deadline - time.monotonic())
+                        class_out = subprocess.check_output(
+                            [xprop_bin, "-id", str(wid), "WM_CLASS"], stderr=subprocess.DEVNULL, timeout=remaining
+                        ).decode("utf-8")
+                        if "=" in class_out:
+                            raw_classes = class_out.split("=", 1)[1].strip()
+                            classes = [c.strip(' ",') for c in raw_classes.split(",") if c.strip(' ",')]
+                            win_class = ".".join(classes) if classes else raw_classes
 
                 if title or win_class:
                     windows.append({"id": wid, "title": title, "pid": pid, "wm_class": win_class})

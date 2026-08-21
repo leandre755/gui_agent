@@ -775,3 +775,45 @@ def test_gui_video_recording_concurrency_lock(tmp_path, monkeypatch):
     # Arrêt propre
     res_stop = s.gui_stop_video_recording()
     assert res_stop["status"] == "success"
+
+
+def test_gui_window_list_fallback_deadline_bound(monkeypatch):
+    """Vérifie que gui_window_list respecte la deadline globale lors de timeouts en fallback."""
+    import gui_agent.server as s
+    import subprocess
+    import time
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}" if name != "wmctrl" else None)
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+
+    # Simuler 10 fenêtres trouvées par xdotool search
+    win_ids_output = "\n".join(str(1000 + i) for i in range(10)).encode("utf-8")
+
+    current_time = 100.0
+
+    def fake_monotonic():
+        nonlocal current_time
+        return current_time
+
+    monkeypatch.setattr(time, "monotonic", fake_monotonic)
+
+    calls = []
+
+    def fake_check_output(cmd, stderr=None, timeout=None):
+        nonlocal current_time
+        calls.append((cmd, timeout))
+        if cmd[1] == "search":
+            return win_ids_output
+        # Simuler un timeout ou une opération consommant 2 secondes par appel
+        current_time += 2.0
+        if current_time >= 105.0:
+            raise subprocess.TimeoutExpired(cmd, timeout)
+        return b"Dummy Window"
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+
+    res = s.gui_window_list()
+    assert res["status"] == "success"
+    # Vérifier que la boucle s'est interrompue sans parcourir les 10 fenêtres
+    # Chaque fenêtre fait jusqu'à 3 appels, donc 10 fenêtres feraient 30 appels de métadonnées + 1 search
+    assert len(calls) < 10
