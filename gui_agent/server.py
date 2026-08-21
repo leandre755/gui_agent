@@ -754,7 +754,7 @@ def run_xdotool(args: list) -> bool:
         env = os.environ.copy()
         env["DISPLAY"] = env.get("DISPLAY", ":0")
         xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
-        res = subprocess.run([xdotool_bin, *args], env=env, capture_output=True, check=False)
+        res = subprocess.run([xdotool_bin, *args], env=env, capture_output=True, check=False, timeout=5)
         stderr_txt = res.stderr.decode("utf-8", errors="replace").strip()
         if res.returncode != 0 or "No such key name" in stderr_txt or "Ignoring it" in stderr_txt:
             logger.error(f"Erreur xdotool {args}: exit code {res.returncode}, stderr: {stderr_txt}")
@@ -880,7 +880,7 @@ def gui_window_list() -> dict[str, Any]:
     try:
         if wmctrl_bin:
             try:
-                out = subprocess.check_output([wmctrl_bin, "-lx"], stderr=subprocess.DEVNULL).decode("utf-8")
+                out = subprocess.check_output([wmctrl_bin, "-lx"], stderr=subprocess.DEVNULL, timeout=5).decode("utf-8")
                 for line in out.splitlines():
                     parts = line.split(maxsplit=4)
                     if len(parts) >= 5:
@@ -898,7 +898,7 @@ def gui_window_list() -> dict[str, Any]:
 
         if not windows:
             out = subprocess.check_output(
-                [xdotool_bin, "search", "--onlyvisible", "--name", ".*"], stderr=subprocess.DEVNULL
+                [xdotool_bin, "search", "--onlyvisible", "--name", ".*"], stderr=subprocess.DEVNULL, timeout=5
             ).decode("utf-8")
             win_ids = [line.strip() for line in out.splitlines() if line.strip().isdigit()]
             for wid_str in win_ids:
@@ -909,14 +909,14 @@ def gui_window_list() -> dict[str, Any]:
 
                 with contextlib.suppress(Exception):
                     title = (
-                        subprocess.check_output([xdotool_bin, "getwindowname", str(wid)], stderr=subprocess.DEVNULL)
+                        subprocess.check_output([xdotool_bin, "getwindowname", str(wid)], stderr=subprocess.DEVNULL, timeout=5)
                         .decode("utf-8")
                         .strip()
                     )
 
                 with contextlib.suppress(Exception):
                     pid_out = (
-                        subprocess.check_output([xdotool_bin, "getwindowpid", str(wid)], stderr=subprocess.DEVNULL)
+                        subprocess.check_output([xdotool_bin, "getwindowpid", str(wid)], stderr=subprocess.DEVNULL, timeout=5)
                         .decode("utf-8")
                         .strip()
                     )
@@ -925,7 +925,7 @@ def gui_window_list() -> dict[str, Any]:
 
                 with contextlib.suppress(Exception):
                     class_out = subprocess.check_output(
-                        [xprop_bin, "-id", str(wid), "WM_CLASS"], stderr=subprocess.DEVNULL
+                        [xprop_bin, "-id", str(wid), "WM_CLASS"], stderr=subprocess.DEVNULL, timeout=5
                     ).decode("utf-8")
                     if "=" in class_out:
                         raw_classes = class_out.split("=", 1)[1].strip()
@@ -952,7 +952,7 @@ def gui_window_focus(window_id: int) -> dict[str, Any]:
     xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
 
     try:
-        subprocess.run([xdotool_bin, "windowactivate", str(window_id)], check=True, stderr=subprocess.PIPE)
+        subprocess.run([xdotool_bin, "windowactivate", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
         return {"status": "success", "message": f"Focus et activation effectués pour la fenêtre {window_id}"}
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else str(e)
@@ -991,6 +991,7 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
             ],
             check=True,
             stderr=subprocess.PIPE,
+            timeout=5,
         )
         return {
             "status": "success",
@@ -1022,7 +1023,7 @@ def gui_window_close(window_id: int) -> dict[str, Any]:
     xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
 
     try:
-        subprocess.run([xdotool_bin, "windowclose", str(window_id)], check=True, stderr=subprocess.PIPE)
+        subprocess.run([xdotool_bin, "windowclose", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
         return {"status": "success", "message": f"Fenêtre {window_id} fermée avec succès."}
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else str(e)
