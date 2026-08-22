@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from typing import Any
 from PIL import Image, ImageDraw
@@ -1423,6 +1424,7 @@ def gui_click_text(text: str, button: str = "left", clicks: int = 1, monitor_ind
 # ==============================================================================
 
 # Variable globale pour suivre le sous-processus d'enregistrement vidéo actif
+_video_recording_lock = threading.Lock()
 _video_recording_process: subprocess.Popen | None = None
 _video_recording_file: str | None = None
 
@@ -1557,124 +1559,135 @@ def gui_start_video_recording(
     """
     global _video_recording_process, _video_recording_file
 
-    try:
-        fps_val = max(1, min(30, int(fps)))
-    except (ValueError, TypeError):
-        return {"status": "error", "message": "fps doit être un entier entre 1 et 30."}
-
-    try:
-        mon_idx = int(monitor_index)
-    except (ValueError, TypeError):
-        return {"status": "error", "message": "monitor_index doit être un entier positif ou nul."}
-
-    dur_val = None
-    if duration is not None:
+    with _video_recording_lock:
         try:
-            dur_val = int(duration)
-            if dur_val <= 0:
-                return {"status": "error", "message": "duration doit être un entier strictement positif."}
+            fps_val = max(1, min(30, int(fps)))
         except (ValueError, TypeError):
-            return {"status": "error", "message": "duration doit être un entier valide."}
+            return {"status": "error", "message": "fps doit être un entier entre 1 et 30."}
 
-    if _video_recording_process is not None:
-        if _video_recording_process.poll() is None:
+        try:
+            mon_idx = int(monitor_index)
+        except (ValueError, TypeError):
+            return {"status": "error", "message": "monitor_index doit être un entier positif ou nul."}
+
+        dur_val = None
+        if duration is not None:
+            try:
+                dur_val = int(duration)
+                if dur_val <= 0:
+                    return {"status": "error", "message": "duration doit être un entier strictement positif."}
+            except (ValueError, TypeError):
+                return {"status": "error", "message": "duration doit être un entier valide."}
+
+        if _video_recording_process is not None:
+            if _video_recording_process.poll() is None:
+                return {
+                    "status": "error",
+                    "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+                }
+            else:
+                # Nettoyer les ressources de l'ancien processus terminé/tué
+                with contextlib.suppress(Exception):
+                    for stream in [
+                        _video_recording_process.stdin,
+                        _video_recording_process.stdout,
+                        _video_recording_process.stderr,
+                    ]:
+                        if stream:
+                            stream.close()
+                _video_recording_process = None
+                _video_recording_file = None
+
+        check_display_env()
+
+        ffmpeg_bin = shutil.which("ffmpeg")
+        if not ffmpeg_bin:
+            return {"status": "error", "message": "Le binaire 'ffmpeg' n'est pas installé sur le système."}
+
+        if not output_path:
+            timestamp = int(time.time())
+            output_path = os.path.join(SCREENSHOTS_DIR, f"recording_{timestamp}.mp4")
+
+        # S'assurer que le dossier parent existe
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        except Exception as e_dir:
+            return {"status": "error", "message": f"Impossible de créer le dossier pour le fichier vidéo : {e_dir}"}
+
+        display_str = os.environ.get("DISPLAY", ":0")
+
+        try:
+            left, top, width, height = get_monitor_geometry(mon_idx)
+        except Exception as e:
+            logger.warning(f"Impossible de lire la géométrie du moniteur {mon_idx}: {e}. Utilisation de la taille totale.")
+            left, top, width, height = 0, 0, 1920, 1080
+
+        # ffmpeg nécessite que la largeur et la hauteur soient des nombres pairs
+        width = width if width % 2 == 0 else width - 1
+        height = height if height % 2 == 0 else height - 1
+
+        cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-video_size",
+            f"{width}x{height}",
+            "-framerate",
+            str(fps_val),
+            "-f",
+            "x11grab",
+            "-i",
+            f"{display_str}.0+{left},{top}",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+        ]
+
+        if dur_val:
+            cmd.extend(["-t", str(dur_val)])
+
+        cmd.append(output_path)
+
+        try:
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+            )
+        except Exception as e:
+            logger.error(f"Erreur lors du démarrage de l'enregistrement vidéo: {e}")
+            return {"status": "error", "message": f"Échec du démarrage de l'enregistrement vidéo : {e!s}"}
+
+        try:
+            time.sleep(0.2)
+            if proc.poll() is not None:
+                # Le processus a échoué au démarrage, il faut fermer les streams
+                return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
+
+            _video_recording_process = proc
+            _video_recording_file = output_path
+
             return {
-                "status": "error",
-                "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+                "status": "success",
+                "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
+                "output_path": output_path,
+                "fps": fps_val,
+                "pid": proc.pid,
             }
-        else:
-            # Nettoyer les ressources de l'ancien processus terminé/tué
+        except Exception as e:
+            logger.error(f"Erreur lors de l'initialisation de l'enregistrement vidéo: {e}")
             with contextlib.suppress(Exception):
-                for stream in [
-                    _video_recording_process.stdin,
-                    _video_recording_process.stdout,
-                    _video_recording_process.stderr,
-                ]:
+                proc.terminate()
+                proc.wait(timeout=1)
+            return {"status": "error", "message": f"Échec de l'initialisation de l'enregistrement vidéo : {e!s}"}
+        finally:
+            # Nettoyage si le processus est abandonné à cause d'une exception ou d'un échec (poll is not None)
+            # ou nettoyage normal si exception
+            if _video_recording_process != proc:
+                for stream in [proc.stdin, proc.stdout, proc.stderr]:
                     if stream:
-                        stream.close()
-            _video_recording_process = None
-            _video_recording_file = None
-
-    check_display_env()
-
-    ffmpeg_bin = shutil.which("ffmpeg")
-    if not ffmpeg_bin:
-        return {"status": "error", "message": "Le binaire 'ffmpeg' n'est pas installé sur le système."}
-
-    if not output_path:
-        timestamp = int(time.time())
-        output_path = os.path.join(SCREENSHOTS_DIR, f"recording_{timestamp}.mp4")
-
-    # S'assurer que le dossier parent existe
-    try:
-        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    except Exception as e_dir:
-        return {"status": "error", "message": f"Impossible de créer le dossier pour le fichier vidéo : {e_dir}"}
-
-    display_str = os.environ.get("DISPLAY", ":0")
-
-    try:
-        left, top, width, height = get_monitor_geometry(mon_idx)
-    except Exception as e:
-        logger.warning(f"Impossible de lire la géométrie du moniteur {mon_idx}: {e}. Utilisation de la taille totale.")
-        left, top, width, height = 0, 0, 1920, 1080
-
-    # ffmpeg nécessite que la largeur et la hauteur soient des nombres pairs
-    width = width if width % 2 == 0 else width - 1
-    height = height if height % 2 == 0 else height - 1
-
-    cmd = [
-        ffmpeg_bin,
-        "-y",
-        "-video_size",
-        f"{width}x{height}",
-        "-framerate",
-        str(fps_val),
-        "-f",
-        "x11grab",
-        "-i",
-        f"{display_str}.0+{left},{top}",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-pix_fmt",
-        "yuv420p",
-    ]
-
-    if dur_val:
-        cmd.extend(["-t", str(dur_val)])
-
-    cmd.append(output_path)
-
-    try:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
-        )
-        time.sleep(0.2)
-        if proc.poll() is not None:
-            # Le processus a échoué au démarrage
-            for stream in [proc.stdin, proc.stdout, proc.stderr]:
-                if stream:
-                    with contextlib.suppress(Exception):
-                        stream.close()
-            return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
-
-        _video_recording_process = proc
-        _video_recording_file = output_path
-
-        return {
-            "status": "success",
-            "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
-            "output_path": output_path,
-            "fps": fps_val,
-            "pid": proc.pid,
-        }
-    except Exception as e:
-        logger.error(f"Erreur lors du démarrage de l'enregistrement vidéo: {e}")
-        _video_recording_process = None
-        _video_recording_file = None
-        return {"status": "error", "message": f"Échec du démarrage de l'enregistrement vidéo : {e!s}"}
+                        with contextlib.suppress(Exception):
+                            stream.close()
 
 
 @mcp.tool()
@@ -1684,55 +1697,56 @@ def gui_stop_video_recording() -> dict[str, Any]:
     """
     global _video_recording_process, _video_recording_file
 
-    if _video_recording_process is None:
-        return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
+    with _video_recording_lock:
+        if _video_recording_process is None:
+            return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
 
-    proc = _video_recording_process
-    filepath = _video_recording_file
+        proc = _video_recording_process
+        filepath = _video_recording_file
 
-    _video_recording_process = None
-    _video_recording_file = None
+        _video_recording_process = None
+        _video_recording_file = None
 
-    try:
-        if proc.poll() is None:
-            # Envoyer 'q' sur stdin pour que ffmpeg finalise proprement le conteneur MP4
-            if proc.stdin:
-                with contextlib.suppress(Exception):
-                    proc.stdin.write(b"q\n")
-                    proc.stdin.flush()
+        try:
+            if proc.poll() is None:
+                # Envoyer 'q' sur stdin pour que ffmpeg finalise proprement le conteneur MP4
+                if proc.stdin:
+                    with contextlib.suppress(Exception):
+                        proc.stdin.write(b"q\n")
+                        proc.stdin.flush()
 
-            # Attendre 3 secondes la fermeture propre
-            try:
-                proc.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                # Si ffmpeg ne s'arrête pas, envoyer SIGTERM puis SIGKILL
+                # Attendre 3 secondes la fermeture propre
                 try:
-                    proc.terminate()
-                    proc.wait(timeout=2)
+                    proc.wait(timeout=3)
                 except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait(timeout=1)
+                    # Si ffmpeg ne s'arrête pas, envoyer SIGTERM puis SIGKILL
+                    try:
+                        proc.terminate()
+                        proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=1)
 
-        file_exists = os.path.exists(filepath) if filepath else False
-        file_size = os.path.getsize(filepath) if (file_exists and filepath) else 0
+            file_exists = os.path.exists(filepath) if filepath else False
+            file_size = os.path.getsize(filepath) if (file_exists and filepath) else 0
 
-        return {
-            "status": "success",
-            "message": "Enregistrement vidéo arrêté avec succès.",
-            "output_path": filepath,
-            "file_exists": file_exists,
-            "file_size_bytes": file_size,
-        }
+            return {
+                "status": "success",
+                "message": "Enregistrement vidéo arrêté avec succès.",
+                "output_path": filepath,
+                "file_exists": file_exists,
+                "file_size_bytes": file_size,
+            }
 
-    except Exception as e:
-        logger.error(f"Erreur lors de l'arrêt de l'enregistrement vidéo: {e}")
-        return {"status": "error", "message": f"Échec de l'arrêt de l'enregistrement vidéo : {e!s}"}
-    finally:
-        # Garantir la fermeture stricte de tous les descripteurs de fichiers
-        for stream in [proc.stdin, proc.stdout, proc.stderr]:
-            if stream:
-                with contextlib.suppress(Exception):
-                    stream.close()
+        except Exception as e:
+            logger.error(f"Erreur lors de l'arrêt de l'enregistrement vidéo: {e}")
+            return {"status": "error", "message": f"Échec de l'arrêt de l'enregistrement vidéo : {e!s}"}
+        finally:
+            # Garantir la fermeture stricte de tous les descripteurs de fichiers
+            for stream in [proc.stdin, proc.stdout, proc.stderr]:
+                if stream:
+                    with contextlib.suppress(Exception):
+                        stream.close()
 
 
 def main() -> None:
