@@ -24,6 +24,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-F0883E?style=flat-square" alt="License MIT" /></a>
   <a href="#"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20Windows-10B981?style=flat-square" alt="Platform Linux | Windows" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP_Protocol-1.2.0+-10B981?style=flat-square" alt="MCP Protocol 1.2.0+" /></a>
+  <a href="https://github.com/leandre755/gui_agent/discussions"><img src="https://img.shields.io/badge/Discussions-Q%26A-blue?style=flat-square" alt="Discussions Q&A" /></a>
 </p>
 
 ### The Philosophy: Why gui-agent?
