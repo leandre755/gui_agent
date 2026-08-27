@@ -952,8 +952,10 @@ def gui_window_focus(window_id: int) -> dict[str, Any]:
     xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
 
     try:
-        subprocess.run([xdotool_bin, "windowactivate", str(window_id)], check=True, stderr=subprocess.PIPE)
+        subprocess.run([xdotool_bin, "windowactivate", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
         return {"status": "success", "message": f"Focus et activation effectués pour la fenêtre {window_id}"}
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": f"Timeout d'activation pour la fenêtre {window_id}"}
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else str(e)
         return {"status": "error", "message": f"Impossible d'activer la fenêtre {window_id} : {err_msg}"}
@@ -991,6 +993,7 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
             ],
             check=True,
             stderr=subprocess.PIPE,
+            timeout=5,
         )
         return {
             "status": "success",
@@ -1000,6 +1003,11 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
             "y": y,
             "width": width,
             "height": height,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "error",
+            "message": f"Timeout du redimensionnement/déplacement de la fenêtre {window_id}",
         }
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else str(e)
@@ -1022,8 +1030,10 @@ def gui_window_close(window_id: int) -> dict[str, Any]:
     xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
 
     try:
-        subprocess.run([xdotool_bin, "windowclose", str(window_id)], check=True, stderr=subprocess.PIPE)
+        subprocess.run([xdotool_bin, "windowclose", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
         return {"status": "success", "message": f"Fenêtre {window_id} fermée avec succès."}
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": f"Timeout de la fermeture de la fenêtre {window_id}"}
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else str(e)
         return {"status": "error", "message": f"Échec de la fermeture de la fenêtre {window_id} : {err_msg}"}
