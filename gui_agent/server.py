@@ -1022,6 +1022,8 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
             "status": "error",
             "message": f"Échec du redimensionnement/déplacement de la fenêtre {window_id} : {err_msg}",
         }
+    except Exception as e:
+        return {"status": "error", "message": f"Erreur lors de la modification de la fenêtre : {e!s}"}
 
 
 @mcp.tool()
