@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from typing import Any
 from PIL import Image, ImageDraw
@@ -1425,6 +1426,7 @@ def gui_click_text(text: str, button: str = "left", clicks: int = 1, monitor_ind
 # Variable globale pour suivre le sous-processus d'enregistrement vidéo actif
 _video_recording_process: subprocess.Popen | None = None
 _video_recording_file: str | None = None
+_video_recording_lock = threading.Lock()
 
 
 @mcp.tool()
@@ -1555,7 +1557,7 @@ def gui_start_video_recording(
     """
     Démarre l'enregistrement vidéo à faible rafraîchissement (5 FPS par défaut) sous X11 via ffmpeg.
     """
-    global _video_recording_process, _video_recording_file
+    global _video_recording_process, _video_recording_file, _video_recording_lock
 
     try:
         fps_val = max(1, min(30, int(fps)))
@@ -1576,24 +1578,25 @@ def gui_start_video_recording(
         except (ValueError, TypeError):
             return {"status": "error", "message": "duration doit être un entier valide."}
 
-    if _video_recording_process is not None:
-        if _video_recording_process.poll() is None:
-            return {
-                "status": "error",
-                "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
-            }
-        else:
-            # Nettoyer les ressources de l'ancien processus terminé/tué
-            with contextlib.suppress(Exception):
-                for stream in [
-                    _video_recording_process.stdin,
-                    _video_recording_process.stdout,
-                    _video_recording_process.stderr,
-                ]:
-                    if stream:
-                        stream.close()
-            _video_recording_process = None
-            _video_recording_file = None
+    with _video_recording_lock:
+        if _video_recording_process is not None:
+            if _video_recording_process.poll() is None:
+                return {
+                    "status": "error",
+                    "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+                }
+            else:
+                # Nettoyer les ressources de l'ancien processus terminé/tué
+                with contextlib.suppress(Exception):
+                    for stream in [
+                        _video_recording_process.stdin,
+                        _video_recording_process.stdout,
+                        _video_recording_process.stderr,
+                    ]:
+                        if stream:
+                            stream.close()
+                _video_recording_process = None
+                _video_recording_file = None
 
     check_display_env()
 
@@ -1648,32 +1651,39 @@ def gui_start_video_recording(
     cmd.append(output_path)
 
     try:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
-        )
-        time.sleep(0.2)
-        if proc.poll() is not None:
-            # Le processus a échoué au démarrage
-            for stream in [proc.stdin, proc.stdout, proc.stderr]:
-                if stream:
-                    with contextlib.suppress(Exception):
-                        stream.close()
-            return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
+        with _video_recording_lock:
+            if _video_recording_process is not None and _video_recording_process.poll() is None:
+                return {
+                    "status": "error",
+                    "message": f"Un enregistrement vidéo est déjà en cours (Fichier: {_video_recording_file}, PID: {_video_recording_process.pid}).",
+                }
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+            )
+            time.sleep(0.2)
+            if proc.poll() is not None:
+                # Le processus a échoué au démarrage
+                for stream in [proc.stdin, proc.stdout, proc.stderr]:
+                    if stream:
+                        with contextlib.suppress(Exception):
+                            stream.close()
+                return {"status": "error", "message": "Le processus ffmpeg a quitté immédiatement après le démarrage."}
 
-        _video_recording_process = proc
-        _video_recording_file = output_path
+            _video_recording_process = proc
+            _video_recording_file = output_path
 
-        return {
-            "status": "success",
-            "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
-            "output_path": output_path,
-            "fps": fps_val,
-            "pid": proc.pid,
-        }
+            return {
+                "status": "success",
+                "message": f"Enregistrement vidéo démarré à {fps_val} FPS (PID: {proc.pid})",
+                "output_path": output_path,
+                "fps": fps_val,
+                "pid": proc.pid,
+            }
     except Exception as e:
         logger.error(f"Erreur lors du démarrage de l'enregistrement vidéo: {e}")
-        _video_recording_process = None
-        _video_recording_file = None
+        with _video_recording_lock:
+            _video_recording_process = None
+            _video_recording_file = None
         return {"status": "error", "message": f"Échec du démarrage de l'enregistrement vidéo : {e!s}"}
 
 
@@ -1682,16 +1692,17 @@ def gui_stop_video_recording() -> dict[str, Any]:
     """
     Arrête l'enregistrement vidéo en cours proprement sans fuite de descripteurs de fichiers.
     """
-    global _video_recording_process, _video_recording_file
+    global _video_recording_process, _video_recording_file, _video_recording_lock
 
-    if _video_recording_process is None:
-        return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
+    with _video_recording_lock:
+        if _video_recording_process is None:
+            return {"status": "error", "message": "Aucun enregistrement vidéo n'est en cours."}
 
-    proc = _video_recording_process
-    filepath = _video_recording_file
+        proc = _video_recording_process
+        filepath = _video_recording_file
 
-    _video_recording_process = None
-    _video_recording_file = None
+        _video_recording_process = None
+        _video_recording_file = None
 
     try:
         if proc.poll() is None:
