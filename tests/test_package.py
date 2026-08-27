@@ -1,5 +1,6 @@
 """Tests unitaires pour le package gui-agent."""
 
+import pytest
 import gui_agent
 import mcp_gui_server
 from gui_agent.server import normalize_coordinates, translate_key
@@ -512,8 +513,265 @@ def test_gui_window_resize_move_atomic_command(monkeypatch):
 
 def test_gui_window_resize_move_invalid_params():
     """Vérifie les validations de paramètres pour gui_window_resize_move."""
-    bad_y: int = "bad"  # type checked dynamically at runtime
+    bad_y = "bad"  # type checked dynamically at runtime
     assert gui_agent.server.gui_window_resize_move(-1, 0, 0, 100, 100)["status"] == "error"
     assert gui_agent.server.gui_window_resize_move(1, bad_y, 0, 100, 100)["status"] == "error"
     assert gui_agent.server.gui_window_resize_move(1, 0, 0, 0, 100)["status"] == "error"
     assert gui_agent.server.gui_window_resize_move(1, 0, 0, 100, -5)["status"] == "error"
+
+
+@pytest.fixture(autouse=True)
+def _reset_video_recording_state():
+    """Réinitialise l'état global d'enregistrement vidéo avant et après chaque test."""
+    import gui_agent.server as s
+
+    s._video_recording_process = None
+    s._video_recording_file = None
+    yield
+    s._video_recording_process = None
+    s._video_recording_file = None
+
+
+def test_gui_video_recording_parameter_validations(tmp_path):
+    """Vérifie la validation stricte de tous les paramètres d'enregistrement vidéo."""
+    import gui_agent.server as s
+
+    s._video_recording_process = None
+    s._video_recording_file = None
+
+    # fps
+    assert s.gui_start_video_recording(fps="bad")["status"] == "error"
+    assert s.gui_start_video_recording(fps=True)["status"] == "error"
+
+    # monitor_index
+    assert s.gui_start_video_recording(monitor_index=-1)["status"] == "error"
+    assert s.gui_start_video_recording(monitor_index="bad")["status"] == "error"
+    assert s.gui_start_video_recording(monitor_index=True)["status"] == "error"
+
+    # duration
+    assert s.gui_start_video_recording(duration=0)["status"] == "error"
+    assert s.gui_start_video_recording(duration=-5)["status"] == "error"
+    assert s.gui_start_video_recording(duration="bad")["status"] == "error"
+    assert s.gui_start_video_recording(duration=True)["status"] == "error"
+
+    # output_path invalid
+    existing_dir = str(tmp_path / "video_dir")
+    import os
+
+    os.makedirs(existing_dir, exist_ok=True)
+    assert s.gui_start_video_recording(output_path=existing_dir)["status"] == "error"
+    assert s.gui_start_video_recording(output_path=str(tmp_path / "video.avi"))["status"] == "error"
+
+
+def test_gui_video_recording_nominal_start_and_stop(tmp_path, monkeypatch):
+    """Vérifie le cycle complet nominal de démarrage et d'arrêt d'enregistrement vidéo."""
+    import subprocess
+    from unittest.mock import MagicMock
+    import gui_agent.server as s
+
+    s._video_recording_process = None
+    s._video_recording_file = None
+
+    target_video = str(tmp_path / "test_rec.mp4")
+    mock_stdin = MagicMock()
+
+    mock_proc = MagicMock(spec=subprocess.Popen)
+    mock_proc.pid = 99999
+    mock_proc.stdin = mock_stdin
+    mock_proc.stdout = None
+    mock_proc.stderr = None
+    mock_proc.poll.return_value = None
+    mock_proc.wait.return_value = 0
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+    monkeypatch.setattr("gui_agent.server.get_monitor_geometry", lambda idx: (0, 0, 1920, 1080))
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: mock_proc)
+
+    # Démarrage nominal
+    res_start = s.gui_start_video_recording(output_path=target_video, fps=10, duration=5)
+    assert res_start["status"] == "success"
+    assert res_start["pid"] == 99999
+    assert res_start["fps"] == 10
+    assert res_start["output_path"] == target_video
+    assert s._video_recording_process is mock_proc
+
+    # Tentative de redémarrage concurrent -> rejeté
+    res_conflict = s.gui_start_video_recording(output_path=target_video)
+    assert res_conflict["status"] == "error"
+    assert "déjà en cours" in res_conflict["message"]
+
+    # Création du fichier simulé
+    with open(target_video, "wb") as f:
+        f.write(b"FAKE_VIDEO_DATA")
+
+    # Arrêt nominal
+    res_stop = s.gui_stop_video_recording()
+    assert res_stop["status"] == "success"
+    assert res_stop["file_exists"] is True
+    assert res_stop["file_size_bytes"] == 15
+    assert s._video_recording_process is None
+    assert mock_stdin.close.called
+
+
+def test_gui_video_recording_stop_when_none_running():
+    """Vérifie le rejet d'arrêt si aucun enregistrement n'est actif."""
+    import gui_agent.server as s
+
+    s._video_recording_process = None
+    s._video_recording_file = None
+    res = s.gui_stop_video_recording()
+    assert res["status"] == "error"
+    assert "Aucun enregistrement vidéo n'est en cours" in res["message"]
+
+
+def test_gui_video_recording_ffmpeg_immediate_failure_cleanup(tmp_path, monkeypatch):
+    """Vérifie le nettoyage strict des flux si ffmpeg quitte immédiatement au démarrage."""
+    import subprocess
+    from unittest.mock import MagicMock
+    import gui_agent.server as s
+
+    target_video = str(tmp_path / "fail_rec.mp4")
+    mock_stdin = MagicMock()
+
+    mock_proc = MagicMock(spec=subprocess.Popen)
+    mock_proc.pid = 88888
+    mock_proc.stdin = mock_stdin
+    mock_proc.stdout = None
+    mock_proc.stderr = None
+    mock_proc.poll.return_value = 1  # Processus mort immédiatement
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+    monkeypatch.setattr("gui_agent.server.get_monitor_geometry", lambda idx: (0, 0, 1920, 1080))
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: mock_proc)
+
+    res = s.gui_start_video_recording(output_path=target_video)
+    assert res["status"] == "error"
+    assert "a quitté immédiatement" in res["message"]
+    assert s._video_recording_process is None
+    assert mock_stdin.close.called
+
+
+def test_gui_video_recording_initialization_exception_cleanup(tmp_path, monkeypatch):
+    """Vérifie la terminaison et le nettoyage si une exception survient pendant l'initialisation."""
+    import subprocess
+    from unittest.mock import MagicMock
+    import gui_agent.server as s
+
+    target_video = str(tmp_path / "exc_rec.mp4")
+    mock_stdin = MagicMock()
+
+    mock_proc = MagicMock(spec=subprocess.Popen)
+    mock_proc.pid = 77777
+    mock_proc.stdin = mock_stdin
+    mock_proc.stdout = None
+    mock_proc.stderr = None
+    mock_proc.poll.return_value = None
+
+    def raise_sleep(sec):
+        raise RuntimeError("Erreur d'initialisation simulée")
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+    monkeypatch.setattr("gui_agent.server.get_monitor_geometry", lambda idx: (0, 0, 1920, 1080))
+    monkeypatch.setattr("time.sleep", raise_sleep)
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: mock_proc)
+
+    res = s.gui_start_video_recording(output_path=target_video)
+    assert res["status"] == "error"
+    assert "Échec de l'initialisation" in res["message"]
+    assert s._video_recording_process is None
+    assert mock_proc.terminate.called
+    assert mock_stdin.close.called
+
+
+def test_gui_video_recording_missing_ffmpeg(tmp_path, monkeypatch):
+    """Vérifie le rejet propre si ffmpeg n'est pas installé."""
+    import gui_agent.server as s
+
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+    res = s.gui_start_video_recording(output_path=str(tmp_path / "rec.mp4"))
+    assert res["status"] == "error"
+    assert "ffmpeg" in res["message"]
+
+
+def test_gui_video_recording_stop_escalation_terminate_and_kill(tmp_path, monkeypatch):
+    """Vérifie l'escalade de timeout lors de l'arrêt (q -> terminate -> kill)."""
+    import subprocess
+    from unittest.mock import MagicMock
+    import gui_agent.server as s
+
+    mock_stdin = MagicMock()
+
+    mock_proc = MagicMock(spec=subprocess.Popen)
+    mock_proc.pid = 66666
+    mock_proc.stdin = mock_stdin
+    mock_proc.stdout = None
+    mock_proc.stderr = None
+    mock_proc.poll.return_value = None
+
+    # Simuler timeout sur wait(3) et wait(2)
+    mock_proc.wait.side_effect = [
+        subprocess.TimeoutExpired(cmd="ffmpeg", timeout=3),
+        subprocess.TimeoutExpired(cmd="ffmpeg", timeout=2),
+        0,  # post kill wait(1)
+    ]
+
+    s._video_recording_process = mock_proc
+    s._video_recording_file = str(tmp_path / "escalate.mp4")
+
+    res = s.gui_stop_video_recording()
+    assert res["status"] == "success"
+    assert mock_proc.terminate.called
+    assert mock_proc.kill.called
+    assert mock_stdin.close.called
+    assert s._video_recording_process is None
+
+
+def test_gui_video_recording_concurrency_lock(tmp_path, monkeypatch):
+    """Vérifie que _video_recording_lock sérialise correctement les accès multi-threads concurrents."""
+    import concurrent.futures
+    import subprocess
+    from unittest.mock import MagicMock
+    import gui_agent.server as s
+
+    mock_stdin = MagicMock()
+    mock_proc = MagicMock(spec=subprocess.Popen)
+    mock_proc.pid = 55555
+    mock_proc.stdin = mock_stdin
+    mock_proc.stdout = None
+    mock_proc.stderr = None
+    mock_proc.poll.return_value = None
+    mock_proc.wait.return_value = 0
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr("gui_agent.server.check_display_env", lambda: None)
+    monkeypatch.setattr("gui_agent.server.get_monitor_geometry", lambda idx: (0, 0, 1920, 1080))
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: mock_proc)
+
+    s._video_recording_process = None
+    s._video_recording_file = None
+
+    results = []
+
+    def attempt_start():
+        target = str(tmp_path / "concurrent.mp4")
+        return s.gui_start_video_recording(output_path=target)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(attempt_start) for _ in range(5)]
+        for f in concurrent.futures.as_completed(futures):
+            results.append(f.result())
+
+    success_count = sum(1 for r in results if r["status"] == "success")
+    error_count = sum(1 for r in results if r["status"] == "error")
+
+    # Exactement un seul démarrage réussit, les autres 4 sont rejetés
+    assert success_count == 1
+    assert error_count == 4
+
+    # Arrêt propre
+    res_stop = s.gui_stop_video_recording()
+    assert res_stop["status"] == "success"

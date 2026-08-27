@@ -8,6 +8,7 @@
 - [2026-08-16] Parameter `output_path` Migration, Inode Security Hardening & Zero-Slop Rollback (PR #7, Confidence Score 5/5)
 - [2026-08-16] Atomic xdotool Chaining & Input Boundaries in `gui_window_resize_move` (PR #8, Confidence Score 5/5 Greptile & CodeRabbit, 27/27 Tests)
 - [2026-08-16] Dynamic Issue Template Compliance & Triage Labeling Hardening (PR #16, Confidence Score 5/5 Greptile & CodeRabbit)
+- [2026-08-20] Timeouts xdotool sur focus, close et resize_move (PR #50, Confidence Score 5/5 Greptile)
 
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -18,9 +19,8 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - ❌ **NE JAMAIS se baser sur les signaux GitHub Check-Runs de l'API** (`gh api repos/leandre755/gui_agent/commits/<sha>/check-runs`). Dans l'interface GitHub, `conclusion: "success"` signifie uniquement que l'agent de revue a terminé l'exécution de son script d'analyse sans crasher, et NON que le code est validé ou sans erreur.
   - ✅ **EXIGER la lecture textuelle intégrale du message de la PR (description), des bilans et de 100% des commentaires** :
     - **Optibot (`@agent-optibot`)** :
-      1. Inspecter le bilan et le statut de la revue (`Status: Code Looks Good 👍`).
-      2. Exiger formellement **0 blocage (`0 blocking issues`)** et **0 constat non résolu**.
-      3. Traiter l'intégralité des alertes de sécurité (ex: deny-list des agents), de dette technique ou de documentation.
+      1. Exiger formellement **0 blocage (`0 blocking issues`)** et **0 constat non résolu**.
+      2. Traiter l'intégralité des alertes de sécurité (ex: deny-list des agents), de dette technique ou de documentation.
     - **CodeRabbit (`@coderabbitai`)** :
       1. Inspecter le bilan de revue complet (`Walkthrough`, `Review Summary` et checklist pré-merge).
       2. Résoudre 100% des commentaires actionnables (`Actionable comments: 0` restant, 0 constat).
@@ -30,19 +30,27 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
       2. Exiger formellement un **`Confidence Score: 5/5`** (rejet absolu de tout score 1/5, 2/5, 3/5 ou 4/5).
       3. Vérifier l'absence totale d'échecs de sécurité (`Zero reproduced security failures remaining`).
       4. Traiter tous les commentaires spécifiques de lignes (P1/P2/Security) laissés par le bot avec les artefacts T-Rex de reproduction (0 constat restant).
-  - 🛠️ **Outillage d'assistance aux revues** : Utiliser proactivement les skills `/greploop` et `/code-review` (CodeRabbit) pour automatiser l'analyse, l'application des correctifs et les cycles itératifs jusqu'à l'obtention du score parfait 5/5.
+  - 🛠️ **Outillage d'assistance aux revues** : Utiliser `/greploop` et `/code-review` pour analyser et corriger localement, mais désactiver toute boucle automatique de push/review. Aucun outil ne doit relancer une revue distante sans autorisation explicite.
   - 🚀 **Condition stricte de fusion** : Ce n'est qu'après avoir lu le message de la PR, parcouru tous les commentaires, et obtenu la validation intégrale des 3 moteurs (Optibot, CodeRabbit, Greptile) à **5/5, 0 constat et 0 bloquant** que la fusion (merge) de la PR est autorisée.
 - **Protocole anti-gaspillage pour PR #36 et toute future PR** :
-  - Avant tout `git push`, exécuter localement `./ci.sh`, les tests ciblés, `greptile review --agent --base main` et `coderabbit review --agent --uncommitted --base main` lorsque les CLI sont disponibles et authentifiés. TestSprite CLI peut compléter la validation adaptée au projet ; son agent doit être configuré avant toute exécution distante.
-  - Interdiction de pousser si un test local, Greptile ou CodeRabbit signale un problème actionnable. Corriger localement, puis relancer la validation concernée.
-  - Après un push, lire intégralement la description de la PR, le résumé Greptile le plus récent, le bilan CodeRabbit, le bilan Optibot et 100 % des commentaires/threads avant toute nouvelle modification ou relance.
-  - CodeRabbit distant est déclenché explicitement par un commentaire `@coderabbitai review` uniquement après la validation locale ; ne pas relancer si une revue est déjà en cours ou si le service est rate-limité.
-  - Un nouveau push ou une nouvelle relance est autorisé uniquement lorsqu'un correctif vérifié modifie réellement le résultat précédent. Les check-runs seuls ne valent pas validation ; le critère final reste Greptile **5/5**, zéro échec de sécurité, zéro commentaire actionnable et zéro bloquant Optibot/CodeRabbit. Cette règle vise notamment à éviter la répétition coûteuse de revues distantes déjà facturée sur la PR #36.
+  - **Phase 1 — compréhension exhaustive obligatoire** : lire la description complète de la PR, tous les commits de la branche, le diff total contre `main`, tous les commentaires, tous les threads et les derniers bilans des agents avant d'écrire ou de pousser du code.
+  - **Phase 2 — implémentation exhaustive** : anticiper les variantes valides du format concerné, corriger la cause racine, ajouter les régressions correspondantes et vérifier les fichiers adjacents impactés. Regrouper tous les findings connus dans une seule passe locale au lieu de corriger un finding isolé puis de relancer une review.
+  - **Phase 3 — validation locale complète** : exécuter `./ci.sh`, les tests ciblés, les contrôles statiques, puis TestSprite/Greptile/CodeRabbit CLI si disponibles et authentifiés. La revue locale finale coûte environ **1 $** selon le suivi du projet ; elle doit être lancée au maximum une fois par lot de corrections, avec un prompt couvrant toute la branche contre `main`, pas un seul cas choisi artificiellement.
+  - **Phase 4 — revue GitHub parcimonieuse** : un push déclenche une revue Greptile complète de toute la PR et de son historique, contrairement à la revue locale ciblée. Ne pousser qu'après la phase locale complète et une autorisation explicite ; prévoir une seule revue GitHub par lot exhaustif de corrections. La revue distante coûte environ **3 $** par PR/revue selon le suivi du projet et peut épuiser le quota flex mensuel.
+  - **Règle d'échec sans boucle** : si une revue locale ou GitHub trouve un bug, ne pas relancer immédiatement l'agent. Lire 100 % du verdict, regrouper tous les constats, corriger localement, puis refaire toute la validation locale. Une nouvelle revue GitHub nécessite un changement réel, une validation locale complète et une autorisation explicite tenant compte du coût/quota.
+  - **Portée Greptile à ne jamais confondre** : `greptile review` local analyse le commit/working tree selon le prompt fourni ; Greptile GitHub analyse la PR complète après push. Un score local 5/5 ne prédit donc pas le score GitHub.
+  - Après chaque revue GitHub, lire le message principal de la PR, le résumé Greptile complet, le bilan T-Rex et 100 % des commentaires/threads ; ne jamais conclure à partir du seul score ou d'un check-run.
+  - CodeRabbit distant est déclenché explicitement par un commentaire `@coderabbitai review` uniquement après la validation locale et avec autorisation explicite ; ne pas le relancer si une revue est déjà en cours, rate-limitée ou non nécessaire.
+  - Les check-runs seuls ne valent pas validation ; le critère final reste Greptile **5/5**, zéro échec de sécurité, zéro commentaire actionnable et zéro bloquant Optibot/CodeRabbit. La priorité est de réduire le nombre total de reviews, pas de boucler jusqu'à un score parfait.
 - **Analyse des vulnérabilités de rollback capture identifiées par Greptile (PR #7)** :
   - *P1 - Réservations en lecture seule non nettoyées* : Si un fichier réservé devient read-only, l'ouverture `O_RDWR` échoue et l'erreur étouffée laisse le fichier sur disque, forçant les retentatives vers des suffixes inutiles `(1)`. Solution : ouvrir d'abord en `O_RDONLY` pour vérifier l'identité et ne tronquer que si accessible en écriture.
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57)
+  - **Context**: L'enregistrement vidéo (`gui_start_video_recording` et `gui_stop_video_recording`) manipulait des variables d'état globales (`_video_recording_process`, `_video_recording_file`) sans verrou, exposant le serveur FastMCP à des conditions de concurrence lors d'appels simultanés, et risquait de laisser des descripteurs de fichiers (`stdin`, `stdout`, `stderr`) ou des processus ffmpeg orphelins lors d'échecs au démarrage.
+  - **Discarded Options**: Utiliser un `multiprocessing.Lock` ou IPC (inutile car le serveur FastMCP fonctionne au sein d'un seul processus Python multi-threadé) ; laisser l'état sans synchronisation ; faire confiance au garbage collector pour fermer les flux de descripteurs.
+  - **Rationale**: Introduction d'un verrou `threading.Lock()` (`_video_recording_lock`) sérialisant tous les points d'entrée d'enregistrement vidéo. Modularisation via les helpers `_validate_video_recording_params` et `_close_subprocess_streams`. Enregistrement d'un hook `atexit.register(_cleanup_video_on_exit)` pour garantir la terminaison propre de tout processus ffmpeg résiduel. Validation stricte de `output_path` (normalisation absolue, interdiction de répertoires, extension `.mp4` obligatoire) et validation stricte de `fps`, `monitor_index >= 0`, et `duration > 0`. Ajout d'une suite exhaustive de tests unitaires et de concurrence (63 tests validés à 100% dans `./ci.sh`).
 - [2026-08-17] Validation finale locale de la PR #36 après corrections Greptile
   - **Context**: Le parseur texte de `.github/scripts/verify_workflows.py` a nécessité plusieurs corrections pour couvrir les ancres YAML directes, scalaires, flow, multilignes, alias imbriqués et mappings `concurrency`.
   - **Discarded Options**: Pousser après chaque finding ; relancer Greptile sans lire le retour précédent ; ajouter des regex isolées sans test de reproduction.
@@ -99,8 +107,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Correctif final local de la **PR #36** (`fix/ci-verify-workflows-logic`) : validation CI `54/54` tests, quality gate PASS, Greptile CLI **5/5**, zéro blocage et zéro commentaire ; aucun push effectué.
-- 🔄 In progress: Préparer le push autorisé de la PR #36, puis lire les verdicts distants Greptile, CodeRabbit et Optibot sur le nouveau commit ; le score GitHub distant actuel reste `3/5` tant que ce commit n'est pas poussé.
+  - Fusion de la PR #50 (`fix(server): add timeouts to xdotool window management functions`) avec Confidence Score 5/5 sur Greptile.
+  - Nettoyage et fermeture des PRs invalides/doublons créées par Jules (#108, #62) et des issues associées (#107, #43).
+  - Correctif final local de la **PR #36** (`fix/ci-verify-workflows-logic`) : validation CI `54/54` tests, quality gate PASS, Greptile CLI **5/5**, zéro blocage et zéro commentaire.
+- 🔄 In progress: Suivi de la PR #57 (concurrence vidéo, score Greptile 5/5) en attente de validation finale CI.
 - ⏳ Pending:
   - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
