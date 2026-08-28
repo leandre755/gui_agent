@@ -35,7 +35,7 @@ classifiers = [
     "Topic :: System :: Hardware",
 ]
 dependencies = [
-    "mcp>=2.0.0,<3.0.0",
+    "mcp>=1.2.0,<3.0.0",
     "pyautogui>=0.9.54",
     "pillow>=12.3.0",
     "mss>=10.2.0",

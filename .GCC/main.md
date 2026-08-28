@@ -9,6 +9,8 @@
 - [2026-08-16] Atomic xdotool Chaining & Input Boundaries in `gui_window_resize_move` (PR #8, Confidence Score 5/5 Greptile & CodeRabbit, 27/27 Tests)
 - [2026-08-16] Dynamic Issue Template Compliance & Triage Labeling Hardening (PR #16, Confidence Score 5/5 Greptile & CodeRabbit)
 - [2026-08-20] Timeouts xdotool sur focus, close et resize_move (PR #50, Confidence Score 5/5 Greptile)
+- [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57, Confidence Score 5/5 Greptile)
+- [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55, Confidence Score 5/5 Greptile)
 
 ## 🎯 Objective
 High-performance, monolithic FastMCP server engineered for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -47,6 +49,14 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-08-28] Support Bivalent Multi-Versions SDK MCP (1.x et 2.x+)
+  - **Context**: Dependabot et les environnements clients récents migrent vers `mcp>=2.0.0`. Le test unitaire `test_fastmcp_tools_registration` dépendait d'attributs privés fragiles (`_tool_manager`), et `gui_agent/server.py` restreignait explicitement la compatibilité à la version 1.x.
+  - **Discarded Options**: Bloquer strictement sur `mcp<2.0.0` (empêche les montées de versions et mises à jour de sécurité de Dependabot) ; réécrire l'intégralité du serveur en MCP bas niveau (complexe et inutile car FastMCP est préservé en v2).
+  - **Rationale**: Élargissement de la contrainte de dépendance à `"mcp>=1.2.0,<3.0.0"`, abstraction défensive de l'introspection des outils enregistrés dans `tests/test_package.py` avec replis successifs (`_tool_manager`, `_tools`, `list_tools()` ou inspection du namespace), et neutralisation du message d'erreur d'import dans `gui_agent/server.py`. 100% de la suite de tests validée (64/64 PASS).
+- [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55)
+  - **Context**: Dans `gui_window_list`, lorsque `wmctrl` ne renvoie aucune fenêtre, le mode fallback interrogeait chaque fenêtre visible séquentiellement via `getwindowname`, `getwindowpid` et `xprop` avec des timeouts indépendants de 5s sans deadline globale, cumulant jusqu'à 15s par fenêtre non réactive.
+  - **Discarded Options**: Conserver des timeouts indépendants par commande sans horloge globale ; paralléliser avec des threads sans deadline stricte ; supprimer le fallback.
+  - **Rationale**: Définition d'une deadline globale (`deadline = time.monotonic() + 5.0`) pour l'ensemble de la fonction `gui_window_list`. Chaque sous-processus reçoit comme timeout le temps résiduel effectif `max(0.1, deadline - time.monotonic())`. La boucle de collecte s'interrompt immédiatement dès l'épuisement de la deadline, garantissant que l'opération totale ne dépasse jamais le budget temporel imparti. Ajout d'un test de non-régression validé par `./ci.sh` (64/64 tests).
 - [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57)
   - **Context**: L'enregistrement vidéo (`gui_start_video_recording` et `gui_stop_video_recording`) manipulait des variables d'état globales (`_video_recording_process`, `_video_recording_file`) sans verrou, exposant le serveur FastMCP à des conditions de concurrence lors d'appels simultanés, et risquait de laisser des descripteurs de fichiers (`stdin`, `stdout`, `stderr`) ou des processus ffmpeg orphelins lors d'échecs au démarrage.
   - **Discarded Options**: Utiliser un `multiprocessing.Lock` ou IPC (inutile car le serveur FastMCP fonctionne au sein d'un seul processus Python multi-threadé) ; laisser l'état sans synchronisation ; faire confiance au garbage collector pour fermer les flux de descripteurs.
@@ -98,7 +108,7 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 
 ## 🌿 Active Branches / Plans
 - `fix/ci-verify-workflows-logic` : Enrichissement de `verify_workflows.py` pour valider la logique métier et les invariants de sécurité des workflows GitHub Actions ([plan_verify_workflows_logic.md](branches/plan_verify_workflows_logic.md)).
-- `main` : Stable production release with complete bilingual landing pages, 27/27 Zero-Slop test harness, hardened screenshot rollback lifecycle and atomic window resize/move chaining.
+- `main` : Stable production release with complete bilingual landing pages, 64/64 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
 - `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
 
 ## 📈 Current Status
@@ -108,15 +118,16 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #50 (`fix(server): add timeouts to xdotool window management functions`) avec Confidence Score 5/5 sur Greptile.
-  - Nettoyage et fermeture des PRs invalides/doublons créées par Jules (#108, #62) et des issues associées (#107, #43).
-  - Correctif final local de la **PR #36** (`fix/ci-verify-workflows-logic`) : validation CI `54/54` tests, quality gate PASS, Greptile CLI **5/5**, zéro blocage et zéro commentaire.
-- 🔄 In progress: Suivi de la PR #57 (concurrence vidéo, score Greptile 5/5) en attente de validation finale CI.
+  - Fusion de la PR #57 (`fix(server): add concurrency synchronization and resource cleanup to video recording`) avec Confidence Score 5/5 sur Greptile.
+  - Fusion de la PR #55 (`fix(server): enforce operation-wide deadline for X11 window listing fallback`) avec Confidence Score 5/5 sur Greptile.
+  - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
+  - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
+  - Validation CI 64/64 tests, quality gate PASS, Greptile CLI 5/5 sur l'arbre de travail.
+- 🔄 In progress: Aucun (arbre propre sur `main`).
 - ⏳ Pending:
-  - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #32 (fallback silencieux pip dev), #33 (matrice Python 3.10-3.13), #34 (épinglage versions uv run) et #24 (Mypy strict).
+  - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #34 (épinglage versions uv run), #33 (matrice Python 3.10-3.13), #32 (fallback silencieux pip dev) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
-  - 3. **Tests Comportementaux (#28)** : Mettre en place la suite modulaire pour les 19 outils restants.
-  - 4. **Bugs Fonctionnels & Prérequis (#31, #18, #17, #19, #20, #21, #13)** : Correction séquentielle TDD et ajout `python3-tk`.
-  - 5. **Documentation (#29, #14, #15)** : Déploiement de `/documentation` modulaire.
+  - 3. **Bugs Fonctionnels & Prérequis (#39, #38, #37, #31, #18, #17, #19, #20, #21)**.
 
 ## 👉 Next Session Direction
-Surveiller la PR #36 après autorisation de push : relire le verdict Greptile, CodeRabbit et Optibot sur le nouveau commit avant toute nouvelle correction ou relance.
+Démarrer le traitement d'une nouvelle issue prioritaire sur une branche dédiée (ex: #34, #39 ou #37).

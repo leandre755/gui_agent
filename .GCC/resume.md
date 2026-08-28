@@ -1,45 +1,39 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Résoudre l'issue #26, ouvrir la PR #36 et mener le cycle de revue Greploop / Optibot jusqu'à un score de confiance de 5/5 avec zéro commentaire restant.
+- **Requested Task**: Rendre le projet compatible avec `mcp>=2.0.0` (support bivalent 1.x et 2.x+) suite aux échecs de CI sur les PRs Dependabot.
 - **Functional Status**: SUCCESS
-- **Behavioral Proof**:
-  1. **Revue Greptile & Optibot** :
-     - Score final Greptile : **`Confidence Score: 5/5`** ("The PR appears safe to merge. No blocking failure remains. No review comments.").
-     - Résolution de 100% des retours Optibot / Greptile (14 threads résolus, 0 thread ouvert via API GraphQL).
-  2. **Pipeline de Validation Local** :
-     - `verify_workflows.py` : Validation des 6 workflows réels du projet + support des clés entre guillemets, formes scalaires, syntaxe flow-style et indentations YAML dynamiques.
-     - `tests/test_verify_workflows.py` : 10 tests de conformité et de cas limites (37/37 tests pytest validés).
-     - `./ci.sh` : **100% PASS** (Bytecode, Workflows validation, Ruff check, Ruff format, Mypy, 37/37 Pytest).
+- **Behavioral Proof**: Exécution intégrale du pipeline `./ci.sh` : 64/64 tests passés avec succès, 0 erreur Mypy, 0 warning Ruff, compilation bytecode propre.
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `.github/scripts/verify_workflows.py`
-  - **Scope**: `WorkflowVerifier`, `_extract_on_section`, `verify_concurrency`, `verify_jobs_and_steps`
-  - **Exact Technical Change**:
-    - Support des clés avec guillemets (`"on":`, `"permissions":`, `"concurrency":`, `"jobs":`).
-    - Reconnaissance des formes scalaires de `concurrency:` en plus des blocs multilignes.
-    - Analyse dynamique de l'indentation YAML des jobs pour supporter n'importe quelle indentation valide (2, 4 espaces) tout en isolant strictement les scripts imbriqués contre les faux positifs.
-- **File**: `tests/test_verify_workflows.py`
-  - **Scope**: Suite de tests unitaires
-  - **Exact Technical Change**: Ajout de tests pour les clés avec guillemets, l'indentation alternative, et les formes scalaires de `concurrency`.
-- **File**: `ci.sh`
-  - **Scope**: Script CI local
-  - **Exact Technical Change**: Mise à jour de l'aide `--quick` pour documenter l'exécution de la validation des workflows.
+- **File**: `pyproject.toml`
+  - **Scope**: Dépendances core
+  - **Exact Technical Change**: Plage de dépendance élargie de `"mcp>=1.2.0,<2.0.0"` vers `"mcp>=1.2.0,<3.0.0"`.
+- **File**: `gui_agent/server.py`
+  - **Scope**: Import FastMCP
+  - **Exact Technical Change**: Neutralisation de la mention restrictive "version 1.x" dans le message d'erreur d'importation.
+- **File**: `tests/test_package.py`
+  - **Scope**: `test_fastmcp_tools_registration`
+  - **Exact Technical Change**: Implémentation d'une inspection multi-niveaux robuste pour inspecter les 21 outils FastMCP enregistrés (compatible architectures internes v1 et v2).
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh`
-- **Linter/Compiler Status**:
-  - `compileall` : PASS
-  - `verify_workflows.py` : 6/6 workflows conformes (PASS)
-  - `ruff check` : All checks passed
-  - `ruff format` : 22 files already formatted
-  - `mypy` : Success (0 issues in 4 source files)
-  - `pytest` : 37/37 passed
+- **Linter/Compiler Status**: 
+```text
+| Étape de Validation                       | Statut     | Durée     |
+|--------------------------------------------|------------|------------|
+| Compilation Bytecode Python (compileall)   | PASS       | 2194ms     |
+| Validation Workflows GitHub Actions        | PASS       | 88ms       |
+| Linter de Code (Ruff Check)                | PASS       | 579ms      |
+| Formatage de Code (Ruff Format)            | PASS       | 90ms       |
+| Typage Statique Strict (Mypy)              | PASS       | 2490ms     |
+| Suite de Tests Pytest                      | PASS       | 18042ms    |
+```
 
 ## 🚧 Unfinished Work & Technical Failures
-- **Blocker / Failure Explanation**: Aucun.
+- Aucun échec ni bloqueur. Le support 1.x / 2.x+ est opérationnel et validé.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target PR**: **#36** (`https://github.com/leandre755/gui_agent/pull/36`).
-2. **Immediate Action**: Fusionner la PR #36 dans `main`, fermer l'issue #26 et passer à l'issue suivante du backlog (#32).
-3. **Verification Command**: `gh pr merge 36 --squash`
+1. **Target File**: `pyproject.toml`
+2. **Immediate Action**: Créer la branche / PR pour fusionner la compatibilité `mcp>=1.2.0,<3.0.0`.
+3. **Verification Command**: `./ci.sh`
