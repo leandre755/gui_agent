@@ -17,11 +17,21 @@ from PIL import Image, ImageDraw
 os.environ.setdefault("DISPLAY", ":0")
 import pyautogui
 
-# S'assurer que le SDK MCP est accessible
+# S'assurer que le SDK MCP est accessible (compatibilité mcp 1.x et 2.x+)
+FastMCP: Any = None
 try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError as err:
-    raise ImportError("Erreur : Le SDK 'mcp' (FastMCP) est requis pour faire fonctionner gui-agent.") from err
+    from mcp.server.fastmcp import FastMCP as _FastMCP
+
+    FastMCP = _FastMCP
+except ImportError:
+    try:
+        from mcp.server.mcpserver import MCPServer as _MCPServer
+
+        FastMCP = _MCPServer
+    except ImportError as err:
+        raise ImportError(
+            "Erreur : Le SDK 'mcp' (FastMCP ou MCPServer) est requis pour faire fonctionner gui-agent."
+        ) from err
 
 # Configuration de la sécurité de PyAutoGUI
 pyautogui.FAILSAFE = True  # Déplacer la souris dans le coin supérieur gauche lève une exception FailSafeException
