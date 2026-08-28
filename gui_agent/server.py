@@ -21,9 +21,7 @@ import pyautogui
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError as err:
-    raise ImportError(
-        "Erreur : Le SDK 'mcp' version 1.x (FastMCP) est requis pour faire fonctionner gui-agent."
-    ) from err
+    raise ImportError("Erreur : Le SDK 'mcp' (FastMCP) est requis pour faire fonctionner gui-agent.") from err
 
 # Configuration de la sécurité de PyAutoGUI
 pyautogui.FAILSAFE = True  # Déplacer la souris dans le coin supérieur gauche lève une exception FailSafeException
