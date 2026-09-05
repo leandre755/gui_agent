@@ -1,0 +1,42 @@
+reviews:
+  request_changes_workflow: true
+
+  pre_merge_checks:
+    custom_checks:
+      - name: "CodeRabbit Quality Gate"
+        mode: "error"
+        instructions: |
+          This is a strict merge gate.
+
+          PASS ONLY when BOTH conditions are satisfied:
+
+          1. The CodeRabbit review quality score is exactly 5/5.
+          2. The CodeRabbit review has exactly 0 findings.
+
+          FAIL if the quality score is anything other than 5/5.
+
+          FAIL if there is one or more CodeRabbit finding, regardless
+          of severity.
+
+          A finding includes any actionable issue, concern, suggestion,
+          bug, correctness issue, maintainability issue, security issue,
+          documentation issue, outdated documentation, missing
+          documentation, or documentation that is no longer synchronized
+          with the implementation.
+
+          In particular:
+          - 5/5 + 0 findings = PASS
+          - 5/5 + 1 or more findings = FAIL
+          - less than 5/5 + 0 findings = FAIL
+          - less than 5/5 + 1 or more findings = FAIL
+
+          Do not infer that a 5/5 score means there are zero findings.
+          The score and findings are independent conditions.
+
+          If the CodeRabbit review identifies a documentation
+          inconsistency, it MUST count as a finding and the check MUST
+          fail even if the code quality score is 5/5.
+
+          If the available review information is insufficient to
+          conclusively determine both the score and the number of
+          findings, return INCONCLUSIVE rather than PASS.
