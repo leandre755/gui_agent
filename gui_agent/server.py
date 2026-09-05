@@ -60,6 +60,34 @@ def check_display_env() -> None:
         os.environ["DISPLAY"] = ":0"
 
 
+# Répertoires système de confiance pour la résolution des binaires externes
+# (mitige le détournement de PATH : shutil.which n'est jamais appelé avec le PATH ambiant)
+_TRUSTED_BIN_DIRS = ["/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin"]
+if os.name == "nt":
+    _win_root = os.environ.get("SystemRoot", r"C:\Windows")
+    _TRUSTED_BIN_DIRS = [os.path.join(_win_root, "System32"), _win_root]
+
+# Métacaractères de shell interdits dans les arguments transmis aux sous-processus
+_SHELL_UNSAFE_CHARS = frozenset(";|&$`<>\n\r")
+
+
+def _find_trusted_bin(name: str, fallback: str | None = None) -> str | None:
+    """Résout un binaire externe uniquement dans des répertoires système de confiance (chemin absolu)."""
+    resolved = shutil.which(name, path=os.pathsep.join(_TRUSTED_BIN_DIRS))
+    if resolved:
+        return resolved
+    if fallback and os.path.isfile(fallback) and os.access(fallback, os.X_OK):
+        return fallback
+    return None
+
+
+def _resolve_user_executable(name: str) -> str | None:
+    """Résout l'exécutable demandé : chemin absolu existant et exécutable, ou binaire des répertoires de confiance."""
+    if os.path.isabs(name):
+        return name if os.path.isfile(name) and os.access(name, os.X_OK) else None
+    return _find_trusted_bin(name)
+
+
 def capture_screen_pil(monitor_index: int = 1) -> Image.Image:
     """
     Capture l'écran actif avec fallback automatique sur spectacle (Wayland/X11)
@@ -67,7 +95,7 @@ def capture_screen_pil(monitor_index: int = 1) -> Image.Image:
     """
     check_display_env()
     # 1. Tentative via spectacle (indispensable sous XWayland/KDE si mss capture un framebuffer noir)
-    spectacle_bin = shutil.which("spectacle")
+    spectacle_bin = _find_trusted_bin("spectacle")
     if spectacle_bin:
         with tempfile.NamedTemporaryFile(suffix=".png", prefix="_mcp_screen_tmp_", delete=False) as tmp_file:
             tmp_path = tmp_file.name
@@ -763,7 +791,7 @@ def run_xdotool(args: list) -> bool:
     try:
         env = os.environ.copy()
         env["DISPLAY"] = env.get("DISPLAY", ":0")
-        xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
+        xdotool_bin = _find_trusted_bin("xdotool", "/bin/xdotool")
         res = subprocess.run([xdotool_bin, *args], env=env, capture_output=True, check=False, timeout=5)
         stderr_txt = res.stderr.decode("utf-8", errors="replace").strip()
         if res.returncode != 0 or "No such key name" in stderr_txt or "Ignoring it" in stderr_txt:
@@ -883,9 +911,9 @@ def gui_window_list() -> dict[str, Any]:
     check_display_env()
 
     windows = []
-    wmctrl_bin = shutil.which("wmctrl")
-    xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
-    xprop_bin = shutil.which("xprop") or "/usr/bin/xprop"
+    wmctrl_bin = _find_trusted_bin("wmctrl")
+    xdotool_bin = _find_trusted_bin("xdotool", "/bin/xdotool")
+    xprop_bin = _find_trusted_bin("xprop", "/usr/bin/xprop")
 
     try:
         deadline = time.monotonic() + 5.0
@@ -976,7 +1004,7 @@ def gui_window_focus(window_id: int) -> dict[str, Any]:
     if not isinstance(window_id, int) or window_id <= 0:
         return {"status": "error", "message": "window_id doit être un entier positif."}
     check_display_env()
-    xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
+    xdotool_bin = _find_trusted_bin("xdotool", "/bin/xdotool")
 
     try:
         subprocess.run([xdotool_bin, "windowactivate", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
@@ -1008,7 +1036,7 @@ def gui_window_resize_move(window_id: int, x: int, y: int, width: int, height: i
         return {"status": "error", "message": "width et height doivent être strictly positifs."}
 
     check_display_env()
-    xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
+    xdotool_bin = _find_trusted_bin("xdotool", "/bin/xdotool")
 
     try:
         subprocess.run(
@@ -1059,7 +1087,7 @@ def gui_window_close(window_id: int) -> dict[str, Any]:
     if not isinstance(window_id, int) or window_id <= 0:
         return {"status": "error", "message": "window_id doit être un entier positif."}
     check_display_env()
-    xdotool_bin = shutil.which("xdotool") or "/bin/xdotool"
+    xdotool_bin = _find_trusted_bin("xdotool", "/bin/xdotool")
 
     try:
         subprocess.run([xdotool_bin, "windowclose", str(window_id)], check=True, stderr=subprocess.PIPE, timeout=5)
@@ -1088,6 +1116,20 @@ def gui_app_launch(command: str, background: bool = True) -> dict[str, Any]:
     cmd_args = shlex.split(command)
     if not cmd_args:
         return {"status": "error", "message": "Commande vide ou invalide."}
+
+    # Zero-trust : refuser tout métacaractère de shell dans les arguments transmis au processus (issue #44)
+    unsafe_arg = next((arg for arg in cmd_args if not _SHELL_UNSAFE_CHARS.isdisjoint(arg)), None)
+    if unsafe_arg is not None:
+        return {
+            "status": "error",
+            "message": f"Argument refusé (métacaractère de shell interdit) : {unsafe_arg!r}",
+        }
+
+    # Résolution en chemin absolu dans les répertoires de confiance (anti-détournement de PATH — issue #44)
+    executable = _resolve_user_executable(cmd_args[0])
+    if executable is None:
+        return {"status": "error", "message": f"Exécutable introuvable ou non autorisé : '{cmd_args[0]}'"}
+    cmd_args[0] = executable
 
     try:
         if background:
@@ -1196,7 +1238,7 @@ def gui_clipboard_set(text: str) -> dict[str, Any]:
         logger.warning(f"Échec pyperclip.copy: {e_clip}. Tentative via xclip...")
 
     # Fallback via xclip
-    xclip_bin = shutil.which("xclip")
+    xclip_bin = _find_trusted_bin("xclip")
     if xclip_bin:
         try:
             env = os.environ.copy()
@@ -1214,7 +1256,7 @@ def gui_clipboard_set(text: str) -> dict[str, Any]:
             logger.warning(f"Échec xclip: {e_xclip}")
 
     # Fallback via xsel
-    xsel_bin = shutil.which("xsel")
+    xsel_bin = _find_trusted_bin("xsel")
     if xsel_bin:
         try:
             env = os.environ.copy()
@@ -1256,7 +1298,7 @@ def gui_clipboard_get() -> dict[str, Any]:
         logger.warning(f"Échec pyperclip.paste: {e_clip}. Tentative via xclip...")
 
     # Fallback via xclip
-    xclip_bin = shutil.which("xclip")
+    xclip_bin = _find_trusted_bin("xclip")
     if xclip_bin:
         try:
             env = os.environ.copy()
@@ -1269,7 +1311,7 @@ def gui_clipboard_get() -> dict[str, Any]:
             logger.warning(f"Échec xclip -o: {e_xclip}")
 
     # Fallback via xsel
-    xsel_bin = shutil.which("xsel")
+    xsel_bin = _find_trusted_bin("xsel")
     if xsel_bin:
         try:
             env = os.environ.copy()
@@ -1693,7 +1735,7 @@ def gui_start_video_recording(
 
         check_display_env()
 
-        ffmpeg_bin = shutil.which("ffmpeg")
+        ffmpeg_bin = _find_trusted_bin("ffmpeg")
         if not ffmpeg_bin:
             return {"status": "error", "message": "Le binaire 'ffmpeg' n'est pas installé sur le système."}
 
