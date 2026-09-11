@@ -87,9 +87,13 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
                 break
 
         for fd in readers:
-            c = _safe_read(fd)
-            if c:
+            while c := _safe_read(fd):
                 (out_ch if fd == out_fd else err_ch).append(c)
+                out_len += len(c) if fd == out_fd else 0
+                err_len += len(c) if fd != out_fd else 0
+                if out_len > max_output_chars or err_len > max_output_chars:
+                    status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
+                    break
         with contextlib.suppress(Exception):
             proc.wait(timeout=0.5)
         for s in (proc.stdin, proc.stdout, proc.stderr):
