@@ -674,8 +674,8 @@ name = "gui-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "evdev", version = "1.9.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "evdev", version = "2.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "evdev", version = "1.9.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' and sys_platform == 'linux'" },
+    { name = "evdev", version = "2.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform == 'linux'" },
     { name = "mcp" },
     { name = "mss" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -683,6 +683,7 @@ dependencies = [
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
+    { name = "playwright" },
     { name = "pyautogui" },
     { name = "pyperclip" },
     { name = "python-xlib" },
@@ -697,14 +698,11 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
-web = [
-    { name = "playwright" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.9.4" },
-    { name = "evdev", specifier = ">=1.7.0" },
+    { name = "evdev", marker = "sys_platform == 'linux'", specifier = ">=1.7.0" },
     { name = "mcp", specifier = ">=1.2.0,<3.0.0" },
     { name = "mss", specifier = ">=10.2.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.3.1" },
@@ -712,7 +710,7 @@ requires-dist = [
     { name = "opencv-python-headless", specifier = ">=5.0.0.93" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.1" },
-    { name = "playwright", marker = "extra == 'web'", specifier = ">=1.62.0" },
+    { name = "playwright", specifier = ">=1.62.0" },
     { name = "pyautogui", specifier = ">=0.9.54" },
     { name = "pyperclip", specifier = ">=1.11.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
@@ -720,7 +718,7 @@ requires-dist = [
     { name = "rapidocr-onnxruntime", specifier = ">=1.3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16.4" },
 ]
-provides-extras = ["dev", "web"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "h11"

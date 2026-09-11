@@ -847,7 +847,7 @@ def test_modular_architecture_scaffolding():
 
     for a in ("execute_script", "mcp_core", "PTYSession"):
         assert hasattr(core, a)
-    res = core.execute_script("x = 10 + 20\nprint(f'RESULT={x}')")
+    res = core.execute_script("from __future__ import annotations\nx = 10 + 20\nprint(f'RESULT={x}')")
     assert res["status"] == "success" and "RESULT=30" in res["stdout"]
 
     for a in (

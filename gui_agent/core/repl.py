@@ -19,10 +19,12 @@ def execute_script(code: str, timeout: float = 30.0) -> dict[str, Any]:
     if not code or not code.strip():
         return {"status": "error", "message": "Code à exécuter vide."}
     start = time.monotonic()
+    futures = [ln for ln in code.splitlines(keepends=True) if ln.strip().startswith("from __future__ import")]
+    body = "".join(ln for ln in code.splitlines(keepends=True) if not ln.strip().startswith("from __future__ import"))
     runner = (
-        "import sys, os, time\nsys.path.insert(0, os.getcwd())\n"
+        "".join(futures) + "import sys, os, time\nsys.path.insert(0, os.getcwd())\n"
         "import gui_agent.core.mcp_core as _mcp\nsys.modules['mcp_core'] = _mcp\n"
-        f"from gui_agent.core.mcp_core import mcp_core\n{code}"
+        f"from gui_agent.core.mcp_core import mcp_core\n{body}"
     )
     stdout, stderr, status, err = "", "", "success", None
     try:

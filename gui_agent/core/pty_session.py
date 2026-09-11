@@ -65,11 +65,13 @@ class PTYSession:
                             chunks.append(data.decode("utf-8", errors="replace"))
 
             while select.select([master_fd], [], [], 0.05)[0]:
-                with contextlib.suppress(OSError):
+                try:
                     data = os.read(master_fd, 4096)
                     if not data:
                         break
                     chunks.append(data.decode("utf-8", errors="replace"))
+                except OSError:
+                    break
             returncode = proc.wait()
         finally:
             if slave_fd >= 0:
