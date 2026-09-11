@@ -21,6 +21,10 @@ class MCPCoreSDK:
     screen_capture = staticmethod(layers.screen_capture)
     set_value = staticmethod(layers.set_value)
 
+    @property
+    def mcp_core(self) -> MCPCoreSDK:
+        return self
+
 
 mcp_core = MCPCoreSDK()
 __all__ = ["MCPCoreSDK", "mcp_core"]

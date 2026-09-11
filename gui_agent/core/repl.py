@@ -17,7 +17,7 @@ MAX_OUTPUT_CHARS = 1_000_000
 RUNNER_HARNESS = (
     "import sys, os\nsys.path.insert(0, os.getcwd())\n"
     "import gui_agent.core.mcp_core as _sdk\nsys.modules['mcp_core'] = sys.modules['gui_agent.core.mcp_core']\n"
-    "code = sys.stdin.read()\nexec(compile(code, '<repl>', 'exec'), {'__name__': '__main__', 'mcp_core': _sdk})\n"
+    "code = sys.stdin.read()\nexec(compile(code, '<repl>', 'exec'), {'__name__': '__main__', 'mcp_core': _sdk.mcp_core})\n"
 )
 
 

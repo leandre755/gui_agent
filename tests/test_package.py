@@ -849,6 +849,7 @@ def test_modular_architecture_scaffolding(monkeypatch):
     assert all(hasattr(layers, a) for a in layers.__all__) and len(layers.__all__) >= 10
     assert all(hasattr(utils, a) for a in utils.__all__) and len(utils.__all__) >= 6
     assert "30" in core.execute_script("from __future__ import annotations\nprint(10 + 20)")["stdout"]
+    assert "not_impl" in core.execute_script("print(mcp_core.screen_capture()['status'])")["stdout"]
     assert core.execute_script("while True: print('X'*50)", max_output_chars=100)["status"] == "error"
     pty_rc, pty_out = core.PTYSession(timeout=2.0).execute(["cat"], "eof_ok")
     assert pty_rc == 0 and "eof_ok" in pty_out
