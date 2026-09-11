@@ -49,6 +49,14 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-11] Adoption d'une Taxonomie Académique (Ingénierie des Systèmes & IHM)
+  - **Context**: Remplacement des dénominations synthétiques (L1, L2, L3) par une nomenclature académique rigoureuse et standardisée afin d'aligner le code, la documentation et les issues GitHub.
+  - **Discarded Options**: Conserver le préfixe L1/L2/L3 ; renommer uniquement dans les commentaires sans renommer les fichiers sources.
+  - **Rationale**: Renommage exhaustif vers `accessibility.py` (Médiation d'accessibilité programmatique AT-SPI), `visual_perception.py` (Perception visuelle & OCR), `input_emulation.py` (Émulation d'entrées noyau uinput/evdev) et `window_management.py` (Gestion de fenêtrage et processus). Alignement des issues GitHub #129, #130, #131, #132, #134, #135 et mise à jour de `maj.md`.
+- [2026-09-11] Refonte Architecturale v1.0 et Purge du Backlog Obsolète (maj.md)
+  - **Context**: L'analyse empirique CUA et la feuille de route `maj.md` imposent le passage d'un monolithe de 21 outils vers une architecture modulaire en 4 couches (L3 Sémantique AT-SPI, L2 OCR RapidOCR, L1 Matériel uinput/evdev, Core REPL CodeAct) avec 13 outils chirurgicaux. Plusieurs issues existantes étaient devenues obsolètes (Playwright #9, #48, fallback OCR #12, 21 outils #28, ancien refactor #30, Wayland #4, et anciennes issues multi-OS 21 outils #3, #5).
+  - **Discarded Options**: Conserver les issues obsolètes en état ouvert ; maintenir le monolithe 21 outils ; conserver Playwright (`gui_web_action`) dans un agent OS de bureau.
+  - **Rationale**: Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48) et création de 7 nouvelles issues modulaires structurées (#129 à #135) couvrant l'arborescence modulaire, les 4 phases de développement Linux, et la recherche d'équivalents Windows/macOS.
 - [2026-08-28] Support Bivalent Multi-Versions SDK MCP (1.x et 2.x+)
   - **Context**: Dependabot et les environnements clients récents migrent vers `mcp>=2.0.0`. Le test unitaire `test_fastmcp_tools_registration` dépendait d'attributs privés fragiles (`_tool_manager`), et `gui_agent/server.py` restreignait explicitement la compatibilité à la version 1.x.
   - **Discarded Options**: Bloquer strictement sur `mcp<2.0.0` (empêche les montées de versions et mises à jour de sécurité de Dependabot) ; réécrire l'intégralité du serveur en MCP bas niveau (complexe et inutile car FastMCP est préservé en v2).
@@ -109,10 +117,12 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
 ## 🌿 Active Branches / Plans
 - `fix/ci-verify-workflows-logic` : Enrichissement de `verify_workflows.py` pour valider la logique métier et les invariants de sécurité des workflows GitHub Actions ([plan_verify_workflows_logic.md](branches/plan_verify_workflows_logic.md)).
 - `main` : Stable production release with complete bilingual landing pages, 64/64 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
-- `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
+- `refactor/modular-architecture-issue-129` : Déploiement de l'arborescence modulaire et mise à jour des dépendances ([plan_modular_architecture.md](branches/plan_modular_architecture.md)).
 
 ## 📈 Current Status
 - ✅ Done:
+  - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
+  - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
   - Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
   - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
   - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
@@ -125,9 +135,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Validation CI 64/64 tests, quality gate PASS, Greptile CLI 5/5 sur l'arbre de travail.
 - 🔄 In progress: Aucun (arbre propre sur `main`).
 - ⏳ Pending:
-  - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #34 (épinglage versions uv run), #33 (matrice Python 3.10-3.13), #32 (fallback silencieux pip dev) et #24 (Mypy strict).
-  - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
-  - 3. **Bugs Fonctionnels & Prérequis (#39, #38, #37, #31, #18, #17, #19, #20, #21)**.
+  - 1. **Architecture v1.0 (maj.md)** : Découpage modulaire et dépendances (#129), Médiation d'accessibilité programmatique (#130), Moteur d'exécution local CodeAct (#131), Émulation d'entrées noyau / Perception visuelle / Fenêtrage (#132), Unification FastMCP 13 outils (#133).
+  - 2. **Multiplateforme v1.0** : Recherche et adaptation des équivalents Windows (#134) et macOS (#135).
+  - 3. **Assainissement Gouvernance/CI/Hooks** : Traiter #34 (épinglage versions uv run), #33 (matrice Python 3.10-3.13), #32 (fallback silencieux pip dev) et #24 (Mypy strict).
+  - 4. **Bugs Fonctionnels & Prérequis (#39, #38, #37, #31, #18, #17, #19, #20, #21)**.
 
 ## 👉 Next Session Direction
-Démarrer le traitement d'une nouvelle issue prioritaire sur une branche dédiée (ex: #34, #39 ou #37).
+Finaliser et fusionner la PR pour l'Issue #129, puis démarrer l'implémentation de l'Issue #130 (Médiation d'accessibilité programmatique via AT-SPI / D-Bus).

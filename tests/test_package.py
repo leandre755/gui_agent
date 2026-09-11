@@ -837,3 +837,63 @@ def test_gui_window_list_fallback_deadline_bound(monkeypatch):
     # Vérifier que la boucle s'est interrompue sans parcourir les 10 fenêtres
     # Chaque fenêtre fait jusqu'à 3 appels, donc 10 fenêtres feraient 30 appels de métadonnées + 1 search
     assert len(calls) < 10
+
+
+def test_modular_architecture_scaffolding():
+    """Valide l'existence et le contrat d'interface des nouveaux sous-packages core, layers et utils."""
+    import gui_agent.core as core
+    import gui_agent.layers as layers
+    import gui_agent.utils as utils
+
+    # 1. Vérification Core
+    assert hasattr(core, "execute_script")
+    assert hasattr(core, "mcp_core")
+    assert hasattr(core, "PTYSession")
+
+    # Exécution REPL nominale
+    res_repl = core.execute_script("x = 10 + 20\nprint(f'RESULT={x}')")
+    assert res_repl["status"] == "success"
+    assert "RESULT=30" in res_repl["stdout"]
+
+    # 2. Vérification Layers (Médiation d'accessibilité, Perception visuelle, Émulation d'entrées, Gestion de fenêtrage)
+    import gui_agent.layers.accessibility as accessibility
+    import gui_agent.layers.input_emulation as input_emulation
+    import gui_agent.layers.visual_perception as visual_perception
+    import gui_agent.layers.window_management as window_management
+
+    assert hasattr(accessibility, "get_app_state")
+    assert hasattr(visual_perception, "find_text")
+    assert hasattr(input_emulation, "mouse_click_at")
+    assert hasattr(window_management, "activate_window")
+
+    assert hasattr(layers, "get_app_state")
+    assert hasattr(layers, "perform_action")
+    assert hasattr(layers, "set_value")
+    assert hasattr(layers, "find_text")
+    assert hasattr(layers, "screen_capture")
+    assert hasattr(layers, "mouse_click_at")
+    assert hasattr(layers, "mouse_drag_smooth")
+    assert hasattr(layers, "mouse_scroll")
+    assert hasattr(layers, "key_tap")
+    assert hasattr(layers, "process_run")
+    assert hasattr(layers, "process_list")
+    assert hasattr(layers, "activate_window")
+
+    # Contrats de base
+    assert layers.get_app_state()["status"] == "success"
+    assert layers.mouse_click_at(100, 200)["status"] == "success"
+    assert layers.mouse_drag_smooth(0, 0, 100, 100)["status"] == "success"
+
+    # 3. Vérification Utils
+    assert hasattr(utils, "get_monitor_geometry")
+    assert hasattr(utils, "normalize_coordinates")
+    assert hasattr(utils, "generate_smooth_path")
+    assert hasattr(utils, "sleep_human")
+    assert hasattr(utils, "type_char_human")
+    assert hasattr(utils, "validate_video_recording_params")
+
+    # Test génération trajectoire continue
+    path = utils.generate_smooth_path(0, 0, 100, 100, steps=10)
+    assert len(path) == 11
+    assert path[0] == (0, 0)
+    assert path[-1] == (100, 100)
