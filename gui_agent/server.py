@@ -1556,6 +1556,7 @@ async def gui_web_action(
 ) -> dict[str, Any]:
     """
     Exécute des actions Web déterministes et d'inspection ARIA/DOM via Playwright (Headless).
+    Note: Cet outil est optionnel et requiert l'extra 'web' (`pip install gui-agent[web]`).
     Actions supportées : 'aria_tree', 'click', 'type', 'screenshot'.
     """
     import asyncio
@@ -1601,7 +1602,10 @@ async def gui_web_action(
         except ImportError:
             return {
                 "status": "error",
-                "message": "Le package 'playwright' n'est pas installé dans le système/environnement.",
+                "message": (
+                    "Le package optionnel 'playwright' n'est pas installé dans le système/environnement. "
+                    "Installez-le avec l'extra web : pip install 'gui-agent[web]'."
+                ),
             }
 
         with sync_playwright() as p:

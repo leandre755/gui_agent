@@ -55,6 +55,9 @@ dev = [
     "pytest>=9.1.1",
     "pip-audit>=2.10.1",
 ]
+web = [
+    "playwright>=1.62.0",
+]
 
 [project.scripts]
 gui-agent = "gui_agent.server:main"
@@ -102,7 +105,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "test_*.py" = ["S101", "BLE001", "S108"]
-"gui_agent/core/repl.py" = ["S102"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 25
@@ -124,7 +126,7 @@ exclude = [
 
 [tool.bandit]
 exclude_dirs = ["venv", ".venv", "screenshots", ".GCC", "dist", "build"]
-skips = ["B603", "B607", "B404", "B102"]
+skips = ["B603", "B607", "B404"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

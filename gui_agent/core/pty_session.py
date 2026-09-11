@@ -7,8 +7,10 @@ import logging
 import os
 import pty
 import select
+import signal
 import subprocess
 import time
+from typing import Any
 
 logger = logging.getLogger("gui_agent.core.pty")
 
@@ -22,55 +24,62 @@ class PTYSession:
     def execute(self, cmd: list[str], stdin_payload: str | None = None) -> tuple[int, str]:
         """Exécute une commande dans un pseudo-terminal PTY isolé."""
         master_fd, slave_fd = pty.openpty()
-        output_chunks: list[str] = []
+        chunks: list[str] = []
         returncode = -1
-
+        proc: subprocess.Popen[Any] | None = None
+        start = time.monotonic()
         try:
+            os.set_blocking(master_fd, False)
             proc = subprocess.Popen(
-                cmd,
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-                close_fds=True,
-                preexec_fn=os.setsid,
+                cmd, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, preexec_fn=os.setsid
             )
-            os.close(slave_fd)
+            with contextlib.suppress(OSError):
+                os.close(slave_fd)
+                slave_fd = -1
 
-            if stdin_payload:
-                os.write(master_fd, stdin_payload.encode("utf-8"))
-
-            start_time = time.monotonic()
+            payload = stdin_payload.encode("utf-8") if stdin_payload else b""
+            written = 0
             while proc.poll() is None:
-                if time.monotonic() - start_time > self.timeout:
-                    proc.kill()
+                if time.monotonic() - start > self.timeout:
+                    with contextlib.suppress(ProcessLookupError):
+                        os.killpg(proc.pid, signal.SIGTERM)
+                    try:
+                        proc.wait(timeout=0.2)
+                    except subprocess.TimeoutExpired:
+                        with contextlib.suppress(ProcessLookupError):
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        with contextlib.suppress(Exception):
+                            proc.wait(timeout=1.0)
                     return -1, "Timeout d'exécution PTY dépassé."
 
-                r, _, _ = select.select([master_fd], [], [], 0.1)
-                if master_fd in r:
-                    try:
+                wlist = [master_fd] if written < len(payload) else []
+                r, w, _ = select.select([master_fd], wlist, [], 0.05)
+                if w and written < len(payload):
+                    with contextlib.suppress(OSError):
+                        n = os.write(master_fd, payload[written:])
+                        written += n
+                if r:
+                    with contextlib.suppress(OSError):
                         data = os.read(master_fd, 4096)
                         if data:
-                            output_chunks.append(data.decode("utf-8", errors="replace"))
-                    except OSError:
-                        break
+                            chunks.append(data.decode("utf-8", errors="replace"))
 
-            # Lecture finale des reliquats
-            while True:
-                r, _, _ = select.select([master_fd], [], [], 0.05)
-                if master_fd in r:
-                    try:
-                        data = os.read(master_fd, 4096)
-                        if not data:
-                            break
-                        output_chunks.append(data.decode("utf-8", errors="replace"))
-                    except OSError:
+            while select.select([master_fd], [], [], 0.05)[0]:
+                with contextlib.suppress(OSError):
+                    data = os.read(master_fd, 4096)
+                    if not data:
                         break
-                else:
-                    break
-
+                    chunks.append(data.decode("utf-8", errors="replace"))
             returncode = proc.wait()
         finally:
+            if slave_fd >= 0:
+                with contextlib.suppress(OSError):
+                    os.close(slave_fd)
             with contextlib.suppress(OSError):
                 os.close(master_fd)
-
-        return returncode, "".join(output_chunks)
+            if proc is not None and proc.poll() is None:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                with contextlib.suppress(Exception):
+                    proc.wait(timeout=0.5)
+        return returncode, "".join(chunks)

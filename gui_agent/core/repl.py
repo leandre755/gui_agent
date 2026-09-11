@@ -2,64 +2,52 @@
 
 from __future__ import annotations
 
-import io
+import contextlib
 import logging
+import os
+import signal
+import subprocess
 import sys
 import time
 from typing import Any
-from gui_agent.core.mcp_core import mcp_core
 
 logger = logging.getLogger("gui_agent.core.repl")
 
 
 def execute_script(code: str, timeout: float = 30.0) -> dict[str, Any]:
-    """
-    Exécute un script Python localement dans un environnement où le SDK `mcp_core` est préchargé.
-    Élimine la latence RTT en permettant des boucles d'attente à 100 Hz en 1 seul aller-retour LLM.
-    """
+    """Exécute un script Python localement dans un processus isolé avec mcp_core préchargé."""
     if not code or not code.strip():
         return {"status": "error", "message": "Code à exécuter vide."}
-
-    stdout_capture = io.StringIO()
-    stderr_capture = io.StringIO()
-    start_time = time.monotonic()
-
-    # Namespace d'exécution préchargé
-    exec_globals: dict[str, Any] = {
-        "__builtins__": __builtins__,
-        "mcp_core": mcp_core,
-        "time": time,
-    }
-
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
-    sys.stdout = stdout_capture
-    sys.stderr = stderr_capture
-
-    status = "success"
-    error_message: str | None = None
-
+    start = time.monotonic()
+    runner = (
+        "import sys, os, time\nsys.path.insert(0, os.getcwd())\n"
+        "import gui_agent.core.mcp_core as _mcp\nsys.modules['mcp_core'] = _mcp\n"
+        f"from gui_agent.core.mcp_core import mcp_core\n{code}"
+    )
+    stdout, stderr, status, err = "", "", "success", None
     try:
-        # TODO(#131): Isolation de processus via PTYSession pour les boucles lourdes ou scripts Bash
-        exec(code, exec_globals)
+        proc = subprocess.Popen(
+            [sys.executable, "-c", runner],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            stdout, stderr = proc.communicate(timeout=max(0.1, float(timeout)))
+            if proc.returncode != 0:
+                status, err = "error", stderr.strip() or f"Code {proc.returncode}"
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGKILL)
+            with contextlib.suppress(Exception):
+                proc.wait(timeout=1.0)
+            status, err = "error", f"Timeout ({timeout}s)."
     except Exception as exc:
-        status = "error"
-        error_message = f"{type(exc).__name__}: {exc!s}"
-    finally:
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
+        status, err = "error", f"{type(exc).__name__}: {exc!s}"
 
-    duration_ms = round((time.monotonic() - start_time) * 1000, 2)
-    output = stdout_capture.getvalue()
-    err_output = stderr_capture.getvalue()
-
-    result: dict[str, Any] = {
-        "status": status,
-        "stdout": output,
-        "stderr": err_output,
-        "duration_ms": duration_ms,
-    }
-    if error_message:
-        result["error"] = error_message
-
-    return result
+    dur = round((time.monotonic() - start) * 1000, 2)
+    res: dict[str, Any] = {"status": status, "stdout": stdout, "stderr": stderr, "duration_ms": dur}
+    if err:
+        res["error"] = err
+    return res

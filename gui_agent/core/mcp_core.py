@@ -1,4 +1,4 @@
-"""SDK Python unifié mcp_core injecté dans le namespace d'exécution locale CodeAct (REPL)."""
+"""SDK Python unifié mcp_core injecté dans l'espace REPL."""
 
 from __future__ import annotations
 
@@ -19,33 +19,24 @@ from gui_agent.layers import (
 
 
 class MCPCoreSDK:
-    """Interface unifiée exposant l'ensemble des primitives système pour l'environnement REPL."""
+    """Interface unifiée exposant l'ensemble des primitives système."""
 
-    # Médiation d'accessibilité programmatique
-    get_app_state = staticmethod(get_app_state)
-    perform_action = staticmethod(perform_action)
-    set_value = staticmethod(set_value)
-
-    # Perception visuelle & OCR
-    find_text = staticmethod(find_text)
-
-    # Émulation d'entrées bas-niveau
-    screen_capture = staticmethod(screen_capture)
-    mouse_click_at = staticmethod(mouse_click_at)
-    mouse_drag_smooth = staticmethod(mouse_drag_smooth)
-    mouse_scroll = staticmethod(mouse_scroll)
-    key_tap = staticmethod(key_tap)
-
-    # Gestion de fenêtrage et processus
-    process_run = staticmethod(process_run)
-    process_list = staticmethod(process_list)
-    activate_window = staticmethod(activate_window)
+    get_app_state, perform_action, set_value = (
+        staticmethod(get_app_state),
+        staticmethod(perform_action),
+        staticmethod(set_value),
+    )
+    find_text, screen_capture = staticmethod(find_text), staticmethod(screen_capture)
+    mouse_click_at, mouse_drag_smooth = staticmethod(mouse_click_at), staticmethod(mouse_drag_smooth)
+    mouse_scroll, key_tap = staticmethod(mouse_scroll), staticmethod(key_tap)
+    process_run, process_list, activate_window = (
+        staticmethod(process_run),
+        staticmethod(process_list),
+        staticmethod(activate_window),
+    )
 
 
-# Instance globale importable directement
 mcp_core = MCPCoreSDK()
-
-# Export de niveau module pour syntaxe directe : mcp_core.find_text(...)
 __all__ = [
     "MCPCoreSDK",
     "activate_window",

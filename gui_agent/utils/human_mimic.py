@@ -1,18 +1,22 @@
-"""Algorithmes cinématiques et temporisation pseudo-aléatoire mimant le comportement humain."""
+"""Algorithmes cinématiques et temporisation pseudo-aléatoire mimant l'humain."""
 
 from __future__ import annotations
 
+import math
 import random
 import time
 
 
 def sleep_human(base_delay: float = 0.05) -> None:
-    """Introduit un délai pseudo-aléatoire réaliste pour simuler un humain."""
-    if not isinstance(base_delay, (int, float)) or base_delay < 0:
-        base_delay = 0.05
-
-    jitter = random.normalvariate(base_delay, base_delay * 0.3)
-    time.sleep(max(0.01, jitter))
+    """Introduit un délai pseudo-aléatoire réaliste."""
+    if not isinstance(base_delay, (int, float)) or not math.isfinite(base_delay) or base_delay < 0:
+        delay = 0.05
+    else:
+        delay = float(base_delay)
+    val = random.normalvariate(delay, delay * 0.3)
+    if not math.isfinite(val):
+        val = delay
+    time.sleep(max(0.01, min(60.0, val)))
 
 
 def type_char_human(char: str, base_delay: float = 0.06) -> bool:
@@ -24,10 +28,10 @@ def type_char_human(char: str, base_delay: float = 0.06) -> bool:
 
 
 def translate_key(key: str) -> str:
-    """Traduit les touches système abrégées en symboles standards X11/evdev."""
-    if not isinstance(key, str) or len(key) == 0:
+    """Traduit les touches système abrégées en symboles standards."""
+    if not isinstance(key, str) or not key:
         return ""
-    key_map = {
+    km = {
         "super": "Super_L",
         "win": "Super_L",
         "enter": "Return",
@@ -46,20 +50,17 @@ def translate_key(key: str) -> str:
         "left": "Left",
         "right": "Right",
     }
-    return key_map.get(key.lower(), key)
+    return km.get(key.lower(), key)
 
 
 def generate_smooth_path(start_x: int, start_y: int, end_x: int, end_y: int, steps: int = 20) -> list[tuple[int, int]]:
     """Génère une trajectoire cinématique continue interpolée entre deux points."""
     if steps <= 1:
         return [(start_x, start_y), (end_x, end_y)]
-
-    points: list[tuple[int, int]] = []
-    for i in range(steps + 1):
-        t = i / float(steps)
-        # Courbe sigmoïde douce (smoothstep) : 3t^2 - 2t^3
-        smooth_t = t * t * (3.0 - 2.0 * t)
-        curr_x = round(start_x + (end_x - start_x) * smooth_t)
-        curr_y = round(start_y + (end_y - start_y) * smooth_t)
-        points.append((curr_x, curr_y))
-    return points
+    return [
+        (
+            round(start_x + (end_x - start_x) * (i / steps) ** 2 * (3.0 - 2.0 * (i / steps))),
+            round(start_y + (end_y - start_y) * (i / steps) ** 2 * (3.0 - 2.0 * (i / steps))),
+        )
+        for i in range(steps + 1)
+    ]
