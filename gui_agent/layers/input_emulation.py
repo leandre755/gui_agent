@@ -15,7 +15,7 @@ def screen_capture(show_grid: bool = False, grid_step: int = 100) -> dict[str, A
 
 def mouse_click_at(x: int, y: int, button: str = "left") -> dict[str, Any]:
     """Émet un clic absolu via uinput."""
-    if not isinstance(x, int) or not isinstance(y, int) or isinstance(x, bool) or isinstance(y, bool):
+    if isinstance(x, bool) or isinstance(y, bool) or not (isinstance(x, int) and isinstance(y, int)):
         return {"status": "error", "message": "Les coordonnées x et y doivent être des entiers."}
     return {"status": "not_implemented", "action": "click", "x": x, "y": y, "button": button}
 

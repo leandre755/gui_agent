@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import math
+import os
 import random
+import shutil
+import subprocess
 import time
 
 
@@ -24,7 +27,14 @@ def type_char_human(char: str, base_delay: float = 0.06) -> bool:
     if not isinstance(char, str) or len(char) != 1:
         return False
     sleep_human(base_delay)
-    return True
+    xdotool_bin = shutil.which("xdotool") or "xdotool"
+    try:
+        env = os.environ.copy()
+        env["DISPLAY"] = env.get("DISPLAY", ":0")
+        res = subprocess.run([xdotool_bin, "type", char], env=env, capture_output=True, check=False, timeout=5)
+        return res.returncode == 0
+    except Exception:
+        return False
 
 
 def translate_key(key: str) -> str:
@@ -36,19 +46,9 @@ def translate_key(key: str) -> str:
         "win": "Super_L",
         "enter": "Return",
         "return": "Return",
+        "ctrl": "control",
         "escape": "Escape",
         "esc": "Escape",
-        "backspace": "BackSpace",
-        "tab": "Tab",
-        "space": "space",
-        "ctrl": "control",
-        "control": "control",
-        "alt": "alt",
-        "shift": "shift",
-        "up": "Up",
-        "down": "Down",
-        "left": "Left",
-        "right": "Right",
     }
     return km.get(key.lower(), key)
 
@@ -57,10 +57,8 @@ def generate_smooth_path(start_x: int, start_y: int, end_x: int, end_y: int, ste
     """Génère une trajectoire cinématique continue interpolée entre deux points."""
     if steps <= 1:
         return [(start_x, start_y), (end_x, end_y)]
-    return [
-        (
-            round(start_x + (end_x - start_x) * (i / steps) ** 2 * (3.0 - 2.0 * (i / steps))),
-            round(start_y + (end_y - start_y) * (i / steps) ** 2 * (3.0 - 2.0 * (i / steps))),
-        )
-        for i in range(steps + 1)
-    ]
+    res = []
+    for i in range(steps + 1):
+        t = (i / steps) ** 2 * (3.0 - 2.0 * (i / steps))
+        res.append((round(start_x + (end_x - start_x) * t), round(start_y + (end_y - start_y) * t)))
+    return res

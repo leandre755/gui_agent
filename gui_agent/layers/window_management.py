@@ -18,12 +18,14 @@ def process_run(command: list[str], sudo_password: str | None = None, timeout: f
 
 def process_list() -> list[dict[str, Any]]:
     """Interroge /proc en lecture seule pour lister les processus."""
-    procs: list[dict[str, Any]] = []
+    if not os.path.exists("/proc"):
+        logger.warning("Système /proc non disponible sur cette plateforme.")
+        return [{"status": "error", "message": "Système de fichiers /proc non disponible sur cette plateforme."}]
     try:
-        procs = [{"pid": int(entry)} for entry in os.listdir("/proc") if entry.isdigit()]
+        return [{"pid": int(e)} for e in os.listdir("/proc") if e.isdigit()]
     except Exception as e:
         logger.warning(f"Impossible d'inspecter /proc : {e}")
-    return procs
+        return [{"status": "error", "message": f"Erreur d'inspection /proc : {e}"}]
 
 
 def activate_window(window_id: str | None = None, title: str | None = None) -> dict[str, Any]:

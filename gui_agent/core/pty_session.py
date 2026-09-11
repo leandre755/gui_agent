@@ -24,9 +24,7 @@ class PTYSession:
     def execute(self, cmd: list[str], stdin_payload: str | None = None) -> tuple[int, str]:
         """Exécute une commande dans un pseudo-terminal PTY isolé."""
         master_fd, slave_fd = pty.openpty()
-        chunks: list[str] = []
-        returncode = -1
-        proc: subprocess.Popen[Any] | None = None
+        chunks, returncode, proc = [], -1, None
         start = time.monotonic()
         try:
             os.set_blocking(master_fd, False)
@@ -37,51 +35,52 @@ class PTYSession:
                 os.close(slave_fd)
                 slave_fd = -1
 
-            payload = stdin_payload.encode("utf-8") if stdin_payload else b""
-            written = 0
+            payload, written, eof_sent = (stdin_payload.encode("utf-8") if stdin_payload else b""), 0, False
             while proc.poll() is None:
                 if time.monotonic() - start > self.timeout:
-                    with contextlib.suppress(ProcessLookupError):
-                        os.killpg(proc.pid, signal.SIGTERM)
-                    try:
-                        proc.wait(timeout=0.2)
-                    except subprocess.TimeoutExpired:
-                        with contextlib.suppress(ProcessLookupError):
-                            os.killpg(proc.pid, signal.SIGKILL)
-                        with contextlib.suppress(Exception):
-                            proc.wait(timeout=1.0)
+                    _kill_pty(proc)
                     return -1, "Timeout d'exécution PTY dépassé."
-
-                wlist = [master_fd] if written < len(payload) else []
-                r, w, _ = select.select([master_fd], wlist, [], 0.05)
-                if w and written < len(payload):
-                    with contextlib.suppress(OSError):
-                        n = os.write(master_fd, payload[written:])
-                        written += n
-                if r:
-                    with contextlib.suppress(OSError):
-                        data = os.read(master_fd, 4096)
-                        if data:
-                            chunks.append(data.decode("utf-8", errors="replace"))
+                w = [master_fd] if (written < len(payload) or not eof_sent) else []
+                rf, wf, _ = select.select([master_fd], w, [], 0.05)
+                if wf:
+                    if written < len(payload):
+                        try:
+                            written += os.write(master_fd, payload[written:])
+                        except OSError:
+                            written = len(payload)
+                    elif not eof_sent:
+                        eof_sent = True
+                        eof = b"\x04" if (not payload or payload.endswith(b"\n")) else b"\x04\x04"
+                        with contextlib.suppress(OSError):
+                            os.write(master_fd, eof)
+                if rf:
+                    c = _read_pty(master_fd)
+                    if c:
+                        chunks.append(c)
 
             while select.select([master_fd], [], [], 0.05)[0]:
-                try:
-                    data = os.read(master_fd, 4096)
-                    if not data:
-                        break
-                    chunks.append(data.decode("utf-8", errors="replace"))
-                except OSError:
+                c = _read_pty(master_fd)
+                if not c:
                     break
+                chunks.append(c)
             returncode = proc.wait()
         finally:
-            if slave_fd >= 0:
+            for fd in (slave_fd, master_fd):
                 with contextlib.suppress(OSError):
-                    os.close(slave_fd)
-            with contextlib.suppress(OSError):
-                os.close(master_fd)
+                    if fd >= 0:
+                        os.close(fd)
             if proc is not None and proc.poll() is None:
-                with contextlib.suppress(ProcessLookupError):
-                    os.killpg(proc.pid, signal.SIGKILL)
-                with contextlib.suppress(Exception):
-                    proc.wait(timeout=0.5)
+                _kill_pty(proc)
         return returncode, "".join(chunks)
+
+
+def _read_pty(fd: int) -> str:
+    with contextlib.suppress(OSError):
+        return os.read(fd, 4096).decode("utf-8", errors="replace")
+    return ""
+
+
+def _kill_pty(proc: subprocess.Popen[Any]) -> None:
+    with contextlib.suppress(Exception):
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=0.5)

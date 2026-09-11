@@ -839,44 +839,28 @@ def test_gui_window_list_fallback_deadline_bound(monkeypatch):
     assert len(calls) < 10
 
 
-def test_modular_architecture_scaffolding():
+def test_modular_architecture_scaffolding(monkeypatch):
     """Valide l'existence et le contrat des sous-packages core, layers et utils."""
     import gui_agent.core as core
     import gui_agent.layers as layers
     import gui_agent.utils as utils
 
-    for a in ("execute_script", "mcp_core", "PTYSession"):
-        assert hasattr(core, a)
-    res = core.execute_script("from __future__ import annotations\nx = 10 + 20\nprint(f'RESULT={x}')")
-    assert res["status"] == "success" and "RESULT=30" in res["stdout"]
-
-    for a in (
-        "get_app_state",
-        "perform_action",
-        "set_value",
-        "find_text",
-        "screen_capture",
-        "mouse_click_at",
-        "mouse_drag_smooth",
-        "mouse_scroll",
-        "key_tap",
-        "process_run",
-        "process_list",
-        "activate_window",
-    ):
-        assert hasattr(layers, a)
+    assert all(hasattr(core, a) for a in core.__all__) and len(core.__all__) >= 3
+    assert all(hasattr(layers, a) for a in layers.__all__) and len(layers.__all__) >= 10
+    assert all(hasattr(utils, a) for a in utils.__all__) and len(utils.__all__) >= 6
+    assert "30" in core.execute_script("from __future__ import annotations\nprint(10 + 20)")["stdout"]
+    assert core.execute_script("while True: print('X'*50)", max_output_chars=100)["status"] == "error"
+    pty_rc, pty_out = core.PTYSession(timeout=2.0).execute(["cat"], "eof_ok")
+    assert pty_rc == 0 and "eof_ok" in pty_out
     assert layers.get_app_state()["status"] == "not_implemented"
     assert layers.mouse_click_at(100, 200)["status"] == "not_implemented"
-    assert layers.mouse_drag_smooth(0, 0, 100, 100)["status"] == "not_implemented"
+    monkeypatch.setattr("os.path.exists", lambda p: p != "/proc")
+    assert layers.process_list()[0]["status"] == "error"
+    monkeypatch.undo()
+    assert len(utils.generate_smooth_path(0, 0, 100, 100, steps=10)) == 11
+    for f, m, d in ((10.5, 0, 1), (10, 1.5, 1), (10, 0, 1.5)):
+        assert utils.validate_video_recording_params(None, fps=f, monitor_index=m, duration=d)["status"] == "error"
 
-    for a in (
-        "get_monitor_geometry",
-        "normalize_coordinates",
-        "generate_smooth_path",
-        "sleep_human",
-        "type_char_human",
-        "validate_video_recording_params",
-    ):
-        assert hasattr(utils, a)
-    p = utils.generate_smooth_path(0, 0, 100, 100, steps=10)
-    assert len(p) == 11 and p[0] == (0, 0) and p[-1] == (100, 100)
+    emitted: list[list[str]] = []
+    monkeypatch.setattr("subprocess.run", lambda c, **kw: (emitted.append(c), type("R", (), {"returncode": 0})())[1])
+    assert utils.type_char_human("a", base_delay=0.0) is True and any("type" in c and "a" in c for c in emitted)

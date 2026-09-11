@@ -49,6 +49,10 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-11] Architecture Modulaire Découplée (core, layers, utils #129)
+  - **Context**: Monolithe historique couplant REPL, gestion PTY, drivers bas niveau et helpers.
+  - **Discarded Options**: Monolithe persistant ; micro-paquets distribués séparément.
+  - **Rationale**: Découpage en 3 sous-packages (core: REPL/PTY/SDK, layers: accessibilité/fenêtres/entrées/OCR, utils: géométrie/vidéo/cinématique) garantissant isolation et testabilité unitaire sans régression.
 - [2026-08-28] Support Bivalent Multi-Versions SDK MCP (1.x et 2.x+)
   - **Context**: Dependabot et les environnements clients récents migrent vers `mcp>=2.0.0`. Le test unitaire `test_fastmcp_tools_registration` dépendait d'attributs privés fragiles (`_tool_manager`), et `gui_agent/server.py` restreignait explicitement la compatibilité à la version 1.x.
   - **Discarded Options**: Bloquer strictement sur `mcp<2.0.0` (empêche les montées de versions et mises à jour de sécurité de Dependabot) ; réécrire l'intégralité du serveur en MCP bas niveau (complexe et inutile car FastMCP est préservé en v2).
@@ -124,11 +128,11 @@ High-performance, monolithic FastMCP server engineered for direct, low-latency C
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
   - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
   - Validation CI 64/64 tests, quality gate PASS, Greptile CLI 5/5 sur l'arbre de travail.
-- 🔄 In progress: Aucun (arbre propre sur `main`).
+- 🔄 In progress: refactor/modular-architecture-issue-129 (déploiement de l'arborescence modulaire et durcissement des primitives d'exécution #129).
 - ⏳ Pending:
   - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #34 (épinglage versions uv run), #33 (matrice Python 3.10-3.13), #32 (fallback silencieux pip dev) et #24 (Mypy strict).
   - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
   - 3. **Bugs Fonctionnels & Prérequis (#39, #38, #37, #31, #18, #17, #19, #20, #21)**.
 
 ## 👉 Next Session Direction
-Démarrer le traitement d'une nouvelle issue prioritaire sur une branche dédiée (ex: #34, #39 ou #37).
+Finaliser la validation et préparer la fusion de la PR #136.

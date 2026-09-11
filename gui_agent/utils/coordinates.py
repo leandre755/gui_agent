@@ -33,18 +33,17 @@ def normalize_coordinates(
     """Convertit des coordonnées du référentiel [0, 1000] vers les pixels réels (ou inversement)."""
     if not isinstance(normalized, bool) or not isinstance(inverse, bool):
         raise TypeError("Les paramètres normalized et inverse doivent être des booléens.")
-    if not (isinstance(x, (int, float)) and isinstance(y, (int, float))) or isinstance(x, bool) or isinstance(y, bool):
+    if isinstance(x, bool) or isinstance(y, bool) or not (isinstance(x, (int, float)) and isinstance(y, (int, float))):
         raise TypeError("Les coordonnées x et y doivent être des nombres réels (int ou float).")
     if math.isnan(x) or math.isnan(y) or math.isinf(x) or math.isinf(y):
         raise ValueError("Les coordonnées x et y ne peuvent pas être NaN ou Infinity.")
     left, top, width, height = get_monitor_geometry(monitor_index)
     if inverse:
-        return round(max(0.0, min(1000.0, ((float(x) - left) / max(1, width - 1)) * 1000.0))), round(
-            max(0.0, min(1000.0, ((float(y) - top) / max(1, height - 1)) * 1000.0))
-        )
+        rx = round(max(0.0, min(1000.0, ((float(x) - left) / max(1, width - 1)) * 1000.0)))
+        ry = round(max(0.0, min(1000.0, ((float(y) - top) / max(1, height - 1)) * 1000.0)))
+        return rx, ry
     if normalized:
-        fx = max(0.0, min(1000.0, float(x)))
-        fy = max(0.0, min(1000.0, float(y)))
+        fx, fy = max(0.0, min(1000.0, float(x))), max(0.0, min(1000.0, float(y)))
         return left + round((fx / 1000.0) * float(max(0, width - 1))), top + round(
             (fy / 1000.0) * float(max(0, height - 1))
         )

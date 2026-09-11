@@ -15,11 +15,9 @@ def get_app_state(include_screenshot: bool = False) -> dict[str, Any]:
 
 def perform_action(element_id: str, action: str) -> bool:
     """Déclenche l'action du composant accessible par le bus."""
-    logger.debug(f"Action demandée non exécutée (stub) : {action} sur {element_id}")
     return False
 
 
 def set_value(element_id: str, text: str) -> bool:
     """Écrit directement la valeur textuelle dans la mémoire du composant."""
-    logger.debug(f"Affectation demandée non exécutée (stub, len={len(text) if text else 0}) sur {element_id}")
     return False

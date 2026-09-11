@@ -23,6 +23,18 @@ def close_subprocess_streams(proc: subprocess.Popen[Any] | None) -> None:
                 s.close()
 
 
+def _check_int(val: Any, min_v: int | None = None, max_v: int | None = None) -> int | None:
+    if isinstance(val, bool) or (isinstance(val, float) and not val.is_integer()):
+        return None
+    try:
+        iv = int(val)
+        if (min_v is not None and iv < min_v) or (max_v is not None and iv > max_v):
+            return None
+        return iv
+    except (ValueError, TypeError):
+        return None
+
+
 def validate_video_recording_params(
     output_path: str | None,
     fps: int,
@@ -31,28 +43,17 @@ def validate_video_recording_params(
     default_dir: str | None = None,
 ) -> tuple[int, int, int | None, str] | dict[str, Any]:
     """Valide et normalise les paramètres d'enregistrement vidéo."""
-    try:
-        if isinstance(fps, bool) or not (1 <= int(fps) <= 30):
-            return {"status": "error", "message": "fps doit être un entier entre 1 et 30."}
-        fps_val = int(fps)
-    except (ValueError, TypeError):
+    fps_val = _check_int(fps, 1, 30)
+    if fps_val is None:
         return {"status": "error", "message": "fps doit être un entier entre 1 et 30."}
-
-    try:
-        if isinstance(monitor_index, bool) or int(monitor_index) < 0:
-            return {"status": "error", "message": "monitor_index doit être un entier positif ou nul."}
-        mon_idx = int(monitor_index)
-    except (ValueError, TypeError):
+    mon_idx = _check_int(monitor_index, 0)
+    if mon_idx is None:
         return {"status": "error", "message": "monitor_index doit être un entier positif ou nul."}
-
     dur_val = None
     if duration is not None:
-        try:
-            if isinstance(duration, bool) or int(duration) <= 0:
-                return {"status": "error", "message": "duration doit être un entier strictement positif."}
-            dur_val = int(duration)
-        except (ValueError, TypeError):
-            return {"status": "error", "message": "duration doit être un entier valide."}
+        dur_val = _check_int(duration, 1)
+        if dur_val is None:
+            return {"status": "error", "message": "duration doit être un entier strictement positif."}
 
     path = output_path or os.path.join(default_dir or tempfile.gettempdir(), f"recording_{uuid.uuid4().hex}.mp4")
     norm_path = os.path.abspath(os.path.expanduser(str(path)))
