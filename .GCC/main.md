@@ -63,7 +63,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
 - [2026-09-12] Médiation d'Accessibilité Programmatique via Moteur Natif Rust AT-SPI / D-Bus (Phase 1 #130)
   - **Context**: L'accès à l'interface graphique Linux par perception visuelle seule (captures d'écran et OCR) souffre de cécité sémantique (menus contextuels éphémères, scaling HiDPI, dialogues modaux bloquants). L'accès direct à AT-SPI2 via D-Bus (`org.a11y.Bus`) est requis avec une latence d'extraction minimale (< 50 ms).
   - **Discarded Options**: Bibliothèque Python `pyatspi` (obsolète, fuites mémoire et dépendances C non isolées) ; binding C pur / ctypes ; réécriture complète du serveur MCP en Rust (rupture de compatibilité avec l'écosystème FastMCP Python existant).
-  - **Rationale**: Moteur autonome bivalent écrit en Rust (`crates/atspi_mediator` produisant le binaire release autonome `gui-agent-atspi` de 3,0M épuré) exploitant `atspi` et `zbus`, avec support CLI et mode serveur stdio JSON-RPC MCP (`initialize`, `tools/call`), interfacé depuis Python via `gui_agent/layers/accessibility.py` avec mise en cache synchronisée par verrou (`_cache_lock`) des index vers `object_ref`, communication par flux process borné avec timeouts stricts et mocks complets pour CI headless.
+  - **Rationale**: Moteur autonome bivalent écrit en Rust (`linux/crates/atspi_mediator` produisant le binaire release autonome `gui-agent-atspi` de 3,0M épuré) exploitant `atspi` et `zbus`, avec support CLI et mode serveur stdio JSON-RPC MCP (`initialize`, `tools/call`), interfacé depuis Python via `linux/layers/accessibility.py` avec mise en cache synchronisée par verrou (`_cache_lock`) des index vers `object_ref`, communication par flux process borné avec timeouts stricts et mocks complets pour CI headless.
 - [2026-09-11] Architecture Modulaire Découplée (core, layers, utils #129)
   - **Context**: Monolithe historique couplant REPL, gestion PTY, drivers bas niveau et helpers.
   - **Discarded Options**: Monolithe persistant ; micro-paquets distribués séparément.
@@ -134,7 +134,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
   - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
   - Fusion de la PR #136 (`refactor/modular-architecture-issue-129`, Closes #129) avec Confidence Score 5/5 sur Greptile et 0 findings CodeRabbit (65/65 tests validés).
-  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `layers/accessibility.py`, 82/82 tests CI validés).
+  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `linux/crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `linux/layers/accessibility.py`, 99/99 tests CI validés au dernier `./ci.sh`).
   - Fermeture de la PR obsolète #112 (traitement de la sécurité subprocess #44 transféré à l'Issue #132).
   - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
@@ -143,7 +143,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Durcissement exhaustif de `.gitignore` et purge des caches résiduels (1,5 Go de target crate et __pycache__).
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
-  - Validation CI 94/94 tests, Mypy strict (151 fichiers) et quality gate PASS sur la branche `feat/accessibility-mediation-phase-1`.
+  - Validation CI 99/99 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
 - 🔄 In progress: Préparation de la Pull Request de synthèse Phase 1 et restructuration multi-plateforme.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).

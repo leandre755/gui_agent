@@ -14,6 +14,7 @@ import platform
 import shutil
 import stat
 import subprocess
+import sys
 from typing import Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
@@ -34,7 +35,7 @@ class CustomBuildHook(BuildHookInterface):
         os.makedirs(dest_dir, exist_ok=True)
         dest_bin = os.path.join(dest_dir, "gui-agent-atspi")
 
-        if cargo_bin and os.path.isfile(cargo_manifest):
+        if sys.platform.startswith("linux") and cargo_bin and os.path.isfile(cargo_manifest):
             # Nettoyer l'artefact de destination préalable uniquement avant recompilation
             if os.path.exists(dest_bin):
                 with contextlib.suppress(OSError):
@@ -86,3 +87,8 @@ class CustomBuildHook(BuildHookInterface):
                 except Exception:
                     plat = f"linux_{platform.machine().lower()}"
             build_data["tag"] = f"py3-none-{plat}"
+        else:
+            # Aucun binaire natif embarqué : garantir une wheel pure Python cohérente
+            if os.path.exists(dest_bin):
+                with contextlib.suppress(OSError):
+                    os.remove(dest_bin)

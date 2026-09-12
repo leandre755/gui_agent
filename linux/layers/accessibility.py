@@ -116,13 +116,16 @@ def find_atspi_mediator_binary(exclude_scripts: bool = False) -> str | None:
             and (not exclude_scripts or _is_elf_binary(workspace_bin))
         ):
             return workspace_bin
-        local_bin = os.path.join(project_root, "crates", "atspi_mediator", "target", profile, "gui-agent-atspi")
-        if (
-            os.path.isfile(local_bin)
-            and os.access(local_bin, os.X_OK)
-            and (not exclude_scripts or _is_elf_binary(local_bin))
+        for candidate_crate in (
+            os.path.join(project_root, "linux", "crates", "atspi_mediator", "target", profile, "gui-agent-atspi"),
+            os.path.join(project_root, "crates", "atspi_mediator", "target", profile, "gui-agent-atspi"),
         ):
-            return local_bin
+            if (
+                os.path.isfile(candidate_crate)
+                and os.access(candidate_crate, os.X_OK)
+                and (not exclude_scripts or _is_elf_binary(candidate_crate))
+            ):
+                return candidate_crate
 
     # 2b. Binaire natif packagé directement dans le package Python (gui_agent/bin/gui-agent-atspi)
     package_bin = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "gui-agent-atspi")

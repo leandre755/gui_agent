@@ -214,7 +214,8 @@ if ($SkipMcpConfig -or $DryRun) {
         }
         $configData.mcpServers | Add-Member -MemberType NoteProperty -Name "gui-agent" -Value $serverEntry -Force
 
-        $configData | ConvertTo-Json -Depth 10 | Set-Content -Path $geminiConfigFile -Encoding UTF8
+        $jsonOut = $configData | ConvertTo-Json -Depth 10
+        [System.IO.File]::WriteAllText($geminiConfigFile, $jsonOut, (New-Object System.Text.UTF8Encoding($false)))
         Log-Success "Configuration Antigravity CLI mise à jour dans $geminiConfigFile"
     }
 }

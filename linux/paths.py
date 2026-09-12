@@ -61,14 +61,10 @@ class LinuxPaths:
                 try:
                     fallback_dir.unlink()
                 except OSError:
-                    import tempfile
-
                     return Path(tempfile.mkdtemp(prefix=f"gui-agent-{uid or 'safe'}-"))
             if fallback_dir.exists():
                 st = fallback_dir.stat()
                 if uid is not None and st.st_uid != uid:
-                    import tempfile
-
                     return Path(tempfile.mkdtemp(prefix=f"gui-agent-{uid}-"))
                 if (st.st_mode & 0o077) != 0:
                     fallback_dir.chmod(0o700)
