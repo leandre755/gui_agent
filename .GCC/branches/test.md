@@ -129,5 +129,8 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Rejet fail-closed d'index absent du cache** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_missing_cache_index` | Rejet immédiat sans subprocess si index inconnu | Aucune action non coordonnée sur arbre sauvage | **PASS** |
 | **Validation CodeRabbit locale** | `coderabbit review --agent -t uncommitted` | 0 finding bloquant / avertissement sur l'ensemble des fichiers modifiés | 0 finding, review completed avec succès | **PASS** |
 | **Durcissement index bounds & hydratation D-Bus** | `cargo test --manifest-path crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique hors limites + mutex d'hydratation réessayable | 8/8 tests passés, 0 warning clippy | **PASS** |
-| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, workflows, ruff check/format, mypy, pytest) | 83/83 tests passés en 57.69s, 0 avertissement, 0 erreur | **PASS** |
+| **Rejet obligatoire d'index sans snapshot_id** | `pytest tests/test_accessibility.py -k test_numeric_index_without_snapshot_id_rejected` | Rejet fail-closed systématique sans Popen si snapshot_id manquant sur index numérique | Test unitaire validé | **PASS** |
+| **Livraison native et fallbacks install.sh** | `./install.sh --dry-run` | Détection cibles workspace/crate target et fallback git cargo install | 0 erreur, code 0 | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, workflows, ruff check/format, mypy, pytest) | 84/84 tests passés en 32.31s, 0 avertissement, 0 erreur | **PASS** |
+
 

@@ -28,12 +28,14 @@ def cleanup_mocks() -> Any:
     set_mock_state(None)
     set_mock_action_handler(None)
     set_mock_value_handler(None)
+    accessibility._snapshots.clear()
     accessibility._last_node_cache.clear()
     accessibility._last_snapshot_id = None
     yield
     set_mock_state(None)
     set_mock_action_handler(None)
     set_mock_value_handler(None)
+    accessibility._snapshots.clear()
     accessibility._last_node_cache.clear()
     accessibility._last_snapshot_id = None
 
@@ -194,9 +196,11 @@ def test_perform_action_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> No
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
 
-    # Appel numérique (avec index résolu dans le cache)
+    # Appel numérique (avec index résolu dans le cache du snapshot)
+    accessibility._snapshots["snap_mcp"] = {"nodes": {"42": ":1.42/node/42"}, "app_name": "test_app"}
+    accessibility._last_snapshot_id = "snap_mcp"
     accessibility._last_node_cache["42"] = ":1.42/node/42"
-    res_num = perform_action("42", "press")
+    res_num = perform_action("42", "press", snapshot_id="snap_mcp")
     assert res_num is True
     assert any('"element_index": 42' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/node/42"' in line for line in written_lines)
@@ -277,8 +281,10 @@ def test_set_value_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
 
+    accessibility._snapshots["snap_val"] = {"nodes": {"100": ":1.100/input/100"}, "app_name": "test_app"}
+    accessibility._last_snapshot_id = "snap_val"
     accessibility._last_node_cache["100"] = ":1.100/input/100"
-    res = set_value("100", "nouveau_texte")
+    res = set_value("100", "nouveau_texte", snapshot_id="snap_val")
     assert res is True
     assert any('"value": "nouveau_texte"' in line for line in written_lines)
     assert any('"element_index": 100' in line for line in written_lines)
@@ -338,18 +344,23 @@ def test_perform_action_and_set_value_with_node_cache(monkeypatch: pytest.Monkey
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
     monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
 
-    # Peupler le cache
+    # Peupler le cache avec un snapshot explicite
+    accessibility._snapshots["snap_7"] = {
+        "nodes": {"7": ":1.42/org/a11y/atspi/accessible/7"},
+        "app_name": "test_app",
+    }
+    accessibility._last_snapshot_id = "snap_7"
     accessibility._last_node_cache["7"] = ":1.42/org/a11y/atspi/accessible/7"
 
     # Vérifier perform_action avec résolution
-    ok_act = perform_action("7", "press")
+    ok_act = perform_action("7", "press", snapshot_id="snap_7")
     assert ok_act is True
     assert any('"element_index": 7' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/org/a11y/atspi/accessible/7"' in line for line in written_lines)
 
     # Vérifier set_value avec résolution
     written_lines.clear()
-    ok_val = set_value("7", "valeur_test")
+    ok_val = set_value("7", "valeur_test", snapshot_id="snap_7")
     assert ok_val is True
     assert any('"element_index": 7' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/org/a11y/atspi/accessible/7"' in line for line in written_lines)
@@ -442,6 +453,7 @@ def test_perform_action_and_set_value_with_snapshot_id_mismatch(monkeypatch: pyt
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
     monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
 
+    accessibility._snapshots["current_snap"] = {"nodes": {"5": ":1.99/stale/ref"}, "app_name": "app"}
     accessibility._last_node_cache["5"] = ":1.99/stale/ref"
     accessibility._last_snapshot_id = "current_snap"
 
@@ -460,9 +472,24 @@ def test_perform_action_and_set_value_with_missing_cache_index(monkeypatch: pyte
     mock_popen = MagicMock()
     monkeypatch.setattr(subprocess, "Popen", mock_popen)
     monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    accessibility._snapshots["snap_1"] = {"nodes": {}, "app_name": "app"}
     accessibility._last_node_cache.clear()
     accessibility._last_snapshot_id = "snap_1"
 
     assert perform_action("999", "activate", snapshot_id="snap_1") is False
     assert set_value("999", "valeur", snapshot_id="snap_1") is False
+    assert mock_popen.call_count == 0
+
+
+def test_numeric_index_without_snapshot_id_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie qu'un index numérique sans snapshot_id est systématiquement rejeté (fail-closed)."""
+    mock_popen = MagicMock()
+    monkeypatch.setattr(subprocess, "Popen", mock_popen)
+    accessibility._snapshots["valid_snap"] = {"nodes": {"1": ":1.1/valid"}, "app_name": "app"}
+    accessibility._last_snapshot_id = "valid_snap"
+    accessibility._last_node_cache["1"] = ":1.1/valid"
+
+    # Tout appel numérique sans snapshot_id doit échouer immédiatement sans appeler Popen
+    assert perform_action("1", "activate") is False
+    assert set_value("1", "texte") is False
     assert mock_popen.call_count == 0

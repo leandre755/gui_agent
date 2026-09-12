@@ -25,9 +25,19 @@ _mock_action_handler: Any | None = None
 _mock_value_handler: Any | None = None
 
 # Cache en mémoire des correspondances element_index -> object_ref synchronisé par verrou
+_snapshots: dict[str, dict[str, Any]] = {}
 _last_node_cache: dict[str, str] = {}
 _last_snapshot_id: str | None = None
 _cache_lock = threading.Lock()
+
+
+def _clear_accessibility_cache() -> None:
+    """Réinitialise l'ensemble des caches de snapshots et de nœuds."""
+    global _last_snapshot_id
+    with _cache_lock:
+        _snapshots.clear()
+        _last_node_cache.clear()
+        _last_snapshot_id = None
 
 
 def set_mock_state(state: dict[str, Any] | None) -> None:
@@ -228,6 +238,13 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
             snap_id = mock_res.get("snapshot_id") or uuid.uuid4().hex[:12]
             mock_res["snapshot_id"] = snap_id
             with _cache_lock:
+                if len(_snapshots) >= 20:
+                    oldest_id = next(iter(_snapshots))
+                    del _snapshots[oldest_id]
+                _snapshots[snap_id] = {
+                    "nodes": new_cache,
+                    "app_name": app_name,
+                }
                 _last_node_cache.clear()
                 _last_node_cache.update(new_cache)
                 _last_snapshot_id = snap_id
@@ -236,9 +253,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
     # 2. Résolution de l'exécutable Rust
     binary = find_atspi_mediator_binary()
     if not binary:
-        with _cache_lock:
-            _last_node_cache.clear()
-            _last_snapshot_id = None
+        _clear_accessibility_cache()
         return {
             "status": "error",
             "layer": "accessibility",
@@ -262,9 +277,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
             check=False,
         )
         if proc.returncode != 0:
-            with _cache_lock:
-                _last_node_cache.clear()
-                _last_snapshot_id = None
+            _clear_accessibility_cache()
             err_msg = proc.stderr.strip() or f"Code sortie {proc.returncode}"
             logger.warning("Échec de l'extraction de l'arbre AT-SPI : %s", err_msg)
             return {
@@ -283,9 +296,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
         elif isinstance(tree_data, dict) and isinstance(tree_data.get("tree"), list):
             tree = tree_data["tree"]
         else:
-            with _cache_lock:
-                _last_node_cache.clear()
-                _last_snapshot_id = None
+            _clear_accessibility_cache()
             return {
                 "status": "error",
                 "layer": "accessibility",
@@ -306,6 +317,13 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
 
         snapshot_id = uuid.uuid4().hex[:12]
         with _cache_lock:
+            if len(_snapshots) >= 20:
+                oldest_id = next(iter(_snapshots))
+                del _snapshots[oldest_id]
+            _snapshots[snapshot_id] = {
+                "nodes": new_cache,
+                "app_name": app_name,
+            }
             _last_node_cache.clear()
             _last_node_cache.update(new_cache)
             _last_snapshot_id = snapshot_id
@@ -332,9 +350,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
         return result
 
     except subprocess.TimeoutExpired:
-        with _cache_lock:
-            _last_node_cache.clear()
-            _last_snapshot_id = None
+        _clear_accessibility_cache()
         logger.error("Timeout dépassé (10s) lors de la lecture de l'arbre AT-SPI")
         return {
             "status": "error",
@@ -345,9 +361,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
             "count": 0,
         }
     except Exception as exc:
-        with _cache_lock:
-            _last_node_cache.clear()
-            _last_snapshot_id = None
+        _clear_accessibility_cache()
         logger.error("Erreur inattendue lors de l'extraction AT-SPI: %s", exc)
         return {
             "status": "error",
@@ -370,7 +384,7 @@ def perform_action(
     Args:
         element_id: Index numérique de l'élément (ex: "42") ou référence AT-SPI (ex: ":1.14/path").
         action: Nom de l'action à exécuter (ex: "activate", "press", "click", "toggle").
-        snapshot_id: Identifiant optionnel du snapshot pour s'assurer que l'index correspond à la vue actuelle.
+        snapshot_id: Identifiant du snapshot pour s'assurer que l'index correspond à la vue actuelle (obligatoire si element_id est numérique).
         timeout: Délai maximal en secondes alloué à l'opération (défaut: 15.0s).
 
     Returns:
@@ -382,22 +396,30 @@ def perform_action(
         return bool(_mock_action_handler)
 
     if element_id.isdigit():
+        if not snapshot_id:
+            logger.error(
+                "L'index numérique %s requiert obligatoirement un 'snapshot_id' valide issu de get_app_state() pour garantir la cohérence sémantique et éviter d'agir sur un état applicatif obsolète ou différent. Action rejetée.",
+                element_id,
+            )
+            return False
+
         with _cache_lock:
-            if snapshot_id is not None and snapshot_id != _last_snapshot_id:
+            snapshot_entry = _snapshots.get(snapshot_id)
+            if snapshot_entry is None:
                 logger.error(
-                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s). Action rejetée.",
-                    element_id,
+                    "Snapshot ID '%s' inconnu ou expiré pour l'index %s. Action rejetée.",
                     snapshot_id,
-                    _last_snapshot_id,
+                    element_id,
                 )
                 return False
-            resolved_ref = _last_node_cache.get(element_id)
+            resolved_ref = snapshot_entry["nodes"].get(element_id)
 
         if not resolved_ref:
             logger.error(
-                "Index d'élément %s introuvable dans le cache du snapshot actuel (%s). Action rejetée.",
+                "Index d'élément %s introuvable dans le snapshot '%s' (app: %s). Action rejetée.",
                 element_id,
-                _last_snapshot_id,
+                snapshot_id,
+                snapshot_entry.get("app_name"),
             )
             return False
 
@@ -426,7 +448,7 @@ def set_value(
     Args:
         element_id: Index numérique de l'élément (ex: "42") ou référence AT-SPI (ex: ":1.14/path").
         text: Valeur textuelle ou numérique à assigner au composant.
-        snapshot_id: Identifiant optionnel du snapshot pour s'assurer que l'index correspond à la vue actuelle.
+        snapshot_id: Identifiant du snapshot pour garantir que l'index correspond à la vue actuelle (obligatoire si element_id est numérique).
         timeout: Délai maximal en secondes alloué à l'opération (défaut: 15.0s).
 
     Returns:
@@ -438,34 +460,42 @@ def set_value(
         return bool(_mock_value_handler)
 
     if element_id.isdigit():
+        if not snapshot_id:
+            logger.error(
+                "L'index numérique %s requiert obligatoirement un 'snapshot_id' valide issu de get_app_state() pour garantir la cohérence sémantique et éviter d'agir sur un état applicatif obsolète ou différent. Écriture de valeur rejetée.",
+                element_id,
+            )
+            return False
+
         with _cache_lock:
-            if snapshot_id is not None and snapshot_id != _last_snapshot_id:
+            snapshot_entry = _snapshots.get(snapshot_id)
+            if snapshot_entry is None:
                 logger.error(
-                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s). Écriture de valeur rejetée.",
-                    element_id,
+                    "Snapshot ID '%s' inconnu ou expiré pour l'index %s. Écriture de valeur rejetée.",
                     snapshot_id,
-                    _last_snapshot_id,
+                    element_id,
                 )
                 return False
-            resolved_ref = _last_node_cache.get(element_id)
+            resolved_ref = snapshot_entry["nodes"].get(element_id)
 
         if not resolved_ref:
             logger.error(
-                "Index d'élément %s introuvable dans le cache du snapshot actuel (%s). Écriture de valeur rejetée.",
+                "Index d'élément %s introuvable dans le snapshot '%s' (app: %s). Écriture de valeur rejetée.",
                 element_id,
-                _last_snapshot_id,
+                snapshot_id,
+                snapshot_entry.get("app_name"),
             )
             return False
 
         args: dict[str, Any] = {
-            "value": text,
             "element_identifier": resolved_ref,
             "element_index": int(element_id),
+            "value": text,
         }
     else:
         args = {
-            "value": text,
             "element_identifier": element_id,
+            "value": text,
         }
 
     return _call_mcp_action_or_value("set_value", args, timeout=timeout)
