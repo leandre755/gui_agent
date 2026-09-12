@@ -11,6 +11,7 @@
 - [2026-08-20] Timeouts xdotool sur focus, close et resize_move (PR #50, Confidence Score 5/5 Greptile)
 - [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57, Confidence Score 5/5 Greptile)
 - [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55, Confidence Score 5/5 Greptile)
+- [2026-09-12] Modular Architecture Scaffolding, Execution Primitives Hardening & Dependencies Modernization (PR #136, Confidence Score 5/5 Greptile, 0 findings CodeRabbit, 65/65 tests)
 
 ## 🎯 Objective
 High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -111,28 +112,25 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `refactor/modular-architecture-issue-129` : Déploiement arborescence modulaire (#129) ([plan_modular_architecture.md](branches/plan_modular_architecture.md)).
-- `fix/ci-verify-workflows-logic` : Enrichissement de `verify_workflows.py` pour valider la logique métier et les invariants de sécurité des workflows GitHub Actions ([plan_verify_workflows_logic.md](branches/plan_verify_workflows_logic.md)).
-- `main` : Stable production release with complete bilingual landing pages, 64/64 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
-- `organize_repo` : Plan de réorganisation et harmonisation gouvernance/CI ([plan_organize_repo.md](branches/plan_organize_repo.md)) — *En attente de revue utilisateur*.
+- `main` : Production release with decoupled modular architecture (core, layers, utils), bilingual landing pages, 65/65 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
 
 ## 📈 Current Status
 - ✅ Done:
-  - Fusion de la PR #7 (`fix/screenshot-output-path-param`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Fusion de la PR #8 (`fix/atomic-window-resize-move`) avec Confidence Score 5/5 sur Greptile et CodeRabbit (27/27 tests validés).
-  - Fusion de la PR #16 (`fix/issue-triage-template-compliance`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Fusion de la PR #35 (`fix/governance-workflows-paths`) avec Confidence Score 5/5 sur Greptile et CodeRabbit.
-  - Fusion de la PR #50 (`fix(server): add timeouts to xdotool window management functions`) avec Confidence Score 5/5 sur Greptile.
-  - Fusion de la PR #57 (`fix(server): add concurrency synchronization and resource cleanup to video recording`) avec Confidence Score 5/5 sur Greptile.
-  - Fusion de la PR #55 (`fix(server): enforce operation-wide deadline for X11 window listing fallback`) avec Confidence Score 5/5 sur Greptile.
+  - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
+  - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
+  - Fusion de la PR #136 (`refactor/modular-architecture-issue-129`, Closes #129) avec Confidence Score 5/5 sur Greptile et 0 findings CodeRabbit (65/65 tests validés).
+  - Fermeture de la PR obsolète #112 (traitement de la sécurité subprocess #44 transféré à l'Issue #132).
+  - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
   - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
-  - Validation CI 64/64 tests, quality gate PASS, Greptile CLI 5/5 sur l'arbre de travail.
-- 🔄 In progress: refactor/modular-architecture-issue-129 (déploiement de l'arborescence modulaire et durcissement des primitives d'exécution #129).
+  - Validation CI 65/65 tests, quality gate PASS sur `main`.
+- 🔄 In progress: Aucun (arbre propre sur `main`).
 - ⏳ Pending:
-  - 1. **Assainissement Gouvernance/CI/Hooks** : Traiter #34 (épinglage versions uv run), #33 (matrice Python 3.10-3.13), #32 (fallback silencieux pip dev) et #24 (Mypy strict).
-  - 2. **Refactoring Arborescence (#30)** : Migrer vers `src/gui_agent/` selon le plan `plan_organize_repo.md`.
-  - 3. **Bugs Fonctionnels & Prérequis (#39, #38, #37, #31, #18, #17, #19, #20, #21)**.
+  - 1. **Phase 1 (#130)** : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (`layers/accessibility.py`).
+  - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
+  - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
+  - 4. **Phase 4 (#133)** : Déclaration FastMCP des 13 outils chirurgicaux, suppression des redondances et mise à jour CI.
+  - 5. **Recherche OS tiers (#134, #135)** : Adaptation Windows (UI Automation) et macOS (NSAccessibility).
 
 ## 👉 Next Session Direction
-Finaliser la validation et préparer la fusion de la PR #136.
+Initier la Phase 1 sur une nouvelle branche dédiée : Implémentation de l'Issue #130 (Médiation d'accessibilité programmatique via AT-SPI / D-Bus).
