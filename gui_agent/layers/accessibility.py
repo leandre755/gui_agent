@@ -160,6 +160,53 @@ def _get_atspi_bus_address() -> str | None:
     return None
 
 
+def _dbus_get_actions(
+    busctl_bin: str, addr_args: list[str], dest: str, obj_path: str, timeout: float = 5.0
+) -> list[str]:
+    """Récupère la liste des noms d'actions exposées par org.a11y.atspi.Action."""
+    cmd_count = [
+        busctl_bin,
+        *addr_args,
+        "call",
+        dest,
+        obj_path,
+        "org.a11y.atspi.Action",
+        "GetNActions",
+    ]
+    try:
+        res = subprocess.run(cmd_count, capture_output=True, timeout=timeout, text=True, check=False)
+        if res.returncode != 0:
+            return []
+        count_str = res.stdout.strip().split()[-1]
+        count = int(count_str)
+    except Exception:
+        return []
+
+    names: list[str] = []
+    for idx in range(count):
+        cmd_name = [
+            busctl_bin,
+            *addr_args,
+            "call",
+            dest,
+            obj_path,
+            "org.a11y.atspi.Action",
+            "GetName",
+            "i",
+            str(idx),
+        ]
+        try:
+            res_name = subprocess.run(cmd_name, capture_output=True, timeout=timeout, text=True, check=False)
+            if res_name.returncode == 0 and 's "' in res_name.stdout:
+                name = res_name.stdout.split('s "', 1)[1].split('"', 1)[0]
+                names.append(name)
+            else:
+                names.append("")
+        except Exception:
+            names.append("")
+    return names
+
+
 def _dbus_call_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 10.0) -> bool:
     """Exécute l'action ou l'écriture de valeur via busctl directement sur le bus AT-SPI."""
     element_id = str(arguments.get("element_identifier") or arguments.get("element_index") or "")
@@ -180,11 +227,42 @@ def _dbus_call_action_or_value(tool_name: str, arguments: dict[str, Any], timeou
     addr_args = ["--address=" + bus_addr] if bus_addr else ["--user"]
 
     if tool_name == "perform_action":
-        action_name = str(arguments.get("action", "0"))
-        try:
-            action_idx = int(action_name)
-        except ValueError:
+        action_name = str(arguments.get("action", "")).strip()
+        actions = _dbus_get_actions(busctl_bin, addr_args, dest, obj_path, timeout=timeout)
+
+        action_idx: int | None = None
+        if action_name.isdigit():
+            idx = int(action_name)
+            if actions and not (0 <= idx < len(actions)):
+                return False
+            action_idx = idx
+        elif not actions:
+            return False
+        elif not action_name:
             action_idx = 0
+        else:
+            req_lower = action_name.lower()
+            exact_matches = [i for i, name in enumerate(actions) if name.lower() == req_lower]
+            if len(exact_matches) == 1:
+                action_idx = exact_matches[0]
+            elif len(exact_matches) > 1:
+                return False
+            else:
+                sub_matches = [i for i, name in enumerate(actions) if req_lower in name.lower()]
+                if len(sub_matches) == 1:
+                    action_idx = sub_matches[0]
+                elif req_lower in ("activate", "click", "press", "primary", "default"):
+                    primary = [
+                        i
+                        for i, name in enumerate(actions)
+                        if name.lower() in ("activate", "click", "press", "primary", "default", "toggle", "open")
+                    ]
+                    if len(primary) == 1:
+                        action_idx = primary[0]
+
+        if action_idx is None:
+            return False
+
         cmd = [
             busctl_bin,
             *addr_args,
@@ -248,6 +326,87 @@ def _dbus_call_action_or_value(tool_name: str, arguments: dict[str, Any], timeou
     return False
 
 
+def _dbus_get_app_state(
+    app_name: str | None = None,
+    max_nodes: int = 50,
+    max_depth: int = 4,
+    timeout: float = 10.0,
+) -> list[dict[str, Any]]:
+    """Extrait l'arbre d'accessibilité applicatif directement via D-Bus / busctl."""
+    busctl_bin = shutil.which("busctl")
+    if not busctl_bin:
+        return []
+
+    bus_addr = _get_atspi_bus_address()
+    addr_args = ["--address=" + bus_addr] if bus_addr else ["--user"]
+
+    cmd_roots = [
+        busctl_bin,
+        *addr_args,
+        "call",
+        "org.a11y.atspi.Registry",
+        "/org/a11y/atspi/accessible/root",
+        "org.a11y.atspi.Accessible",
+        "GetChildren",
+    ]
+    try:
+        res = subprocess.run(cmd_roots, capture_output=True, timeout=timeout, text=True, check=False)
+        if res.returncode != 0:
+            return []
+    except Exception:
+        return []
+
+    tokens = res.stdout.strip().split()
+    items = [tok.strip('"') for tok in tokens if tok.startswith(('":', '"/'))]
+    roots: list[tuple[str, str]] = []
+    for i in range(0, len(items) - 1, 2):
+        roots.append((items[i], items[i + 1]))
+
+    nodes: list[dict[str, Any]] = []
+    target_needle = app_name.strip().lower() if app_name else ""
+
+    curr_index = 0
+    for bus_dest, root_path in roots:
+        cmd_name = [
+            busctl_bin,
+            *addr_args,
+            "get-property",
+            bus_dest,
+            root_path,
+            "org.a11y.atspi.Accessible",
+            "Name",
+        ]
+        try:
+            name_res = subprocess.run(cmd_name, capture_output=True, timeout=2.0, text=True, check=False)
+            app_root_name = ""
+            if name_res.returncode == 0 and 's "' in name_res.stdout:
+                app_root_name = name_res.stdout.split('s "', 1)[1].split('"', 1)[0]
+        except Exception as name_exc:
+            logger.debug("Échec de lecture du nom Accessible pour %s: %s", bus_dest, name_exc)
+            continue
+
+        if target_needle and target_needle not in app_root_name.lower():
+            continue
+
+        obj_ref = f"{bus_dest}{root_path}"
+        node_info: dict[str, Any] = {
+            "index": curr_index,
+            "object_ref": obj_ref,
+            "name": app_root_name or "application",
+            "role": "application",
+            "depth": 0,
+            "children_count": 0,
+            "states": ["visible", "showing"],
+            "actions": [],
+        }
+        nodes.append(node_info)
+        curr_index += 1
+        if len(nodes) >= max_nodes:
+            break
+
+    return nodes
+
+
 def _run_python_atspi_cli(args: list[str]) -> None:
     """Fallback d'exécution du médiateur AT-SPI en pur Python."""
     if not args or args[0] in ("-h", "--help", "help"):
@@ -262,9 +421,13 @@ def _run_python_atspi_cli(args: list[str]) -> None:
         status = "ok" if bus_addr or os.path.exists(f"/run/user/{os.getuid()}/bus") else "no_bus"
         print(json.dumps({"status": status, "engine": "python-fallback", "bus": bus_addr}))
     elif cmd == "apps":
-        print("[]")
+        apps_tree = _dbus_get_app_state()
+        app_names = [n["name"] for n in apps_tree if n.get("name")]
+        print(json.dumps(app_names))
     elif cmd == "state":
-        print(json.dumps({"status": "success", "count": 0, "tree": []}))
+        app_filt = args[1] if len(args) > 1 else None
+        state_tree = _dbus_get_app_state(app_name=app_filt)
+        print(json.dumps({"status": "success", "count": len(state_tree), "tree": state_tree}))
     elif cmd == "action":
         target = args[1] if len(args) > 1 else ""
         act_name = args[2] if len(args) > 2 else "0"
@@ -456,6 +619,55 @@ def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout
                     logger.debug("Échec de la fermeture de flux MCP: %s", close_exc)
 
 
+def _format_snapshot_result(
+    tree: list[dict[str, Any]],
+    app_name: str | None,
+    include_screenshot: bool,
+    snapshot_id: str | None = None,
+) -> dict[str, Any]:
+    """Enregistre l'arbre dans le cache de snapshots et formate le dictionnaire de retour."""
+    global _last_snapshot_id
+
+    new_cache: dict[str, str] = {}
+    for node in tree:
+        if isinstance(node, dict):
+            idx = node.get("index")
+            obj_ref = node.get("object_ref")
+            if idx is not None and obj_ref:
+                new_cache[str(idx)] = str(obj_ref)
+
+    sid = snapshot_id or uuid.uuid4().hex[:12]
+    with _cache_lock:
+        if len(_snapshots) >= 20:
+            oldest_id = next(iter(_snapshots))
+            del _snapshots[oldest_id]
+        _snapshots[sid] = {
+            "nodes": new_cache,
+            "app_name": app_name,
+        }
+        _last_node_cache.clear()
+        _last_node_cache.update(new_cache)
+        _last_snapshot_id = sid
+
+    result: dict[str, Any] = {
+        "status": "success",
+        "layer": "accessibility",
+        "snapshot_id": sid,
+        "count": len(tree),
+        "tree": tree,
+        "include_screenshot": include_screenshot,
+    }
+    if include_screenshot:
+        with contextlib.suppress(Exception):
+            from gui_agent.layers.input_emulation import screen_capture
+
+            cap = screen_capture()
+            if cap.get("status") == "success":
+                result["screenshot"] = cap.get("image")
+
+    return result
+
+
 def get_app_state(include_screenshot: bool = False, app_name: str | None = None) -> dict[str, Any]:
     """Extrait l'arbre d'accessibilité applicatif en JSON texte pur via AT-SPI.
 
@@ -466,8 +678,6 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
     Returns:
         dict contenant status, layer, count, tree et include_screenshot.
     """
-    global _last_snapshot_id
-
     # 1. Vérification du mock
     if _mock_state is not None:
         mock_res = dict(_mock_state)
@@ -475,31 +685,18 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
         mock_res["include_screenshot"] = include_screenshot
         tree_mock = mock_res.get("tree", [])
         if isinstance(tree_mock, list):
-            new_cache = {}
-            for node in tree_mock:
-                if isinstance(node, dict):
-                    idx = node.get("index")
-                    obj_ref = node.get("object_ref")
-                    if idx is not None and obj_ref:
-                        new_cache[str(idx)] = str(obj_ref)
-            snap_id = mock_res.get("snapshot_id") or uuid.uuid4().hex[:12]
-            mock_res["snapshot_id"] = snap_id
-            with _cache_lock:
-                if len(_snapshots) >= 20:
-                    oldest_id = next(iter(_snapshots))
-                    del _snapshots[oldest_id]
-                _snapshots[snap_id] = {
-                    "nodes": new_cache,
-                    "app_name": app_name,
-                }
-                _last_node_cache.clear()
-                _last_node_cache.update(new_cache)
-                _last_snapshot_id = snap_id
+            return _format_snapshot_result(
+                tree_mock, app_name, include_screenshot, snapshot_id=mock_res.get("snapshot_id")
+            )
         return mock_res
 
-    # 2. Résolution de l'exécutable Rust
+    # 2. Résolution de l'exécutable Rust ou repli D-Bus direct
     binary = find_atspi_mediator_binary()
     if not binary:
+        dbus_tree = _dbus_get_app_state(app_name=app_name)
+        if dbus_tree:
+            return _format_snapshot_result(dbus_tree, app_name, include_screenshot)
+
         _clear_accessibility_cache()
         return {
             "status": "error",
@@ -553,48 +750,7 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
                 "count": 0,
             }
 
-        # Mise à jour synchronisée du cache des index vers object_ref avec identité de snapshot
-        new_cache = {}
-        for node in tree:
-            if isinstance(node, dict):
-                idx = node.get("index")
-                obj_ref = node.get("object_ref")
-                if idx is not None and obj_ref:
-                    new_cache[str(idx)] = str(obj_ref)
-
-        snapshot_id = uuid.uuid4().hex[:12]
-        with _cache_lock:
-            if len(_snapshots) >= 20:
-                oldest_id = next(iter(_snapshots))
-                del _snapshots[oldest_id]
-            _snapshots[snapshot_id] = {
-                "nodes": new_cache,
-                "app_name": app_name,
-            }
-            _last_node_cache.clear()
-            _last_node_cache.update(new_cache)
-            _last_snapshot_id = snapshot_id
-
-        result: dict[str, Any] = {
-            "status": "success",
-            "layer": "accessibility",
-            "snapshot_id": snapshot_id,
-            "count": len(tree),
-            "tree": tree,
-            "include_screenshot": include_screenshot,
-        }
-
-        if include_screenshot:
-            try:
-                from gui_agent.layers.input_emulation import screen_capture
-
-                cap = screen_capture()
-                if cap.get("status") == "success":
-                    result["screenshot"] = cap.get("image")
-            except Exception as cap_exc:
-                logger.warning("Impossible d'agréger la capture d'écran: %s", cap_exc)
-
-        return result
+        return _format_snapshot_result(tree, app_name, include_screenshot)
 
     except subprocess.TimeoutExpired:
         _clear_accessibility_cache()

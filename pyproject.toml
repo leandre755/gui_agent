@@ -64,6 +64,10 @@ gui-agent-atspi = "gui_agent.layers.accessibility:main_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gui_agent"]
+artifacts = ["gui_agent/bin/*"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.ruff]
 line-length = 120
