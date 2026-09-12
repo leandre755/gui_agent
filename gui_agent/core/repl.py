@@ -83,7 +83,7 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
                     _kill_proc(proc)
                     status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
                     break
-            if err or (proc.poll() is not None and not r):
+            if err:
                 break
 
         for fd in readers:
