@@ -81,12 +81,12 @@ $UV_CMD run --with ruff ruff format --check . || {
 # 5. Typage Statique Strict (Mypy)
 echo "[Pre-Commit] 5/8 - Typage Statique Global Strict (Mypy)..."
 if [ -f "./venv/bin/mypy" ]; then
-  ./venv/bin/mypy gui_agent mcp_gui_server.py --ignore-missing-imports || {
+  ./venv/bin/mypy -p linux --ignore-missing-imports || {
     echo "[Erreur Pre-Commit] Échec de la vérification de types Mypy."
     exit 1
   }
 else
-  $UV_CMD run --with mypy mypy gui_agent mcp_gui_server.py --ignore-missing-imports || {
+  $UV_CMD run --with mypy mypy -p linux --ignore-missing-imports || {
     echo "[Erreur Pre-Commit] Échec de la vérification de types Mypy."
     exit 1
   }
@@ -101,7 +101,7 @@ $UV_CMD run --with ruff ruff check --select B,SIM,C90,UP,RUF --quiet . || {
 
 # 7. Audit Sécurité Code AST (Bandit)
 echo "[Pre-Commit] 7/8 - Audit Sécurité Code AST (Bandit)..."
-$UV_CMD run --with bandit bandit -c pyproject.toml -q -r gui_agent mcp_gui_server.py || {
+$UV_CMD run --with bandit bandit -c pyproject.toml -q -r linux || {
   echo "[Erreur Pre-Commit] Bandit a identifié un risque de sécurité dans le code !"
   exit 1
 }

@@ -52,6 +52,10 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-12] Bundle Unique Natif par Système d'Exploitation (Rust + REPL PyO3)
+  - **Context**: Besoin de livrer un artefact directement exécutable par OS (`gui-agent` sous Linux, `gui-agent.exe` sous Windows, `gui-agent` sous macOS), compilable directement sur la machine hôte via Cargo sans surcoût d'environnement virtuel Python ni fragmentation multi-processus.
+  - **Discarded Options**: Bundle Python auto-extractible via PyInstaller/Nuitka (>150 Mo, latence au démarrage, décompression) ; distribution multi-binaires fragmentée (FastMCP Python appelant des sous-processus séparés).
+  - **Rationale**: Un binaire autonome Rust garantit une latence quasi-nulle (<5 ms), une consommation mémoire minime (<15 Mo), une compilation locale unifiée (`cargo build --release`), une étanchéité par plateforme via des crates dédiés (`linux/crates/`, `windows/crates/`), et une intégration native du REPL CodeAct (`execute_script`) via PyO3.
 - [2026-09-12] Durcissement de la Résolution d'Index, Livraison Native et Sélection Déterministe d'Actions (Phase 1 #130)
   - **Context**: Retours de revue Greptile et CodeRabbit : repli arbitraire sur l'index 1 dans `select_action_index`, maintien de l'exécution sur index périmés sans snapshot actif ou sur cache absent, et omission de la compilation/installation de `gui-agent-atspi` dans le workflow `install.sh`.
   - **Discarded Options**: Tolérer un repli permissif sur une action arbitraire ; ignorer l'invalidation de cache et relancer un snapshot non filtré en tâche de fond ; exiger l'installation manuelle d'outils tiers.
@@ -135,8 +139,12 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
   - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
-  - Validation CI 82/82 tests, quality gate PASS sur la branche `feat/accessibility-mediation-phase-1`.
-- 🔄 In progress: Aucun (Phase 1 finalisée et validée localement).
+  - Restructuration étanche par système d'exploitation (`linux/`, `windows/`, `macos/`), migration de `tests/` et `examples/` dans `linux/`, zéro code/test/cache à la racine.
+  - Durcissement exhaustif de `.gitignore` et purge des caches résiduels (1,5 Go de target crate et __pycache__).
+  - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
+  - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
+  - Validation CI 94/94 tests, Mypy strict (151 fichiers) et quality gate PASS sur la branche `feat/accessibility-mediation-phase-1`.
+- 🔄 In progress: Préparation de la Pull Request de synthèse Phase 1 et restructuration multi-plateforme.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).

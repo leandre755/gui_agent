@@ -82,6 +82,15 @@ Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cy
 4. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics de souris et opérations de glisser sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction utilisateur naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
 5. **Vision Locale, OCR & Automatisation Playwright** : La correspondance de motifs (`cv2.matchTemplate`) permet une détection robuste des icônes malgré les variations de thèmes. La détection de texte combine Tesseract OCR avec le repli ONNX RapidOCR. L'automatisation web s'appuie sur Playwright pour inspecter les arbres ARIA et manipuler directement les nœuds DOM sans ambiguïté visuelle.
 
+### Architecture Multi-Plateforme à la Racine
+
+Le projet structure les implémentations par système d'exploitation dans des répertoires dédiés à la racine :
+- **`linux/`** : Implémentation principale sous Linux regroupant le moteur `gui_agent`, le médiateur natif d'accessibilité AT-SPI2 / D-Bus (`linux/crates/atspi_mediator`), les scripts d'installation dédiés (`linux/install.sh`, `linux/uninstall.sh`) et la résolution dynamique des chemins conforme au standard XDG Base Directory (`XDG_CACHE_HOME`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME`).
+- **`windows/`** : Répertoire réservé pour l'implémentation Windows via UI Automation et l'API Win32 (Phase 5 #134).
+- **`macos/`** : Répertoire réservé pour l'implémentation macOS via NSAccessibility et Quartz Event Taps (Phase 5 #135).
+
+Tous les répertoires de cache (captures d'écran avec grille cartésienne et enregistrements vidéo MP4 gérés par `gui_start_video_recording` et `gui_stop_video_recording`) sont résolus dynamiquement sans aucun chemin utilisateur en dur.
+
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Installation

@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/atspi_mediator",
+    "linux/crates/atspi_mediator",
 ]
 resolver = "2"
 

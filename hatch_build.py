@@ -7,13 +7,13 @@ afin d'embarquer le binaire natif dans le paquet distribuable.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import platform
 import shutil
 import stat
 import subprocess
-import sys
 from typing import Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
@@ -25,42 +25,64 @@ class CustomBuildHook(BuildHookInterface):
     """Hook de construction personnalisée pour compiler le médiateur AT-SPI Rust."""
 
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
-        """Initialise la compilation Rust et copie le binaire dans gui_agent/bin/."""
+        """Initialise la compilation Rust et copie le binaire dans linux/bin/."""
         project_root = self.root
         cargo_bin = shutil.which("cargo")
         cargo_manifest = os.path.join(project_root, "Cargo.toml")
 
+        dest_dir = os.path.join(project_root, "linux", "bin")
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_bin = os.path.join(dest_dir, "gui-agent-atspi")
+
         if cargo_bin and os.path.isfile(cargo_manifest):
+            # Nettoyer l'artefact de destination préalable uniquement avant recompilation
+            if os.path.exists(dest_bin):
+                with contextlib.suppress(OSError):
+                    os.remove(dest_bin)
+
+            target_dir = os.environ.get("CARGO_TARGET_DIR") or os.path.join(project_root, "target")
             try:
                 subprocess.run(
-                    [cargo_bin, "build", "--release", "--manifest-path", cargo_manifest, "--bin", "gui-agent-atspi"],
+                    [
+                        cargo_bin,
+                        "build",
+                        "--release",
+                        "--manifest-path",
+                        cargo_manifest,
+                        "--bin",
+                        "gui-agent-atspi",
+                        "--target-dir",
+                        target_dir,
+                    ],
                     cwd=project_root,
                     capture_output=True,
                     check=True,
                 )
-                built_bin = os.path.join(project_root, "target", "release", "gui-agent-atspi")
-                dest_dir = os.path.join(project_root, "gui_agent", "bin")
-                os.makedirs(dest_dir, exist_ok=True)
-                dest_bin = os.path.join(dest_dir, "gui-agent-atspi")
-                if os.path.isfile(built_bin):
-                    shutil.copy2(built_bin, dest_bin)
-                    mode = os.stat(dest_bin).st_mode
-                    os.chmod(dest_bin, mode | stat.S_IXUSR)
-
-                    # Le binaire natif ELF est embarqué : marquer la wheel comme spécifique à la plateforme/architecture
-                    build_data["pure_python"] = False
-                    try:
-                        from packaging.tags import sys_tags
-
-                        plat = next(
-                            iter(
-                                t.platform
-                                for t in sys_tags()
-                                if "manylinux" not in t.platform and "musllinux" not in t.platform
-                            )
-                        )
-                    except Exception:
-                        plat = f"{sys.platform}_{platform.machine().lower()}"
-                    build_data["tag"] = f"py3-none-{plat}"
             except Exception as exc:
-                logger.debug("Échec de la compilation préalable du médiateur Rust via Hatchling: %s", exc)
+                raise RuntimeError(f"Échec de la compilation préalable du médiateur Rust via Cargo: {exc}") from exc
+
+            built_bin = os.path.join(target_dir, "release", "gui-agent-atspi")
+            if not os.path.isfile(built_bin):
+                raise RuntimeError(f"L'artefact compilé attendu est introuvable après cargo build: {built_bin}")
+
+            shutil.copy2(built_bin, dest_bin)
+            mode = os.stat(dest_bin).st_mode
+            os.chmod(dest_bin, mode | stat.S_IXUSR)
+
+            # Le binaire natif ELF est embarqué : marquer la wheel avec le tag de plateforme conforme
+            build_data["pure_python"] = False
+            try:
+                from packaging.tags import sys_tags
+
+                # Retenir le premier tag audité conforme (manylinux ou musllinux) pour conformité PyPI
+                plat = next(
+                    iter(t.platform for t in sys_tags() if "manylinux" in t.platform or "musllinux" in t.platform)
+                )
+            except Exception:
+                try:
+                    from packaging.tags import sys_tags
+
+                    plat = next(iter(sys_tags())).platform
+                except Exception:
+                    plat = f"linux_{platform.machine().lower()}"
+            build_data["tag"] = f"py3-none-{plat}"

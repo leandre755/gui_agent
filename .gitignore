@@ -1,22 +1,59 @@
-# Environnement virtuel Python
+# Environnements virtuels Python
 venv/
 .venv/
+env/
+ENV/
 
-# Caches Python
+# Caches Python, compilateurs et linters
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Captures d'écran locales de test
+# Artefacts de build et packaging Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Caches d'exécution et médias locaux
+.cache/
 screenshots/
+videos/
 raw_screenshot_*.png
 screenshot_*.png
+*.mp4
+*.avi
 
-# Fichiers système ou d'IDE
+# Build Rust et binaires exécutables natifs multi-plateforme
+target/
+**/target/
+bin/
+**/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Fichiers système et IDE
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # Identifiants et secrets sensibles
 git_credential*.json
@@ -31,8 +68,3 @@ assets/
 *.excalidraw
 mermaid_diagrams.txt
 todo.md
-
-# Build Rust
-target/
-**/target/
-gui_agent/bin/
