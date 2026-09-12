@@ -17,15 +17,19 @@ $ python3 -c "import gui_agent.core, gui_agent.layers, gui_agent.utils"
 - [x] **Verify**: `./ci.sh`
 - **Verification Proof**:
 ```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS     | 303ms      |
-| Validation Workflows GitHub Actions        | PASS     | 84ms       |
-| Linter de Code (Ruff Check)                | PASS     | 60ms       |
-| Formatage de Code (Ruff Format)            | PASS     | 49ms       |
-| Typage Statique Strict (Mypy)              | PASS     | 441ms      |
-| Suite de Tests Pytest                      | PASS     | 63388ms    |
-65 passed in 62.57s
+| Compilation Bytecode Python (compileall)   | PASS     | 161ms      |
+| Validation Workflows GitHub Actions        | PASS     | 64ms       |
+| Linter de Code (Ruff Check)                | PASS     | 74ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 56ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 14245ms    |
+| Suite de Tests Pytest                      | PASS     | 67025ms    |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
 ## ⚠️ Mitigations & Edge Cases

@@ -29,6 +29,7 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
     status, err = "success", None
     out_ch: list[str] = []
     err_ch: list[str] = []
+    proc: subprocess.Popen[str] | None = None
     try:
         proc = subprocess.Popen(
             [sys.executable, "-c", RUNNER_HARNESS],
@@ -62,14 +63,7 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
                 break
             r, w, _ = select.select(readers, wl, [], min(max(0.01, timeout - el), 0.05))
             if w and not in_closed:
-                try:
-                    off += os.write(in_fd, inp[off:])
-                    if off >= len(inp):
-                        proc.stdin.close()
-                        in_closed = True
-                except OSError:
-                    proc.stdin.close()
-                    in_closed = True
+                off, in_closed = _write_input(proc, in_fd, inp, off)
             for fd in r:
                 chunk = _safe_read(fd)
                 if not chunk:
@@ -90,11 +84,17 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
             for fd in readers:
                 while c := _safe_read(fd):
                     (out_ch if fd == out_fd else err_ch).append(c)
-        _close_proc(proc)
+        if proc.returncode is None:
+            _close_proc(proc)
         if proc.returncode != 0 and status == "success":
             status, err = "error", "".join(err_ch).strip() or f"Code {proc.returncode}"
     except Exception as exc:
         status, err = "error", f"{type(exc).__name__}: {exc!s}"
+    finally:
+        if proc is not None:
+            if proc.poll() is None:
+                _kill_proc(proc)
+            _close_proc(proc)
 
     dur = round((time.monotonic() - start) * 1000, 2)
     s_out, s_err, status, err = _clamp_output(out_ch, err_ch, max_output_chars, status, err)
@@ -134,3 +134,17 @@ def _kill_proc(proc: subprocess.Popen[str]) -> None:
     with contextlib.suppress(Exception):
         os.killpg(proc.pid, signal.SIGKILL)
         proc.wait(timeout=0.5)
+
+
+def _write_input(proc: subprocess.Popen[str], in_fd: int, inp: bytes, off: int) -> tuple[int, bool]:
+    try:
+        off += os.write(in_fd, inp[off:])
+        if off >= len(inp):
+            if proc.stdin:
+                proc.stdin.close()
+            return off, True
+    except OSError:
+        if proc.stdin:
+            proc.stdin.close()
+        return off, True
+    return off, False
