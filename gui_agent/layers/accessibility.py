@@ -7,11 +7,14 @@ l'inspection d'arbres hiérarchiques et des actions directes en mémoire RAM san
 
 from __future__ import annotations
 
+import collections
 import contextlib
 import json
 import logging
 import os
+import platform
 import shutil
+import struct
 import subprocess
 import sys
 import threading
@@ -60,11 +63,33 @@ def set_mock_value_handler(handler: Any | None) -> None:
 
 
 def _is_elf_binary(path: str) -> bool:
-    """Vérifie si le fichier cible est un exécutable binaire natif ELF."""
+    """Vérifie si le fichier cible est un exécutable binaire natif ELF compatible avec l'hôte."""
     try:
         with open(path, "rb") as f:
-            return f.read(4) == b"\x7fELF"
-    except OSError:
+            header = f.read(20)
+            if len(header) < 20 or header[:4] != b"\x7fELF":
+                return False
+
+            ei_data = header[5]  # 1 = little-endian, 2 = big-endian
+            endian = "<" if ei_data == 1 else ">"
+            e_machine = struct.unpack(endian + "H", header[18:20])[0]
+
+            host = platform.machine().lower()
+            expected_machines: dict[str, set[int]] = {
+                "x86_64": {0x3E},
+                "amd64": {0x3E},
+                "aarch64": {0xB7},
+                "arm64": {0xB7},
+                "i386": {0x03},
+                "i686": {0x03},
+                "x86": {0x03},
+                "arm": {0x28},
+                "armv7l": {0x28},
+                "riscv64": {0xF3},
+            }
+            allowed = expected_machines.get(host)
+            return allowed is None or e_machine in allowed
+    except (OSError, struct.error):
         return False
 
 
@@ -326,13 +351,40 @@ def _dbus_call_action_or_value(tool_name: str, arguments: dict[str, Any], timeou
     return False
 
 
+def _dbus_read_children(
+    busctl_bin: str, addr_args: list[str], dest: str, obj_path: str, timeout: float = 1.5
+) -> list[tuple[str, str]]:
+    """Lit les enfants d'un nœud Accessible via l'interface D-Bus."""
+    cmd = [
+        busctl_bin,
+        *addr_args,
+        "call",
+        dest,
+        obj_path,
+        "org.a11y.atspi.Accessible",
+        "GetChildren",
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, timeout=timeout, text=True, check=False)
+        if res.returncode != 0:
+            return []
+        tokens = res.stdout.strip().split()
+        items = [tok.strip('"') for tok in tokens if tok.startswith(('":', '"/'))]
+        children: list[tuple[str, str]] = []
+        for i in range(0, len(items) - 1, 2):
+            children.append((items[i], items[i + 1]))
+        return children
+    except Exception:
+        return []
+
+
 def _dbus_get_app_state(
     app_name: str | None = None,
     max_nodes: int = 50,
     max_depth: int = 4,
     timeout: float = 10.0,
 ) -> list[dict[str, Any]]:
-    """Extrait l'arbre d'accessibilité applicatif directement via D-Bus / busctl."""
+    """Extrait l'arbre d'accessibilité applicatif directement via D-Bus / busctl en explorant les contrôles descendants."""
     busctl_bin = shutil.which("busctl")
     if not busctl_bin:
         return []
@@ -340,32 +392,16 @@ def _dbus_get_app_state(
     bus_addr = _get_atspi_bus_address()
     addr_args = ["--address=" + bus_addr] if bus_addr else ["--user"]
 
-    cmd_roots = [
-        busctl_bin,
-        *addr_args,
-        "call",
-        "org.a11y.atspi.Registry",
-        "/org/a11y/atspi/accessible/root",
-        "org.a11y.atspi.Accessible",
-        "GetChildren",
-    ]
-    try:
-        res = subprocess.run(cmd_roots, capture_output=True, timeout=timeout, text=True, check=False)
-        if res.returncode != 0:
-            return []
-    except Exception:
+    roots = _dbus_read_children(
+        busctl_bin, addr_args, "org.a11y.atspi.Registry", "/org/a11y/atspi/accessible/root", timeout=timeout
+    )
+    if not roots:
         return []
 
-    tokens = res.stdout.strip().split()
-    items = [tok.strip('"') for tok in tokens if tok.startswith(('":', '"/'))]
-    roots: list[tuple[str, str]] = []
-    for i in range(0, len(items) - 1, 2):
-        roots.append((items[i], items[i + 1]))
-
-    nodes: list[dict[str, Any]] = []
     target_needle = app_name.strip().lower() if app_name else ""
+    queue: collections.deque[tuple[str, str, int]] = collections.deque()
 
-    curr_index = 0
+    # Découverte et filtrage des applications racines
     for bus_dest, root_path in roots:
         cmd_name = [
             busctl_bin,
@@ -377,32 +413,71 @@ def _dbus_get_app_state(
             "Name",
         ]
         try:
-            name_res = subprocess.run(cmd_name, capture_output=True, timeout=2.0, text=True, check=False)
+            name_res = subprocess.run(cmd_name, capture_output=True, timeout=1.0, text=True, check=False)
             app_root_name = ""
             if name_res.returncode == 0 and 's "' in name_res.stdout:
                 app_root_name = name_res.stdout.split('s "', 1)[1].split('"', 1)[0]
-        except Exception as name_exc:
-            logger.debug("Échec de lecture du nom Accessible pour %s: %s", bus_dest, name_exc)
+        except Exception as exc:
+            logger.debug("Échec de lecture du nom d'application racine D-Bus: %s", exc)
             continue
 
         if target_needle and target_needle not in app_root_name.lower():
             continue
 
-        obj_ref = f"{bus_dest}{root_path}"
-        node_info: dict[str, Any] = {
-            "index": curr_index,
-            "object_ref": obj_ref,
-            "name": app_root_name or "application",
-            "role": "application",
-            "depth": 0,
-            "children_count": 0,
-            "states": ["visible", "showing"],
-            "actions": [],
-        }
-        nodes.append(node_info)
+        queue.append((bus_dest, root_path, 0))
+
+    nodes: list[dict[str, Any]] = []
+    curr_index = 0
+
+    while queue and len(nodes) < max_nodes:
+        dest, obj_path, depth = queue.popleft()
+
+        # Lecture du nom
+        name = ""
+        try:
+            cmd_n = [busctl_bin, *addr_args, "get-property", dest, obj_path, "org.a11y.atspi.Accessible", "Name"]
+            res_n = subprocess.run(cmd_n, capture_output=True, timeout=1.0, text=True, check=False)
+            if res_n.returncode == 0 and 's "' in res_n.stdout:
+                name = res_n.stdout.split('s "', 1)[1].split('"', 1)[0]
+        except Exception as exc:
+            logger.debug("Échec de lecture du nom Accessible: %s", exc)
+
+        # Lecture du rôle
+        role = "application" if depth == 0 else "unknown"
+        try:
+            cmd_r = [busctl_bin, *addr_args, "call", dest, obj_path, "org.a11y.atspi.Accessible", "GetRoleName"]
+            res_r = subprocess.run(cmd_r, capture_output=True, timeout=1.0, text=True, check=False)
+            if res_r.returncode == 0 and 's "' in res_r.stdout:
+                role = res_r.stdout.split('s "', 1)[1].split('"', 1)[0]
+        except Exception as exc:
+            logger.debug("Échec de lecture du rôle Accessible: %s", exc)
+
+        # Actions disponibles sur le composant
+        actions = _dbus_get_actions(busctl_bin, addr_args, dest, obj_path, timeout=1.0)
+
+        # Exploration des enfants descendants si la profondeur maximale n'est pas atteinte
+        child_count = 0
+        if depth < max_depth and (len(nodes) + len(queue)) < max_nodes:
+            children = _dbus_read_children(busctl_bin, addr_args, dest, obj_path, timeout=1.0)
+            child_count = len(children)
+            for child_dest, child_path in children:
+                if (len(nodes) + len(queue)) >= max_nodes:
+                    break
+                queue.append((child_dest, child_path, depth + 1))
+
+        nodes.append(
+            {
+                "index": curr_index,
+                "object_ref": f"{dest}{obj_path}",
+                "name": name or ("application" if depth == 0 else ""),
+                "role": role,
+                "depth": depth,
+                "children_count": child_count,
+                "states": ["visible", "showing"],
+                "actions": actions,
+            }
+        )
         curr_index += 1
-        if len(nodes) >= max_nodes:
-            break
 
     return nodes
 
@@ -421,13 +496,36 @@ def _run_python_atspi_cli(args: list[str]) -> None:
         status = "ok" if bus_addr or os.path.exists(f"/run/user/{os.getuid()}/bus") else "no_bus"
         print(json.dumps({"status": status, "engine": "python-fallback", "bus": bus_addr}))
     elif cmd == "apps":
-        apps_tree = _dbus_get_app_state()
+        apps_tree = _dbus_get_app_state(max_depth=0)
         app_names = [n["name"] for n in apps_tree if n.get("name")]
         print(json.dumps(app_names))
     elif cmd == "state":
         app_filt = args[1] if len(args) > 1 else None
         state_tree = _dbus_get_app_state(app_name=app_filt)
-        print(json.dumps({"status": "success", "count": len(state_tree), "tree": state_tree}))
+        if not state_tree:
+            print(
+                json.dumps(
+                    {
+                        "status": "error",
+                        "layer": "accessibility",
+                        "error": "Moteur natif gui-agent-atspi introuvable et aucun contrôle accessible D-Bus détecté",
+                        "count": 0,
+                        "tree": [],
+                    }
+                )
+            )
+        else:
+            print(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "layer": "accessibility",
+                        "count": len(state_tree),
+                        "tree": state_tree,
+                        "degraded": True,
+                    }
+                )
+            )
     elif cmd == "action":
         target = args[1] if len(args) > 1 else ""
         act_name = args[2] if len(args) > 2 else "0"
@@ -690,13 +788,9 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
             )
         return mock_res
 
-    # 2. Résolution de l'exécutable Rust ou repli D-Bus direct
+    # 2. Résolution de l'exécutable Rust
     binary = find_atspi_mediator_binary()
     if not binary:
-        dbus_tree = _dbus_get_app_state(app_name=app_name)
-        if dbus_tree:
-            return _format_snapshot_result(dbus_tree, app_name, include_screenshot)
-
         _clear_accessibility_cache()
         return {
             "status": "error",

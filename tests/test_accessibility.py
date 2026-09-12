@@ -520,3 +520,76 @@ def test_dbus_fallback_action_and_value(monkeypatch: pytest.MonkeyPatch) -> None
     res_val = set_value(":1.42/org/a11y/atspi/accessible/42", "hello")
     assert res_val is True
     assert any("SetTextContents" in cmd for cmd in executed_cmds)
+
+
+def test_is_elf_binary_architecture_validation(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie que _is_elf_binary rejette les architectures incompatibles et accepte l'hôte."""
+    import struct
+
+    # 1. Fichier non-ELF
+    txt_file = tmp_path / "script.sh"
+    txt_file.write_text("#!/bin/sh\necho hello\n")
+    assert accessibility._is_elf_binary(str(txt_file)) is False
+
+    # 2. ELF valide pour x86_64 (machine 0x3E)
+    x86_file = tmp_path / "bin_x86"
+    hdr_x86 = bytearray(b"\x7fELF\x02\x01\x01\x00" + b"\x00" * 10)
+    hdr_x86 += struct.pack("<H", 0x3E)  # EM_X86_64
+    hdr_x86 += b"\x00" * 32
+    x86_file.write_bytes(bytes(hdr_x86))
+
+    # 3. ELF pour ARM64 (machine 0xB7)
+    arm_file = tmp_path / "bin_arm"
+    hdr_arm = bytearray(b"\x7fELF\x02\x01\x01\x00" + b"\x00" * 10)
+    hdr_arm += struct.pack("<H", 0xB7)  # EM_AARCH64
+    hdr_arm += b"\x00" * 32
+    arm_file.write_bytes(bytes(hdr_arm))
+
+    monkeypatch.setattr("platform.machine", lambda: "x86_64")
+    assert accessibility._is_elf_binary(str(x86_file)) is True
+    assert accessibility._is_elf_binary(str(arm_file)) is False
+
+    monkeypatch.setattr("platform.machine", lambda: "aarch64")
+    assert accessibility._is_elf_binary(str(x86_file)) is False
+    assert accessibility._is_elf_binary(str(arm_file)) is True
+
+
+def test_dbus_get_app_state_descendant_controls_traversal(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie que _dbus_get_app_state explore bien les contrôles descendants avec rôles et actions."""
+    monkeypatch.setattr("shutil.which", lambda name: f"/bin/{name}" if name == "busctl" else None)
+    monkeypatch.setattr(accessibility, "_get_atspi_bus_address", lambda: "unix:path=/test/bus")
+
+    def mock_run(cmd: list[str], *args: Any, **kwargs: Any) -> Any:
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        if "GetChildren" in cmd:
+            if "/org/a11y/atspi/accessible/root" in cmd:
+                mock_res.stdout = 'a(so) 1 ":1.100" "/org/a11y/atspi/accessible/100"'
+            else:
+                mock_res.stdout = 'a(so) 1 ":1.100" "/org/a11y/atspi/accessible/101"'
+        elif "GetRoleName" in cmd:
+            mock_res.stdout = 's "push button"'
+        elif "GetNActions" in cmd:
+            mock_res.stdout = "i 1"
+        elif "GetName" in cmd:
+            mock_res.stdout = 's "click"'
+        elif "Name" in cmd:
+            if "/org/a11y/atspi/accessible/100" in cmd:
+                mock_res.stdout = 's "mon_app"'
+            else:
+                mock_res.stdout = 's "Bouton Valider"'
+        else:
+            mock_res.stdout = ""
+        mock_res.stderr = ""
+        return mock_res
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+
+    tree = accessibility._dbus_get_app_state(app_name="mon_app", max_depth=2, max_nodes=10)
+    assert len(tree) >= 2
+    assert tree[0]["name"] == "mon_app"
+    assert tree[0]["depth"] == 0
+    assert tree[1]["name"] == "Bouton Valider"
+    assert tree[1]["role"] == "push button"
+    assert tree[1]["depth"] == 1
+    assert "click" in tree[1]["actions"]
