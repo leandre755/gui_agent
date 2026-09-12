@@ -1,0 +1,150 @@
+"""Moteur d'exécution local CodeAct : Exécute des scripts Python/Bash avec mcp_core préchargé."""
+
+from __future__ import annotations
+
+import contextlib
+import logging
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+from typing import Any
+
+logger = logging.getLogger("gui_agent.core.repl")
+MAX_OUTPUT_CHARS = 1_000_000
+RUNNER_HARNESS = (
+    "import sys, os\nsys.path.insert(0, os.getcwd())\n"
+    "import gui_agent.core.mcp_core as _sdk\nsys.modules['mcp_core'] = sys.modules['gui_agent.core.mcp_core']\n"
+    "code = sys.stdin.read()\nexec(compile(code, '<repl>', 'exec'), {'__name__': '__main__', 'mcp_core': _sdk.mcp_core})\n"
+)
+
+
+def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX_OUTPUT_CHARS) -> dict[str, Any]:
+    """Exécute un script Python localement dans un processus isolé avec mcp_core préchargé."""
+    if not code or not code.strip():
+        return {"status": "error", "message": "Code à exécuter vide."}
+    start = time.monotonic()
+    status, err = "success", None
+    out_ch: list[str] = []
+    err_ch: list[str] = []
+    proc: subprocess.Popen[str] | None = None
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "-c", RUNNER_HARNESS],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+            return {"status": "error", "message": "Échec d'ouverture des flux d'exécution."}
+        in_fd, out_fd, err_fd = proc.stdin.fileno(), proc.stdout.fileno(), proc.stderr.fileno()
+        for fd in (in_fd, out_fd, err_fd):
+            os.set_blocking(fd, False)
+        inp, off, in_closed, out_len, err_len, readers = code.encode("utf-8"), 0, False, 0, 0, [out_fd, err_fd]
+
+        while True:
+            el = time.monotonic() - start
+            if el > timeout:
+                _kill_proc(proc)
+                status, err = "error", f"Timeout ({timeout}s)."
+                break
+            wl = [in_fd] if (not in_closed and off < len(inp)) else []
+            if not readers and not wl:
+                if proc.poll() is None:
+                    try:
+                        proc.wait(timeout=max(0.01, timeout - el))
+                    except subprocess.TimeoutExpired:
+                        _kill_proc(proc)
+                        status, err = "error", f"Timeout ({timeout}s)."
+                break
+            r, w, _ = select.select(readers, wl, [], min(max(0.01, timeout - el), 0.05))
+            if w and not in_closed:
+                off, in_closed = _write_input(proc, in_fd, inp, off)
+            for fd in r:
+                chunk = _safe_read(fd)
+                if not chunk:
+                    if fd in readers:
+                        readers.remove(fd)
+                    continue
+                (out_ch if fd == out_fd else err_ch).append(chunk)
+                out_len += len(chunk) if fd == out_fd else 0
+                err_len += len(chunk) if fd != out_fd else 0
+                if out_len > max_output_chars or err_len > max_output_chars:
+                    _kill_proc(proc)
+                    status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
+                    break
+            if err:
+                break
+
+        if not err:
+            for fd in readers:
+                while c := _safe_read(fd):
+                    (out_ch if fd == out_fd else err_ch).append(c)
+        if proc.returncode is None:
+            _close_proc(proc)
+        if proc.returncode != 0 and status == "success":
+            status, err = "error", "".join(err_ch).strip() or f"Code {proc.returncode}"
+    except Exception as exc:
+        status, err = "error", f"{type(exc).__name__}: {exc!s}"
+    finally:
+        if proc is not None:
+            if proc.poll() is None:
+                _kill_proc(proc)
+            _close_proc(proc)
+
+    dur = round((time.monotonic() - start) * 1000, 2)
+    s_out, s_err, status, err = _clamp_output(out_ch, err_ch, max_output_chars, status, err)
+    res: dict[str, Any] = {"status": status, "stdout": s_out, "stderr": s_err, "duration_ms": dur}
+    if err:
+        res["error"] = err
+    return res
+
+
+def _clamp_output(
+    out_ch: list[str], err_ch: list[str], max_chars: int, status: str, err: str | None
+) -> tuple[str, str, str, str | None]:
+    s_out, s_err = "".join(out_ch), "".join(err_ch)
+    if len(s_out) > max_chars:
+        s_out, status, err = s_out[:max_chars], "error", f"Taille de sortie maximale dépassée ({max_chars} caractères)."
+    if len(s_err) > max_chars:
+        s_err, status, err = s_err[:max_chars], "error", f"Taille de sortie maximale dépassée ({max_chars} caractères)."
+    return s_out, s_err, status, err
+
+
+def _close_proc(proc: subprocess.Popen[str]) -> None:
+    with contextlib.suppress(Exception):
+        proc.wait(timeout=0.5)
+    for s in (proc.stdin, proc.stdout, proc.stderr):
+        with contextlib.suppress(Exception):
+            if s:
+                s.close()
+
+
+def _safe_read(fd: int) -> str:
+    with contextlib.suppress(OSError):
+        return os.read(fd, 4096).decode("utf-8", errors="replace")
+    return ""
+
+
+def _kill_proc(proc: subprocess.Popen[str]) -> None:
+    with contextlib.suppress(Exception):
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait(timeout=0.5)
+
+
+def _write_input(proc: subprocess.Popen[str], in_fd: int, inp: bytes, off: int) -> tuple[int, bool]:
+    try:
+        off += os.write(in_fd, inp[off:])
+        if off >= len(inp):
+            if proc.stdin:
+                proc.stdin.close()
+            return off, True
+    except OSError:
+        if proc.stdin:
+            proc.stdin.close()
+        return off, True
+    return off, False

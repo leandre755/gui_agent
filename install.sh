@@ -128,17 +128,20 @@ if ! command -v "tesseract" >/dev/null 2>&1; then
     MISSING_SYS_DEPS+=("tesseract-ocr")
 fi
 
+python3 -c "import dbus" >/dev/null 2>&1 || MISSING_SYS_DEPS+=("python3-dbus")
+python3 -c "import tkinter" >/dev/null 2>&1 || MISSING_SYS_DEPS+=("python3-tk")
+pkg-config --exists atspi-2 2>/dev/null || [ -d "/usr/include/at-spi-2.0" ] || command -v at-spi-bus-launcher >/dev/null 2>&1 || MISSING_SYS_DEPS+=("at-spi2-core")
 if [[ ${#MISSING_SYS_DEPS[@]} -gt 0 ]]; then
     log_warn "Dépendances système manquantes détectées : ${MISSING_SYS_DEPS[*]}"
     
     # Détection du gestionnaire de paquets
     INSTALL_CMD=""
     if command -v apt-get >/dev/null 2>&1; then
-        INSTALL_CMD="sudo apt-get update && sudo apt-get install -y xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr"
+        INSTALL_CMD="sudo apt-get update && sudo apt-get install -y xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr python3-dbus at-spi2-core python3-tk"
     elif command -v dnf >/dev/null 2>&1; then
-        INSTALL_CMD="sudo dnf install -y xdotool wmctrl spectacle ffmpeg xclip tesseract"
+        INSTALL_CMD="sudo dnf install -y xdotool wmctrl spectacle ffmpeg xclip tesseract python3-dbus at-spi2-core python3-tkinter"
     elif command -v pacman >/dev/null 2>&1; then
-        INSTALL_CMD="sudo pacman -S --needed xdotool wmctrl spectacle ffmpeg xclip tesseract"
+        INSTALL_CMD="sudo pacman -S --needed xdotool wmctrl spectacle ffmpeg xclip tesseract python-dbus at-spi2-core tk"
     fi
 
     if [[ -n "$INSTALL_CMD" ]]; then

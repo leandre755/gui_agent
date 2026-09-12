@@ -44,6 +44,7 @@ dependencies = [
     "numpy>=2.2.6",
     "python-xlib>=0.33",
     "pytesseract>=0.3.13",
+    "evdev>=1.7.0; sys_platform == 'linux'",
     "playwright>=1.62.0",
 ]
 
