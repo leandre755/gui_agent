@@ -101,6 +101,17 @@ else
     log_warn "Gestionnaire 'uv' non détecté. Aucun outil uv à désinstaller."
 fi
 
+# Nettoyage du binaire autonome du médiateur AT-SPI Rust dans ~/.local/bin s'il existe
+STANDALONE_ATSPI_BIN="${HOME}/.local/bin/gui-agent-atspi"
+if [[ -f "$STANDALONE_ATSPI_BIN" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_info "[Dry-Run] Suppression du binaire autonome : $STANDALONE_ATSPI_BIN"
+    else
+        rm -f "$STANDALONE_ATSPI_BIN"
+        log_success "Binaire autonome du médiateur AT-SPI supprimé : $STANDALONE_ATSPI_BIN"
+    fi
+fi
+
 # Step 2: Remove MCP Client Registrations
 log_info "2/3 - Nettoyage des configurations des clients MCP..."
 

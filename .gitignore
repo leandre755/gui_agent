@@ -35,3 +35,4 @@ todo.md
 # Build Rust
 target/
 **/target/
+gui_agent/bin/

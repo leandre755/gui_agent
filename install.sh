@@ -220,29 +220,35 @@ else
         CARGO_TOML_PATH="${SCRIPT_DIR}/crates/atspi_mediator/Cargo.toml"
         WORKSPACE_CARGO_PATH="${SCRIPT_DIR}/Cargo.toml"
         mkdir -p "${HOME}/.local/bin"
+        mkdir -p "${SCRIPT_DIR}/gui_agent/bin"
 
         if [[ -f "${SCRIPT_DIR}/target/release/gui-agent-atspi" ]]; then
             cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-            chmod +x "${HOME}/.local/bin/gui-agent-atspi"
-            log_success "Médiateur AT-SPI natif précompilé copié dans ~/.local/bin/gui-agent-atspi"
+            cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            log_success "Médiateur AT-SPI natif précompilé copié dans ~/.local/bin/gui-agent-atspi et gui_agent/bin/"
         elif [[ -f "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" ]]; then
             cp "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-            chmod +x "${HOME}/.local/bin/gui-agent-atspi"
-            log_success "Médiateur AT-SPI natif précompilé copié dans ~/.local/bin/gui-agent-atspi"
+            cp "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            log_success "Médiateur AT-SPI natif précompilé copié dans ~/.local/bin/gui-agent-atspi et gui_agent/bin/"
         elif [[ -f "$WORKSPACE_CARGO_PATH" ]]; then
             cargo build --release --manifest-path "$WORKSPACE_CARGO_PATH" --bin gui-agent-atspi
             cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-            chmod +x "${HOME}/.local/bin/gui-agent-atspi"
-            log_success "Médiateur AT-SPI natif compilé et installé avec succès dans ~/.local/bin/gui-agent-atspi"
+            cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            log_success "Médiateur AT-SPI natif compilé et installé avec succès dans ~/.local/bin/gui-agent-atspi et gui_agent/bin/"
         elif [[ -f "$CARGO_TOML_PATH" ]]; then
             cargo build --release --manifest-path "$CARGO_TOML_PATH"
             if [[ -f "${SCRIPT_DIR}/target/release/gui-agent-atspi" ]]; then
                 cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
+                cp "${SCRIPT_DIR}/target/release/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
             else
                 cp "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
+                cp "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
             fi
-            chmod +x "${HOME}/.local/bin/gui-agent-atspi"
-            log_success "Médiateur AT-SPI natif installé avec succès dans ~/.local/bin/gui-agent-atspi"
+            chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${SCRIPT_DIR}/gui_agent/bin/gui-agent-atspi"
+            log_success "Médiateur AT-SPI natif installé avec succès dans ~/.local/bin/gui-agent-atspi et gui_agent/bin/"
         else
             # Cas d'une installation distante (curl | bash) sans clone local du dépôt
             log_info "Dépôt local non détecté, installation du médiateur natif depuis Git (${GIT_REPO_URL})..."

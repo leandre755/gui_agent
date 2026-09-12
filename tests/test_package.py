@@ -99,6 +99,45 @@ def test_installation_and_uninstallation_scripts_presence():
     assert os.path.getsize("uninstall.ps1") > 100
 
 
+def test_uninstall_script_cleans_standalone_atspi_mediator(tmp_path):
+    """Vérifie comportementalement que uninstall.sh nettoie le binaire autonome gui-agent-atspi."""
+    import os
+    import subprocess
+
+    isolated_home = tmp_path / "home"
+    local_bin = isolated_home / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    fake_bin = local_bin / "gui-agent-atspi"
+    fake_bin.write_text("#!/bin/sh\necho fake\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+
+    env = os.environ.copy()
+    env["HOME"] = str(isolated_home)
+
+    # 1. Mode Dry-run : le binaire ne doit pas être supprimé
+    res_dry = subprocess.run(
+        ["bash", "uninstall.sh", "--dry-run", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_dry.returncode == 0
+    assert "gui-agent-atspi" in res_dry.stdout
+    assert fake_bin.exists()
+
+    # 2. Mode Réel : le binaire autonome doit être effectivement supprimé
+    res_real = subprocess.run(
+        ["bash", "uninstall.sh", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_real.returncode == 0
+    assert not fake_bin.exists()
+
+
 def test_install_doc_structure():
     """Valide la conformité structurelle du guide d'installation INSTALL.md."""
     import os

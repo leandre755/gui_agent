@@ -493,3 +493,30 @@ def test_numeric_index_without_snapshot_id_rejected(monkeypatch: pytest.MonkeyPa
     assert perform_action("1", "activate") is False
     assert set_value("1", "texte") is False
     assert mock_popen.call_count == 0
+
+
+def test_dbus_fallback_action_and_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie le fonctionnement du fallback direct busctl/D-Bus lorsque le binaire Rust est absent."""
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: None)
+
+    executed_cmds: list[list[str]] = []
+
+    def mock_run(cmd: list[str], *args: Any, **kwargs: Any) -> Any:
+        executed_cmds.append(cmd)
+        mock_res = MagicMock()
+        mock_res.returncode = 0
+        mock_res.stdout = "b true"
+        mock_res.stderr = ""
+        return mock_res
+
+    monkeypatch.setattr(subprocess, "run", mock_run)
+    monkeypatch.setattr(accessibility, "_get_atspi_bus_address", lambda: "unix:path=/test/bus")
+    monkeypatch.setattr("shutil.which", lambda name: f"/bin/{name}" if name == "busctl" else None)
+
+    res_act = perform_action(":1.42/org/a11y/atspi/accessible/42", "0")
+    assert res_act is True
+    assert any("DoAction" in cmd for cmd in executed_cmds)
+
+    res_val = set_value(":1.42/org/a11y/atspi/accessible/42", "hello")
+    assert res_val is True
+    assert any("SetTextContents" in cmd for cmd in executed_cmds)

@@ -98,6 +98,15 @@ def find_atspi_mediator_binary(exclude_scripts: bool = False) -> str | None:
         ):
             return local_bin
 
+    # 2b. Binaire natif packagé directement dans le package Python (gui_agent/bin/gui-agent-atspi)
+    package_bin = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin", "gui-agent-atspi")
+    if (
+        os.path.isfile(package_bin)
+        and os.access(package_bin, os.X_OK)
+        and (not exclude_scripts or _is_elf_binary(package_bin))
+    ):
+        return package_bin
+
     # 3. Exécutable système standard dans ~/.local/bin ou préfixe d'environnement Python
     standard_paths = [
         os.path.expanduser("~/.local/bin/gui-agent-atspi"),
@@ -140,6 +149,105 @@ def find_atspi_mediator_binary(exclude_scripts: bool = False) -> str | None:
     return None
 
 
+def _get_atspi_bus_address() -> str | None:
+    """Résout l'adresse du bus d'accessibilité AT-SPI / D-Bus."""
+    env_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS")
+    if env_addr:
+        return env_addr
+    user_bus = f"/run/user/{os.getuid()}/bus"
+    if os.path.exists(user_bus):
+        return f"unix:path={user_bus}"
+    return None
+
+
+def _dbus_call_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 10.0) -> bool:
+    """Exécute l'action ou l'écriture de valeur via busctl directement sur le bus AT-SPI."""
+    element_id = str(arguments.get("element_identifier") or arguments.get("element_index") or "")
+    if not element_id or "/" not in element_id:
+        return False
+
+    parts = element_id.split("/", 1)
+    dest = parts[0].rstrip(":")
+    obj_path = "/" + parts[1]
+    if not dest or not obj_path:
+        return False
+
+    busctl_bin = shutil.which("busctl")
+    if not busctl_bin:
+        return False
+
+    bus_addr = _get_atspi_bus_address()
+    addr_args = ["--address=" + bus_addr] if bus_addr else ["--user"]
+
+    if tool_name == "perform_action":
+        action_name = str(arguments.get("action", "0"))
+        try:
+            action_idx = int(action_name)
+        except ValueError:
+            action_idx = 0
+        cmd = [
+            busctl_bin,
+            *addr_args,
+            "call",
+            dest,
+            obj_path,
+            "org.a11y.atspi.Action",
+            "DoAction",
+            "i",
+            str(action_idx),
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, timeout=timeout, text=True, check=False)
+            return res.returncode == 0 and "b true" in res.stdout
+        except Exception as exc:
+            logger.debug("Échec du fallback busctl perform_action: %s", exc)
+            return False
+
+    if tool_name == "set_value":
+        val_str = str(arguments.get("value", ""))
+        # 1. Tentative SetTextContents sur EditableText
+        cmd_text = [
+            busctl_bin,
+            *addr_args,
+            "call",
+            dest,
+            obj_path,
+            "org.a11y.atspi.EditableText",
+            "SetTextContents",
+            "s",
+            val_str,
+        ]
+        try:
+            res = subprocess.run(cmd_text, capture_output=True, timeout=timeout, text=True, check=False)
+            if res.returncode == 0 and ("b true" in res.stdout or not res.stderr):
+                return True
+        except Exception as exc:
+            logger.debug("Échec du fallback busctl SetTextContents: %s", exc)
+
+        # 2. Tentative CurrentValue sur Value (si valeur numérique)
+        try:
+            num_val = float(val_str)
+            cmd_val = [
+                busctl_bin,
+                *addr_args,
+                "set-property",
+                dest,
+                obj_path,
+                "org.a11y.atspi.Value",
+                "CurrentValue",
+                "d",
+                str(num_val),
+            ]
+            res = subprocess.run(cmd_val, capture_output=True, timeout=timeout, text=True, check=False)
+            return res.returncode == 0
+        except ValueError:
+            pass
+        except Exception as exc:
+            logger.debug("Échec du fallback busctl set-property Value: %s", exc)
+
+    return False
+
+
 def _run_python_atspi_cli(args: list[str]) -> None:
     """Fallback d'exécution du médiateur AT-SPI en pur Python."""
     if not args or args[0] in ("-h", "--help", "help"):
@@ -158,9 +266,15 @@ def _run_python_atspi_cli(args: list[str]) -> None:
     elif cmd == "state":
         print(json.dumps({"status": "success", "count": 0, "tree": []}))
     elif cmd == "action":
-        print(json.dumps({"ok": False, "error": "Le déclenchement d'actions requiert le moteur natif Rust compilé"}))
+        target = args[1] if len(args) > 1 else ""
+        act_name = args[2] if len(args) > 2 else "0"
+        ok = _dbus_call_action_or_value("perform_action", {"element_identifier": target, "action": act_name})
+        print(json.dumps({"ok": ok}))
     elif cmd == "value":
-        print(json.dumps({"ok": False, "error": "L'écriture de valeur requiert le moteur natif Rust compilé"}))
+        target = args[1] if len(args) > 1 else ""
+        val = args[2] if len(args) > 2 else ""
+        ok = _dbus_call_action_or_value("set_value", {"element_identifier": target, "value": val})
+        print(json.dumps({"ok": ok}))
     elif cmd == "mcp":
         for line in sys.stdin:
             try:
@@ -180,7 +294,13 @@ def _run_python_atspi_cli(args: list[str]) -> None:
                 elif method == "tools/list":
                     res = {"jsonrpc": "2.0", "id": req_id, "result": {"tools": []}}
                 elif method == "tools/call":
-                    res = {"jsonrpc": "2.0", "id": req_id, "result": {"structuredContent": {"ok": False}}}
+                    params = req.get("params", {})
+                    t_name = str(params.get("name", ""))
+                    t_args = params.get("arguments", {})
+                    if not isinstance(t_args, dict):
+                        t_args = {}
+                    ok = _dbus_call_action_or_value(t_name, t_args)
+                    res = {"jsonrpc": "2.0", "id": req_id, "result": {"structuredContent": {"ok": ok}}}
                 else:
                     res = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}}
                 sys.stdout.write(json.dumps(res) + "\n")
@@ -231,11 +351,14 @@ def main_cli() -> None:
 
 
 def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 15.0) -> bool:
-    """Invoque l'outil MCP perform_action ou set_value via le serveur stdio Rust."""
-    binary = find_atspi_mediator_binary()
+    """Invoque l'outil MCP perform_action ou set_value via le serveur stdio Rust ou le fallback D-Bus."""
+    try:
+        binary = find_atspi_mediator_binary(exclude_scripts=True)
+    except TypeError:
+        binary = find_atspi_mediator_binary()
     if not binary:
-        logger.warning("Binaire AT-SPI Rust introuvable pour %s", tool_name)
-        return False
+        logger.info("Binaire AT-SPI Rust absent, repli sur l'invocation D-Bus directe pour %s", tool_name)
+        return _dbus_call_action_or_value(tool_name, arguments, timeout=timeout)
 
     try:
         proc = subprocess.Popen(

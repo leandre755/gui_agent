@@ -828,11 +828,6 @@ fn select_action_index(actions: &[atspi::Action], requested_action: Option<&str>
             if primary_matches.len() == 1 {
                 return Ok(primary_matches[0] as i32);
             }
-
-            // Si le composant n'expose qu'une seule action, l'action par défaut est univoque
-            if actions.len() == 1 {
-                return Ok(0);
-            }
         }
 
         let available = actions
@@ -971,6 +966,16 @@ mod tests {
         assert_eq!(select_action_index(&actions, Some("press")).unwrap(), 0);
         assert_eq!(select_action_index(&actions, Some("click")).unwrap(), 0);
         assert_eq!(select_action_index(&actions, Some("0")).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_select_action_index_single_unrelated_action_rejected_for_click() {
+        let actions = vec![make_action("delete", "Delete item")];
+        assert_eq!(select_action_index(&actions, None).unwrap(), 0);
+        assert_eq!(select_action_index(&actions, Some("delete")).unwrap(), 0);
+        assert_eq!(select_action_index(&actions, Some("0")).unwrap(), 0);
+        assert!(select_action_index(&actions, Some("click")).is_err());
+        assert!(select_action_index(&actions, Some("press")).is_err());
     }
 
     #[test]
