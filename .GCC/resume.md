@@ -59,15 +59,15 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS     | 221ms      |
-| Validation Workflows GitHub Actions        | PASS     | 89ms       |
-| Linter de Code (Ruff Check)                | PASS     | 78ms       |
-| Formatage de Code (Ruff Format)            | PASS     | 63ms       |
-| Typage Statique Strict (Mypy)              | PASS     | 2106ms     |
-| Suite de Tests Pytest                      | PASS     | 31990ms    |
+| Compilation Bytecode Python (compileall)   | PASS     | 216ms      |
+| Validation Workflows GitHub Actions        | PASS     | 69ms       |
+| Linter de Code (Ruff Check)                | PASS     | 68ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 81ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 529ms      |
+| Suite de Tests Pytest                      | PASS     | 34169ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
-============================= 82 passed in 31.00s ==============================
+============================= 83 passed in 33.29s ==============================
 ```
 
 ## 🚧 Unfinished Work & Technical Failures

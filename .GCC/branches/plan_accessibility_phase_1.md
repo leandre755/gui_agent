@@ -26,8 +26,8 @@ Action on 0: True
 ```
 
 ### Step 3: Tests Unitaires & Intégration de la Couche Accessibilité
-- [x] **Action**: Ajout de 15 tests unitaires dans `tests/test_accessibility.py` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), et intégration façade `mcp_core`.
-- [x] **Verify**: `./venv/bin/pytest tests/test_accessibility.py -v`
+- [x] **Action**: Ajout de 18 tests unitaires dans `tests/test_accessibility.py` et 8 tests unitaires Rust dans `crates/atspi_mediator/src/lib.rs` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), gestion stricte de `snapshot_id`, sélection déterministe d'action (`select_action_index`), rejet fail-closed des index périmés, et intégration façade `mcp_core`.
+- [x] **Verify**: `./venv/bin/pytest tests/test_accessibility.py -v && cargo test --manifest-path crates/atspi_mediator/Cargo.toml`
 - **Verification Proof**:
 ```text
 ============================= test session starts ==============================
@@ -36,29 +36,44 @@ cachedir: .pytest_cache
 rootdir: /home/omni/Code/gui_agent
 configfile: pyproject.toml
 plugins: anyio-4.13.0
-collecting ... collecting 15 items                                                            collected 15 items                                                             
+collecting ... collected 18 items
 
-tests/test_accessibility.py::test_find_atspi_mediator_binary PASSED      [  6%]
-tests/test_accessibility.py::test_get_app_state_nominal_or_error PASSED  [ 13%]
-tests/test_accessibility.py::test_get_app_state_with_screenshot PASSED   [ 20%]
-tests/test_accessibility.py::test_get_app_state_mock PASSED              [ 26%]
-tests/test_accessibility.py::test_get_app_state_binary_missing PASSED    [ 33%]
-tests/test_accessibility.py::test_get_app_state_subprocess_error PASSED  [ 40%]
-tests/test_accessibility.py::test_get_app_state_subprocess_timeout PASSED [ 46%]
-tests/test_accessibility.py::test_perform_action_mock PASSED             [ 53%]
-tests/test_accessibility.py::test_perform_action_binary_missing PASSED   [ 60%]
-tests/test_accessibility.py::test_perform_action_mcp_mock_protocol PASSED [ 66%]
-tests/test_accessibility.py::test_set_value_mock PASSED                  [ 73%]
-tests/test_accessibility.py::test_set_value_binary_missing PASSED        [ 80%]
-tests/test_accessibility.py::test_set_value_mcp_mock_protocol PASSED     [ 86%]
-tests/test_accessibility.py::test_perform_action_and_set_value_with_node_cache PASSED [ 93%]
-tests/test_accessibility.py::test_mcp_core_sdk_facade_integration PASSED [100%]
+tests/test_accessibility.py::test_find_atspi_mediator_binary PASSED      [  5%]
+tests/test_accessibility.py::test_get_app_state_nominal_or_error PASSED  [ 11%]
+tests/test_accessibility.py::test_get_app_state_with_screenshot PASSED   [ 16%]
+tests/test_accessibility.py::test_get_app_state_mock PASSED              [ 22%]
+tests/test_accessibility.py::test_get_app_state_binary_missing PASSED    [ 27%]
+tests/test_accessibility.py::test_get_app_state_subprocess_error PASSED  [ 33%]
+tests/test_accessibility.py::test_get_app_state_subprocess_timeout PASSED [ 38%]
+tests/test_accessibility.py::test_perform_action_mock PASSED             [ 44%]
+tests/test_accessibility.py::test_perform_action_binary_missing PASSED   [ 50%]
+tests/test_accessibility.py::test_perform_action_mcp_mock_protocol PASSED [ 55%]
+tests/test_accessibility.py::test_set_value_mock PASSED                  [ 61%]
+tests/test_accessibility.py::test_set_value_binary_missing PASSED        [ 66%]
+tests/test_accessibility.py::test_set_value_mcp_mock_protocol PASSED     [ 72%]
+tests/test_accessibility.py::test_perform_action_and_set_value_with_node_cache PASSED [ 77%]
+tests/test_accessibility.py::test_mcp_core_sdk_facade_integration PASSED [ 83%]
+tests/test_accessibility.py::test_get_app_state_invalid_tree_payload PASSED [ 88%]
+tests/test_accessibility.py::test_perform_action_and_set_value_with_snapshot_id_mismatch PASSED [ 94%]
+tests/test_accessibility.py::test_perform_action_and_set_value_with_missing_cache_index PASSED [100%]
 
-============================== 15 passed in 7.02s ==============================
+============================== 18 passed in 7.75s ==============================
+
+running 8 tests
+test tests::test_select_action_index_ambiguous_rejected ... ok
+test tests::test_select_action_index_empty_actions ... ok
+test tests::test_select_action_index_exact_match ... ok
+test tests::test_select_action_index_numeric_index ... ok
+test tests::test_split_object_ref_id_valid ... ok
+test tests::test_select_action_index_generic_resolves_primary ... ok
+test tests::test_select_action_index_single_action ... ok
+test tests::test_split_object_ref_id_invalid ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
 ### Step 4: Validation Complète de la Suite CI
-- [x] **Action**: Exécution du runner CI local `./ci.sh` pour valider l'ensemble des étapes de qualité (compileall, workflows, linter Ruff, formateur Ruff, typage Mypy strict, suite Pytest 82 tests).
+- [x] **Action**: Exécution du runner CI local `./ci.sh` pour valider l'ensemble des étapes de qualité (compileall, workflows, linter Ruff, formateur Ruff, typage Mypy strict, suite Pytest 83 tests).
 - [x] **Verify**: `./ci.sh`
 - **Verification Proof**:
 ```text
@@ -67,15 +82,15 @@ tests/test_accessibility.py::test_mcp_core_sdk_facade_integration PASSED [100%]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS     | 221ms      |
-| Validation Workflows GitHub Actions        | PASS     | 89ms       |
-| Linter de Code (Ruff Check)                | PASS     | 78ms       |
-| Formatage de Code (Ruff Format)            | PASS     | 63ms       |
-| Typage Statique Strict (Mypy)              | PASS     | 2106ms     |
-| Suite de Tests Pytest                      | PASS     | 31990ms    |
+| Compilation Bytecode Python (compileall)   | PASS     | 216ms      |
+| Validation Workflows GitHub Actions        | PASS     | 69ms       |
+| Linter de Code (Ruff Check)                | PASS     | 68ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 81ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 529ms      |
+| Suite de Tests Pytest                      | PASS     | 34169ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
-============================= 82 passed in 31.00s ==============================
+============================= 83 passed in 33.29s ==============================
 ```
 
 ## ⚠️ Mitigations & Edge Cases

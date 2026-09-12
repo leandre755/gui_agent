@@ -131,17 +131,18 @@ fi
 python3 -c "import dbus" >/dev/null 2>&1 || MISSING_SYS_DEPS+=("python3-dbus")
 python3 -c "import tkinter" >/dev/null 2>&1 || MISSING_SYS_DEPS+=("python3-tk")
 pkg-config --exists atspi-2 2>/dev/null || [ -d "/usr/include/at-spi-2.0" ] || command -v at-spi-bus-launcher >/dev/null 2>&1 || MISSING_SYS_DEPS+=("at-spi2-core")
+command -v cargo >/dev/null 2>&1 || MISSING_SYS_DEPS+=("cargo")
 if [[ ${#MISSING_SYS_DEPS[@]} -gt 0 ]]; then
     log_warn "Dépendances système manquantes détectées : ${MISSING_SYS_DEPS[*]}"
     
     # Détection du gestionnaire de paquets
     INSTALL_CMD=""
     if command -v apt-get >/dev/null 2>&1; then
-        INSTALL_CMD="sudo apt-get update && sudo apt-get install -y xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr python3-dbus at-spi2-core python3-tk"
+        INSTALL_CMD="sudo apt-get update && sudo apt-get install -y xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr python3-dbus at-spi2-core python3-tk cargo"
     elif command -v dnf >/dev/null 2>&1; then
-        INSTALL_CMD="sudo dnf install -y xdotool wmctrl spectacle ffmpeg xclip tesseract python3-dbus at-spi2-core python3-tkinter"
+        INSTALL_CMD="sudo dnf install -y xdotool wmctrl spectacle ffmpeg xclip tesseract python3-dbus at-spi2-core python3-tkinter cargo"
     elif command -v pacman >/dev/null 2>&1; then
-        INSTALL_CMD="sudo pacman -S --needed xdotool wmctrl spectacle ffmpeg xclip tesseract python-dbus at-spi2-core tk"
+        INSTALL_CMD="sudo pacman -S --needed xdotool wmctrl spectacle ffmpeg xclip tesseract python-dbus at-spi2-core tk rust"
     fi
 
     if [[ -n "$INSTALL_CMD" ]]; then
@@ -198,6 +199,7 @@ log_info "4/5 - Installation isolée du package '$PACKAGE_NAME' via 'uv tool ins
 
 if [[ "$DRY_RUN" == "true" ]]; then
     log_info "[Dry-Run] uv tool install --force $PACKAGE_NAME"
+    log_info "[Dry-Run] cargo build --release --manifest-path crates/atspi_mediator/Cargo.toml (si cargo est présent)"
 else
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [[ "$LOCAL_INSTALL" == "true" ]] || [[ -f "${SCRIPT_DIR}/pyproject.toml" && -d "${SCRIPT_DIR}/gui_agent" ]]; then
@@ -212,9 +214,36 @@ else
         fi
     fi
 
+    # Compilation et installation du médiateur AT-SPI Rust si Cargo est présent
+    if command -v cargo >/dev/null 2>&1; then
+        log_info "Compilation et installation du médiateur natif AT-SPI Rust (gui-agent-atspi)..."
+        CARGO_TOML_PATH="${SCRIPT_DIR}/crates/atspi_mediator/Cargo.toml"
+        if [[ -f "$CARGO_TOML_PATH" ]]; then
+            cargo build --release --manifest-path "$CARGO_TOML_PATH"
+            mkdir -p "${HOME}/.local/bin"
+            cp "${SCRIPT_DIR}/crates/atspi_mediator/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
+            chmod +x "${HOME}/.local/bin/gui-agent-atspi"
+            log_success "Médiateur AT-SPI natif installé avec succès dans ~/.local/bin/gui-agent-atspi"
+        fi
+    else
+        log_warn "Cargo (Rust) non détecté : le binaire d'accessibilité 'gui-agent-atspi' ne sera pas compilé."
+        log_warn "Pour bénéficier de l'accessibilité AT-SPI native : curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    fi
+
     # Vérification des commandes installées
+    INSTALLED_BINS=()
     if command -v gui-agent >/dev/null 2>&1 || [[ -x "${HOME}/.local/bin/gui-agent" ]]; then
-        log_success "Exécutables 'gui-agent' et 'mcp-gui-server' installés avec succès dans ~/.local/bin !"
+        INSTALLED_BINS+=("gui-agent")
+    fi
+    if command -v mcp-gui-server >/dev/null 2>&1 || [[ -x "${HOME}/.local/bin/mcp-gui-server" ]]; then
+        INSTALLED_BINS+=("mcp-gui-server")
+    fi
+    if command -v gui-agent-atspi >/dev/null 2>&1 || [[ -x "${HOME}/.local/bin/gui-agent-atspi" ]]; then
+        INSTALLED_BINS+=("gui-agent-atspi")
+    fi
+
+    if [[ ${#INSTALLED_BINS[@]} -gt 0 ]]; then
+        log_success "Exécutables installés avec succès dans ~/.local/bin : ${INSTALLED_BINS[*]}"
     else
         log_warn "Les exécutables ont été installés mais ~/.local/bin n'est pas encore dans votre PATH."
         log_warn "Ajoutez 'export PATH=\"\$HOME/.local/bin:\$PATH\"' dans votre ~/.bashrc ou ~/.zshrc."

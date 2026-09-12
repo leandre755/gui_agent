@@ -124,10 +124,17 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 ## 🐧 Installation sous Linux & macOS
 
-### Installation en une seule ligne :
+### Installation automatisée en une seule commande :
 ```bash
 curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
 ```
+
+Le script d'installation configure automatiquement :
+1. **Les paquets système Linux** : X11, capture d'écran, OCR, AT-SPI2 Core (`at-spi2-core`, `python3-dbus`, `cargo`).
+2. **Le gestionnaire Astral `uv`** : Installation autonome dans `~/.local/bin/uv`.
+3. **Le serveur FastMCP `gui-agent`** : Déploiement isolé via `uv tool install`.
+4. **Le médiateur natif AT-SPI `gui-agent-atspi`** : Compilation Rust ultra-rapide et installation dans `~/.local/bin/gui-agent-atspi`.
+5. **L'intégration MCP** : Enregistrement direct pour Claude Code CLI et Antigravity CLI (`~/.gemini/config/mcp_config.json`).
 
 ### Désinstallation sous Linux :
 ```bash

@@ -2,8 +2,8 @@
 
 use anyhow::{anyhow, Result};
 use atspi_mediator::{
-    connect, list_accessible_apps, perform_action, set_element_value, snapshot_tree,
-    AccessibilityNode,
+    connect, hydrate_session_bus_env, list_accessible_apps, perform_action, set_element_value,
+    snapshot_tree, AccessibilityNode,
 };
 use serde_json::Value;
 use std::env;
@@ -14,16 +14,15 @@ use tokio::sync::Mutex;
 async fn resolve_ref(object_ref_or_index: &str, cached: Option<&[AccessibilityNode]>) -> Result<String> {
     if let Ok(idx) = object_ref_or_index.parse::<u32>() {
         if let Some(nodes) = cached {
-            if let Some(node) = nodes.iter().find(|n| n.index == idx) {
-                return Ok(node.object_ref.clone());
-            }
+            return nodes
+                .iter()
+                .find(|n| n.index == idx)
+                .map(|n| n.object_ref.clone())
+                .ok_or_else(|| anyhow!("Aucun nœud d'accessibilité trouvé dans le cache pour l'index {idx}"));
         }
-        let nodes = snapshot_tree(None, None, 1000, 32).await?;
-        nodes
-            .into_iter()
-            .find(|n| n.index == idx)
-            .map(|n| n.object_ref)
-            .ok_or_else(|| anyhow!("Aucun nœud d'accessibilité trouvé pour l'index {idx}"))
+        Err(anyhow!(
+            "L'index numérique '{idx}' nécessite un cache de snapshot actif. Veuillez fournir une référence AT-SPI explicite (ex: ':1.42/path')."
+        ))
     } else {
         Ok(object_ref_or_index.to_string())
     }
@@ -31,6 +30,7 @@ async fn resolve_ref(object_ref_or_index: &str, cached: Option<&[AccessibilityNo
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    hydrate_session_bus_env();
     let args: Vec<String> = env::args().collect();
     let command = args.get(1).map(String::as_str).unwrap_or("help");
 
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
         }
         "action" => {
             let Some(target) = args.get(2) else {
-                eprintln!("Usage: gui-agent-atspi action <object_ref_or_index> [action_name]");
+                eprintln!("Usage: gui-agent-atspi action <object_ref> [action_name]");
                 std::process::exit(1);
             };
             let action_name = args.get(3).map(String::as_str);
@@ -95,11 +95,11 @@ async fn main() -> Result<()> {
         }
         "value" => {
             let Some(target) = args.get(2) else {
-                eprintln!("Usage: gui-agent-atspi value <object_ref_or_index> <value>");
+                eprintln!("Usage: gui-agent-atspi value <object_ref> <value>");
                 std::process::exit(1);
             };
             let Some(val) = args.get(3) else {
-                eprintln!("Usage: gui-agent-atspi value <object_ref_or_index> <value>");
+                eprintln!("Usage: gui-agent-atspi value <object_ref> <value>");
                 std::process::exit(1);
             };
             let object_ref = match resolve_ref(target, None).await {

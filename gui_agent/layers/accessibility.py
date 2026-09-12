@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import threading
 from typing import Any
 import uuid
@@ -61,12 +62,26 @@ def find_atspi_mediator_binary() -> str | None:
         if os.path.isfile(local_bin) and os.access(local_bin, os.X_OK):
             return local_bin
 
-    # 3. Exécutable système computer-use-linux (Rust upstream)
+    # 3. Exécutable système 'gui-agent-atspi' dans le PATH
+    which_agent = shutil.which("gui-agent-atspi")
+    if which_agent:
+        return which_agent
+
+    # 4. Exécutable standard dans ~/.local/bin ou préfixe d'environnement Python
+    standard_paths = [
+        os.path.expanduser("~/.local/bin/gui-agent-atspi"),
+        os.path.join(sys.prefix, "bin", "gui-agent-atspi"),
+    ]
+    for candidate in standard_paths:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+
+    # 5. Exécutable système computer-use-linux (Rust upstream)
     which_bin = shutil.which("computer-use-linux")
     if which_bin:
         return which_bin
 
-    # 4. Chemins NVM éventuels dans le répertoire utilisateur
+    # 6. Chemins NVM éventuels dans le répertoire utilisateur
     user_home = os.path.expanduser("~")
     nvm_dir = os.path.join(user_home, ".nvm", "versions", "node")
     if os.path.isdir(nvm_dir):
@@ -81,7 +96,7 @@ def find_atspi_mediator_binary() -> str | None:
     return None
 
 
-def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 5.0) -> bool:
+def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 15.0) -> bool:
     """Invoque l'outil MCP perform_action ou set_value via le serveur stdio Rust."""
     binary = find_atspi_mediator_binary()
     if not binary:
@@ -344,13 +359,19 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
         }
 
 
-def perform_action(element_id: str, action: str = "activate", snapshot_id: str | None = None) -> bool:
+def perform_action(
+    element_id: str,
+    action: str = "activate",
+    snapshot_id: str | None = None,
+    timeout: float = 15.0,
+) -> bool:
     """Déclenche l'action du composant accessible directement en mémoire par le bus AT-SPI.
 
     Args:
         element_id: Index numérique de l'élément (ex: "42") ou référence AT-SPI (ex: ":1.14/path").
         action: Nom de l'action à exécuter (ex: "activate", "press", "click", "toggle").
         snapshot_id: Identifiant optionnel du snapshot pour s'assurer que l'index correspond à la vue actuelle.
+        timeout: Délai maximal en secondes alloué à l'opération (défaut: 15.0s).
 
     Returns:
         bool indiquant si l'action a été déclenchée avec succès.
@@ -360,35 +381,53 @@ def perform_action(element_id: str, action: str = "activate", snapshot_id: str |
             return bool(_mock_action_handler(element_id, action))
         return bool(_mock_action_handler)
 
-    args: dict[str, Any] = {"action": action}
     if element_id.isdigit():
-        args["element_index"] = int(element_id)
         with _cache_lock:
             if snapshot_id is not None and snapshot_id != _last_snapshot_id:
-                logger.warning(
-                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s)",
+                logger.error(
+                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s). Action rejetée.",
                     element_id,
                     snapshot_id,
                     _last_snapshot_id,
                 )
-                resolved_ref = None
-            else:
-                resolved_ref = _last_node_cache.get(element_id)
-        if resolved_ref:
-            args["element_identifier"] = resolved_ref
+                return False
+            resolved_ref = _last_node_cache.get(element_id)
+
+        if not resolved_ref:
+            logger.error(
+                "Index d'élément %s introuvable dans le cache du snapshot actuel (%s). Action rejetée.",
+                element_id,
+                _last_snapshot_id,
+            )
+            return False
+
+        args: dict[str, Any] = {
+            "action": action,
+            "element_identifier": resolved_ref,
+            "element_index": int(element_id),
+        }
     else:
-        args["element_identifier"] = element_id
+        args = {
+            "action": action,
+            "element_identifier": element_id,
+        }
 
-    return _call_mcp_action_or_value("perform_action", args)
+    return _call_mcp_action_or_value("perform_action", args, timeout=timeout)
 
 
-def set_value(element_id: str, text: str, snapshot_id: str | None = None) -> bool:
+def set_value(
+    element_id: str,
+    text: str,
+    snapshot_id: str | None = None,
+    timeout: float = 15.0,
+) -> bool:
     """Écrit directement la valeur textuelle dans la mémoire du composant via AT-SPI.
 
     Args:
         element_id: Index numérique de l'élément (ex: "42") ou référence AT-SPI (ex: ":1.14/path").
         text: Valeur textuelle ou numérique à assigner au composant.
         snapshot_id: Identifiant optionnel du snapshot pour s'assurer que l'index correspond à la vue actuelle.
+        timeout: Délai maximal en secondes alloué à l'opération (défaut: 15.0s).
 
     Returns:
         bool indiquant si l'assignation a été acceptée par le composant.
@@ -398,23 +437,35 @@ def set_value(element_id: str, text: str, snapshot_id: str | None = None) -> boo
             return bool(_mock_value_handler(element_id, text))
         return bool(_mock_value_handler)
 
-    args: dict[str, Any] = {"value": text}
     if element_id.isdigit():
-        args["element_index"] = int(element_id)
         with _cache_lock:
             if snapshot_id is not None and snapshot_id != _last_snapshot_id:
-                logger.warning(
-                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s)",
+                logger.error(
+                    "Snapshot ID obsolète pour l'index %s (demandé: %s, actuel: %s). Écriture de valeur rejetée.",
                     element_id,
                     snapshot_id,
                     _last_snapshot_id,
                 )
-                resolved_ref = None
-            else:
-                resolved_ref = _last_node_cache.get(element_id)
-        if resolved_ref:
-            args["element_identifier"] = resolved_ref
-    else:
-        args["element_identifier"] = element_id
+                return False
+            resolved_ref = _last_node_cache.get(element_id)
 
-    return _call_mcp_action_or_value("set_value", args)
+        if not resolved_ref:
+            logger.error(
+                "Index d'élément %s introuvable dans le cache du snapshot actuel (%s). Écriture de valeur rejetée.",
+                element_id,
+                _last_snapshot_id,
+            )
+            return False
+
+        args: dict[str, Any] = {
+            "value": text,
+            "element_identifier": resolved_ref,
+            "element_index": int(element_id),
+        }
+    else:
+        args = {
+            "value": text,
+            "element_identifier": element_id,
+        }
+
+    return _call_mcp_action_or_value("set_value", args, timeout=timeout)

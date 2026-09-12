@@ -194,12 +194,14 @@ def test_perform_action_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> No
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
 
-    # Appel numérique (element_index)
+    # Appel numérique (avec index résolu dans le cache)
+    accessibility._last_node_cache["42"] = ":1.42/node/42"
     res_num = perform_action("42", "press")
     assert res_num is True
     assert any('"element_index": 42' in line for line in written_lines)
+    assert any('"element_identifier": ":1.42/node/42"' in line for line in written_lines)
 
-    # Appel sélecteur textuel (element_identifier)
+    # Appel sélecteur textuel direct (element_identifier)
     written_lines.clear()
     res_str = perform_action(":1.14/root", "click")
     assert res_str is True
@@ -275,10 +277,12 @@ def test_set_value_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
 
+    accessibility._last_node_cache["100"] = ":1.100/input/100"
     res = set_value("100", "nouveau_texte")
     assert res is True
     assert any('"value": "nouveau_texte"' in line for line in written_lines)
     assert any('"element_index": 100' in line for line in written_lines)
+    assert any('"element_identifier": ":1.100/input/100"' in line for line in written_lines)
 
 
 def test_perform_action_and_set_value_with_node_cache(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -388,7 +392,7 @@ def test_get_app_state_invalid_tree_payload(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_perform_action_and_set_value_with_snapshot_id_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Vérifie qu'un snapshot_id obsolète n'utilise pas un cache périmé."""
+    """Vérifie qu'un snapshot_id obsolète entraîne un rejet fail-closed immédiat."""
     written_lines: list[str] = []
 
     class MockStdin:
@@ -441,7 +445,24 @@ def test_perform_action_and_set_value_with_snapshot_id_mismatch(monkeypatch: pyt
     accessibility._last_node_cache["5"] = ":1.99/stale/ref"
     accessibility._last_snapshot_id = "current_snap"
 
-    # Avec snapshot_id obsolète, le cache ne doit PAS être injecté dans element_identifier
-    perform_action("5", "activate", snapshot_id="stale_snap")
-    assert not any('"element_identifier": ":1.99/stale/ref"' in line for line in written_lines)
-    assert any('"element_index": 5' in line for line in written_lines)
+    # Avec snapshot_id obsolète, l'action et l'écriture doivent être immédiatement rejetées
+    act_ok = perform_action("5", "activate", snapshot_id="stale_snap")
+    assert act_ok is False
+    assert len(written_lines) == 0
+
+    val_ok = set_value("5", "texte", snapshot_id="stale_snap")
+    assert val_ok is False
+    assert len(written_lines) == 0
+
+
+def test_perform_action_and_set_value_with_missing_cache_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie qu'un index numérique absent du cache est rejeté sans appel externe."""
+    mock_popen = MagicMock()
+    monkeypatch.setattr(subprocess, "Popen", mock_popen)
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    accessibility._last_node_cache.clear()
+    accessibility._last_snapshot_id = "snap_1"
+
+    assert perform_action("999", "activate", snapshot_id="snap_1") is False
+    assert set_value("999", "valeur", snapshot_id="snap_1") is False
+    assert mock_popen.call_count == 0

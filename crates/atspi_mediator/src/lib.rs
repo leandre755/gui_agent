@@ -112,15 +112,22 @@ pub enum ValueSetInvocation {
     EditableText,
 }
 
+static HYDRATE_BUS_ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 pub fn hydrate_session_bus_env() {
-    if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_none() {
-        if let Ok(runtime) = std::env::var("XDG_RUNTIME_DIR") {
-            let bus = std::path::Path::new(&runtime).join("bus");
-            if bus.exists() {
-                std::env::set_var(
-                    "DBUS_SESSION_BUS_ADDRESS",
-                    format!("unix:path={}", bus.display()),
-                );
+    if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_some() {
+        return;
+    }
+    if let Ok(_guard) = HYDRATE_BUS_ENV_MUTEX.lock() {
+        if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_none() {
+            if let Ok(runtime) = std::env::var("XDG_RUNTIME_DIR") {
+                let bus = std::path::Path::new(&runtime).join("bus");
+                if bus.exists() {
+                    std::env::set_var(
+                        "DBUS_SESSION_BUS_ADDRESS",
+                        format!("unix:path={}", bus.display()),
+                    );
+                }
             }
         }
     }
@@ -741,39 +748,149 @@ fn select_action_index(actions: &[atspi::Action], requested_action: Option<&str>
         return Err(anyhow!("Le composant n'expose aucune action AT-SPI"));
     }
 
-    if let Some(requested_action) = requested_action
+    if let Some(requested) = requested_action
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let requested_action = requested_action.to_ascii_lowercase();
-        if let Some((index, _)) = actions.iter().enumerate().find(|(_, action)| {
-            action.name.to_ascii_lowercase() == requested_action
-                || action.description.to_ascii_lowercase() == requested_action
-        }) {
-            return Ok(index as i32);
+        let requested_lower = requested.to_ascii_lowercase();
+
+        // 1. Correspondance exacte sur le nom ou la description (insensible à la casse)
+        let exact_matches: Vec<usize> = actions
+            .iter()
+            .enumerate()
+            .filter(|(_, action)| {
+                action.name.to_ascii_lowercase() == requested_lower
+                    || action.description.to_ascii_lowercase() == requested_lower
+            })
+            .map(|(idx, _)| idx)
+            .collect();
+
+        if exact_matches.len() == 1 {
+            return Ok(exact_matches[0] as i32);
+        } else if exact_matches.len() > 1 {
+            let available = exact_matches
+                .iter()
+                .map(|&idx| format!("#{idx}: '{}'", actions[idx].name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(anyhow!(
+                "Plusieurs actions correspondent exactement à '{requested}' ([{available}]) ; veuillez spécifier l'index numérique"
+            ));
         }
 
-        if let Ok(index) = requested_action.parse::<usize>() {
+        // 2. Correspondance exacte sur un index numérique (ex: "0", "1")
+        if let Ok(index) = requested.parse::<usize>() {
             if index < actions.len() {
                 return Ok(index as i32);
+            } else {
+                return Err(anyhow!(
+                    "Index d'action numérique {index} hors limites (actions disponibles: 0..{})",
+                    actions.len()
+                ));
             }
         }
 
-        if matches!(requested_action.as_str(), "activate" | "click" | "press" | "default") {
-            return Ok(if actions.len() > 1 { 1 } else { 0 });
+        // 3. Correspondance par sous-chaîne univoque sur le nom ou la description
+        let substring_matches: Vec<usize> = actions
+            .iter()
+            .enumerate()
+            .filter(|(_, action)| {
+                let name = action.name.to_ascii_lowercase();
+                let desc = action.description.to_ascii_lowercase();
+                name.contains(&requested_lower) || desc.contains(&requested_lower)
+            })
+            .map(|(idx, _)| idx)
+            .collect();
+
+        if substring_matches.len() == 1 {
+            return Ok(substring_matches[0] as i32);
         }
 
-        return Err(anyhow!(
-            "L'action demandée n'a pas été trouvée ; actions disponibles: {}",
-            actions
+        // 4. Synonymes sémantiques pour les requêtes génériques ("activate", "click", "press", "default", "primary")
+        let is_generic_action = matches!(
+            requested_lower.as_str(),
+            "activate" | "click" | "press" | "default" | "primary"
+        );
+        if is_generic_action {
+            let primary_matches: Vec<usize> = actions
                 .iter()
-                .map(|action| action.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
+                .enumerate()
+                .filter(|(_, action)| {
+                    let name = action.name.to_ascii_lowercase();
+                    matches!(
+                        name.as_str(),
+                        "activate" | "click" | "press" | "primary" | "default" | "toggle" | "open"
+                    )
+                })
+                .map(|(idx, _)| idx)
+                .collect();
+
+            if primary_matches.len() == 1 {
+                return Ok(primary_matches[0] as i32);
+            }
+
+            // Si le composant n'expose qu'une seule action, l'action par défaut est univoque
+            if actions.len() == 1 {
+                return Ok(0);
+            }
+        }
+
+        let available = actions
+            .iter()
+            .enumerate()
+            .map(|(idx, a)| {
+                if a.description.trim().is_empty() {
+                    format!("#{idx}: '{}'", a.name)
+                } else {
+                    format!("#{idx}: '{}' ({})", a.name, a.description)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        return Err(anyhow!(
+            "L'action demandée '{requested}' est introuvable ou ambiguë ; actions disponibles: [{available}]"
         ));
     }
 
-    Ok(if actions.len() > 1 { 1 } else { 0 })
+    // Aucune action spécifiée (None ou chaîne vide) : sélection univoque de l'action unique ou primaire
+    if actions.len() == 1 {
+        return Ok(0);
+    }
+
+    let default_matches: Vec<usize> = actions
+        .iter()
+        .enumerate()
+        .filter(|(_, action)| {
+            let name = action.name.to_ascii_lowercase();
+            matches!(
+                name.as_str(),
+                "activate" | "click" | "press" | "primary" | "default"
+            )
+        })
+        .map(|(idx, _)| idx)
+        .collect();
+
+    if default_matches.len() == 1 {
+        return Ok(default_matches[0] as i32);
+    }
+
+    let available = actions
+        .iter()
+        .enumerate()
+        .map(|(idx, a)| {
+            if a.description.trim().is_empty() {
+                format!("#{idx}: '{}'", a.name)
+            } else {
+                format!("#{idx}: '{}' ({})", a.name, a.description)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    Err(anyhow!(
+        "Plusieurs actions sont disponibles ([{available}]) mais aucune action par défaut univoque n'a pu être déterminée ; veuillez spécifier l'action"
+    ))
 }
 
 fn optional_string(value: Option<String>) -> Option<String> {
@@ -813,3 +930,98 @@ pub fn object_ref_id(object_ref: &ObjectRefOwned) -> String {
         object_ref.path_as_str()
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_action(name: &str, description: &str) -> atspi::Action {
+        atspi::Action {
+            name: name.to_string(),
+            description: description.to_string(),
+            keybinding: String::new(),
+        }
+    }
+
+    #[test]
+    fn test_split_object_ref_id_valid() {
+        let (name, path) = split_object_ref_id(":1.42/org/a11y/atspi/accessible/root").unwrap();
+        assert_eq!(name, ":1.42");
+        assert_eq!(path, "/org/a11y/atspi/accessible/root");
+    }
+
+    #[test]
+    fn test_split_object_ref_id_invalid() {
+        assert!(split_object_ref_id("invalid").is_err());
+        assert!(split_object_ref_id("/only/path").is_err());
+        assert!(split_object_ref_id(":busonly").is_err());
+    }
+
+    #[test]
+    fn test_select_action_index_empty_actions() {
+        let actions = vec![];
+        let err = select_action_index(&actions, Some("click")).unwrap_err();
+        assert!(err.to_string().contains("expose aucune action"));
+    }
+
+    #[test]
+    fn test_select_action_index_single_action() {
+        let actions = vec![make_action("press", "Presses the button")];
+        assert_eq!(select_action_index(&actions, None).unwrap(), 0);
+        assert_eq!(select_action_index(&actions, Some("press")).unwrap(), 0);
+        assert_eq!(select_action_index(&actions, Some("click")).unwrap(), 0);
+        assert_eq!(select_action_index(&actions, Some("0")).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_select_action_index_exact_match() {
+        let actions = vec![
+            make_action("show-menu", "Show context menu"),
+            make_action("activate", "Activate the primary item"),
+            make_action("delete", "Delete item"),
+        ];
+        assert_eq!(select_action_index(&actions, Some("delete")).unwrap(), 2);
+        assert_eq!(select_action_index(&actions, Some("activate")).unwrap(), 1);
+        assert_eq!(select_action_index(&actions, Some("show-menu")).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_select_action_index_numeric_index() {
+        let actions = vec![
+            make_action("action-a", "First"),
+            make_action("action-99", "Second"),
+        ];
+        assert_eq!(select_action_index(&actions, Some("1")).unwrap(), 1);
+        assert_eq!(select_action_index(&actions, Some("0")).unwrap(), 0);
+        // "99" est un index numérique hors limites (taille 2) : il doit échouer immédiatement
+        // sans tomber dans la recherche de sous-chaîne pour "action-99".
+        let err = select_action_index(&actions, Some("99")).unwrap_err();
+        assert!(err.to_string().contains("hors limites"));
+        // En revanche, nommer explicitement "action-99" doit correspondre exactement.
+        assert_eq!(select_action_index(&actions, Some("action-99")).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_select_action_index_ambiguous_rejected() {
+        let actions = vec![
+            make_action("custom_first", "First operation"),
+            make_action("custom_second", "Second operation"),
+        ];
+        // En l'absence d'action "activate/click" standard et avec 2 actions personnalisées,
+        // une demande générique "click" ou None DOIT échouer et lister les choix disponibles.
+        assert!(select_action_index(&actions, Some("click")).is_err());
+        assert!(select_action_index(&actions, None).is_err());
+    }
+
+    #[test]
+    fn test_select_action_index_duplicate_exact_names_rejected() {
+        let actions = vec![
+            make_action("duplicate_action", "First variant"),
+            make_action("duplicate_action", "Second variant"),
+        ];
+        let err = select_action_index(&actions, Some("duplicate_action")).unwrap_err();
+        assert!(err.to_string().contains("Plusieurs actions correspondent exactement"));
+    }
+}
+
+
