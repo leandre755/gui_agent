@@ -50,6 +50,10 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-12] Médiation d'Accessibilité Programmatique via Moteur Natif Rust AT-SPI / D-Bus (Phase 1 #130)
+  - **Context**: L'accès à l'interface graphique Linux par perception visuelle seule (captures d'écran et OCR) souffre de cécité sémantique (menus contextuels éphémères, scaling HiDPI, dialogues modaux bloquants). L'accès direct à AT-SPI2 via D-Bus (`org.a11y.Bus`) est requis avec une latence d'extraction minimale (< 50 ms).
+  - **Discarded Options**: Bibliothèque Python `pyatspi` (obsolète, fuites mémoire et dépendances C non isolées) ; binding C pur / ctypes ; réécriture complète du serveur MCP en Rust (rupture de compatibilité avec l'écosystème FastMCP Python existant).
+  - **Rationale**: Moteur autonome bivalent écrit en Rust (`crates/atspi_mediator` produisant le binaire release autonome `gui-agent-atspi` de 3,0M épuré) exploitant `atspi` et `zbus`, avec support CLI et mode serveur stdio JSON-RPC MCP (`initialize`, `tools/call`), interfacé depuis Python via `gui_agent/layers/accessibility.py` avec mise en cache synchronisée par verrou (`_cache_lock`) des index vers `object_ref`, communication par flux process borné avec timeouts stricts et mocks complets pour CI headless.
 - [2026-09-11] Architecture Modulaire Découplée (core, layers, utils #129)
   - **Context**: Monolithe historique couplant REPL, gestion PTY, drivers bas niveau et helpers.
   - **Discarded Options**: Monolithe persistant ; micro-paquets distribués séparément.
@@ -112,6 +116,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
+- `feat/accessibility-mediation-phase-1` : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (Issue #130) [plan_accessibility_phase_1.md](.GCC/branches/plan_accessibility_phase_1.md)
 - `main` : Production release with decoupled modular architecture (core, layers, utils), bilingual landing pages, 65/65 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
 
 ## 📈 Current Status
@@ -119,18 +124,18 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
   - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
   - Fusion de la PR #136 (`refactor/modular-architecture-issue-129`, Closes #129) avec Confidence Score 5/5 sur Greptile et 0 findings CodeRabbit (65/65 tests validés).
+  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `layers/accessibility.py`, 82/82 tests CI validés).
   - Fermeture de la PR obsolète #112 (traitement de la sécurité subprocess #44 transféré à l'Issue #132).
   - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
   - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
-  - Validation CI 65/65 tests, quality gate PASS sur `main`.
-- 🔄 In progress: Aucun (arbre propre sur `main`).
+  - Validation CI 82/82 tests, quality gate PASS sur la branche `feat/accessibility-mediation-phase-1`.
+- 🔄 In progress: Aucun (Phase 1 finalisée et validée localement).
 - ⏳ Pending:
-  - 1. **Phase 1 (#130)** : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (`layers/accessibility.py`).
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
   - 4. **Phase 4 (#133)** : Déclaration FastMCP des 13 outils chirurgicaux, suppression des redondances et mise à jour CI.
   - 5. **Recherche OS tiers (#134, #135)** : Adaptation Windows (UI Automation) et macOS (NSAccessibility).
 
 ## 👉 Next Session Direction
-Initier la Phase 1 sur une nouvelle branche dédiée : Implémentation de l'Issue #130 (Médiation d'accessibilité programmatique via AT-SPI / D-Bus).
+Finaliser la Pull Request pour la Phase 1 (Issue #130 : Médiation d'accessibilité programmatique via AT-SPI / D-Bus) puis initier la Phase 2 (Issue #131).

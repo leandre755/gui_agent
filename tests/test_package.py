@@ -872,7 +872,8 @@ def test_modular_architecture_scaffolding(monkeypatch):
     with pytest.raises(RuntimeError, match="Aucun serveur graphique"):
         utils.coordinates.check_display_env()
     monkeypatch.undo()
-    assert layers.get_app_state()["status"] == "not_implemented"
+    assert layers.get_app_state()["status"] in ("success", "error")
+    assert layers.get_app_state()["layer"] == "accessibility"
     assert layers.mouse_click_at(100, 200)["status"] == "not_implemented"
     monkeypatch.setattr("os.path.exists", lambda p: p != "/proc")
     assert layers.process_list()[0]["status"] == "error"

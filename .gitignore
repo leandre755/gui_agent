@@ -32,3 +32,6 @@ assets/
 mermaid_diagrams.txt
 todo.md
 
+# Build Rust
+target/
+**/target/

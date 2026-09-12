@@ -109,4 +109,21 @@ La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile 
 ## 🟢 Conclusion & Qualification
 La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1`, du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`, ainsi que du correctif de sécurité et de conformité du chemin de sortie pour `gui_take_screenshot` (PR #7).
 
+---
 
+## 🦾 Phase 1 : Médiation d'Accessibilité Programmatique via AT-SPI / D-Bus (Issue #130) (2026-09-12)
+
+| Cible / Scénario | Commande de Test | Résultat Attendu | Résultat Constaté | Statut |
+|---|---|---|---|---|
+| **Détection du moteur Rust** | `pytest tests/test_accessibility.py -k test_find_atspi_mediator_binary` | Résolution prioritaire variable d'env puis binaire local/upstream | Priorité respectée, détection `/bin/sh` et binaire Rust standard | **PASS** |
+| **Extraction d'arbre AT-SPI** | `pytest tests/test_accessibility.py -k 'test_get_app_state_nominal_or_error or test_get_app_state_with_screenshot'` | Format JSON textuel pur avec count et tree | Structure validée (`status in ('success', 'error')`, `layer: 'accessibility'`) | **PASS** |
+| **Gestion des erreurs et timeouts** | `pytest tests/test_accessibility.py -k 'test_get_app_state_subprocess_error or test_get_app_state_subprocess_timeout or test_get_app_state_binary_missing'` | Pas de crash, dict d'erreur clair et borné | Retours d'erreur structurés avec capture propre | **PASS** |
+| **Mocks d'état applicatif** | `pytest tests/test_accessibility.py -k test_get_app_state_mock` | Découplage complet sans bus graphique requis | Arbre synthétique injecté et inspecté fidèlement | **PASS** |
+| **Déclenchement d'actions RAM** | `pytest tests/test_accessibility.py -k 'test_perform_action_mock or test_perform_action_mcp_mock_protocol or test_perform_action_binary_missing'` | Format MCP element_index/element_identifier | Protocole JSON-RPC validé, exécution d'actions sans curseur | **PASS** |
+| **Écriture directe en mémoire** | `pytest tests/test_accessibility.py -k 'test_set_value_mock or test_set_value_mcp_mock_protocol or test_set_value_binary_missing'` | Mutation Value/EditableText directe | Valeurs assignées sans perte ni layout clavier | **PASS** |
+| **Résolution par cache de nœuds** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_node_cache` | Injection de element_identifier à partir du cache local | Résolution d'index numérique vérifiée et validée | **PASS** |
+| **Intégration façade SDK** | `pytest tests/test_accessibility.py -k test_mcp_core_sdk_facade_integration` | Exposition cohérente dans `mcp_core` | `mcp_core.get_app_state`, `perform_action`, `set_value` opérationnels | **PASS** |
+| **Régression Scaffolding** | `pytest tests/test_package.py -k test_modular_architecture_scaffolding` | Non-régression sur le découpage modulaire | Validation 100% de la structure core/layers/utils | **PASS** |
+| **Validation stricte de l'arbre** | `pytest tests/test_accessibility.py -k test_get_app_state_invalid_tree_payload` | Rejet explicite des payloads non conformes | Erreur structurée retournée, purge déterministe du cache de nœuds | **PASS** |
+| **Identité de snapshot & non-obsolescence** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_snapshot_id_mismatch` | Invalidation du cache si snapshot_id mismatch | Évite toute action accidentelle sur un index périmé | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, workflows, ruff check/format, mypy, pytest) | 82/82 tests passés en 31.00s, 0 avertissement, 0 erreur | **PASS** |
