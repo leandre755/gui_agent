@@ -7,6 +7,7 @@ l'inspection d'arbres hiérarchiques et des actions directes en mémoire RAM san
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -58,37 +59,66 @@ def set_mock_value_handler(handler: Any | None) -> None:
     _mock_value_handler = handler
 
 
-def find_atspi_mediator_binary() -> str | None:
-    """Détecte l'exécutable du moteur Rust AT-SPI disponible."""
+def _is_elf_binary(path: str) -> bool:
+    """Vérifie si le fichier cible est un exécutable binaire natif ELF."""
+    try:
+        with open(path, "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except OSError:
+        return False
+
+
+def find_atspi_mediator_binary(exclude_scripts: bool = False) -> str | None:
+    """Détecte l'exécutable du moteur AT-SPI disponible."""
     # 1. Variable d'environnement prioritaire
     custom_bin = os.environ.get("GUI_AGENT_ATSPI_BIN")
-    if custom_bin and os.path.isfile(custom_bin) and os.access(custom_bin, os.X_OK):
+    if (
+        custom_bin
+        and os.path.isfile(custom_bin)
+        and os.access(custom_bin, os.X_OK)
+        and (not exclude_scripts or _is_elf_binary(custom_bin))
+    ):
         return custom_bin
 
-    # 2. Binaire local compilé dans crates/atspi_mediator (release puis debug)
+    # 2. Binaire local compilé dans workspace root ou crates/atspi_mediator (release puis debug)
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     for profile in ("release", "debug"):
+        workspace_bin = os.path.join(project_root, "target", profile, "gui-agent-atspi")
+        if (
+            os.path.isfile(workspace_bin)
+            and os.access(workspace_bin, os.X_OK)
+            and (not exclude_scripts or _is_elf_binary(workspace_bin))
+        ):
+            return workspace_bin
         local_bin = os.path.join(project_root, "crates", "atspi_mediator", "target", profile, "gui-agent-atspi")
-        if os.path.isfile(local_bin) and os.access(local_bin, os.X_OK):
+        if (
+            os.path.isfile(local_bin)
+            and os.access(local_bin, os.X_OK)
+            and (not exclude_scripts or _is_elf_binary(local_bin))
+        ):
             return local_bin
 
-    # 3. Exécutable système 'gui-agent-atspi' dans le PATH
-    which_agent = shutil.which("gui-agent-atspi")
-    if which_agent:
-        return which_agent
-
-    # 4. Exécutable standard dans ~/.local/bin ou préfixe d'environnement Python
+    # 3. Exécutable système standard dans ~/.local/bin ou préfixe d'environnement Python
     standard_paths = [
         os.path.expanduser("~/.local/bin/gui-agent-atspi"),
         os.path.join(sys.prefix, "bin", "gui-agent-atspi"),
     ]
     for candidate in standard_paths:
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+        if (
+            os.path.isfile(candidate)
+            and os.access(candidate, os.X_OK)
+            and (not exclude_scripts or _is_elf_binary(candidate))
+        ):
             return candidate
+
+    # 4. Exécutable système 'gui-agent-atspi' dans le PATH
+    which_agent = shutil.which("gui-agent-atspi")
+    if which_agent and (not exclude_scripts or _is_elf_binary(which_agent)):
+        return which_agent
 
     # 5. Exécutable système computer-use-linux (Rust upstream)
     which_bin = shutil.which("computer-use-linux")
-    if which_bin:
+    if which_bin and (not exclude_scripts or _is_elf_binary(which_bin)):
         return which_bin
 
     # 6. Chemins NVM éventuels dans le répertoire utilisateur
@@ -98,12 +128,106 @@ def find_atspi_mediator_binary() -> str | None:
         try:
             for node_ver in sorted(os.listdir(nvm_dir), reverse=True):
                 candidate = os.path.join(nvm_dir, node_ver, "bin", "computer-use-linux")
-                if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                if (
+                    os.path.isfile(candidate)
+                    and os.access(candidate, os.X_OK)
+                    and (not exclude_scripts or _is_elf_binary(candidate))
+                ):
                     return candidate
         except OSError as nvm_err:
             logger.debug("Erreur lors du scan du répertoire NVM: %s", nvm_err)
 
     return None
+
+
+def _run_python_atspi_cli(args: list[str]) -> None:
+    """Fallback d'exécution du médiateur AT-SPI en pur Python."""
+    if not args or args[0] in ("-h", "--help", "help"):
+        print(
+            "gui-agent-atspi: interface de médiation AT-SPI / D-Bus (commandes: doctor, apps, state, action, value, mcp)"
+        )
+        return
+
+    cmd = args[0]
+    if cmd == "doctor":
+        bus_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
+        status = "ok" if bus_addr or os.path.exists(f"/run/user/{os.getuid()}/bus") else "no_bus"
+        print(json.dumps({"status": status, "engine": "python-fallback", "bus": bus_addr}))
+    elif cmd == "apps":
+        print("[]")
+    elif cmd == "state":
+        print(json.dumps({"status": "success", "count": 0, "tree": []}))
+    elif cmd == "action":
+        print(json.dumps({"ok": False, "error": "Le déclenchement d'actions requiert le moteur natif Rust compilé"}))
+    elif cmd == "value":
+        print(json.dumps({"ok": False, "error": "L'écriture de valeur requiert le moteur natif Rust compilé"}))
+    elif cmd == "mcp":
+        for line in sys.stdin:
+            try:
+                req = json.loads(line)
+                req_id = req.get("id")
+                method = req.get("method")
+                if method == "initialize":
+                    res = {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "protocolVersion": "2024-11-05",
+                            "capabilities": {"tools": {}},
+                            "serverInfo": {"name": "gui-agent-atspi-py", "version": "0.1.0"},
+                        },
+                    }
+                elif method == "tools/list":
+                    res = {"jsonrpc": "2.0", "id": req_id, "result": {"tools": []}}
+                elif method == "tools/call":
+                    res = {"jsonrpc": "2.0", "id": req_id, "result": {"structuredContent": {"ok": False}}}
+                else:
+                    res = {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": "Method not found"}}
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
+            except Exception:
+                break
+    else:
+        print(f"Commande inconnue: {cmd}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main_cli() -> None:
+    """CLI unifié gui-agent-atspi déployé nativement avec le paquet Python.
+
+    Délègue directement au binaire compilé Rust natif à haute performance (<50ms)
+    si présent, compile à la volée si Cargo est disponible, ou exécute le fallback
+    programmé.
+    """
+    args = sys.argv[1:]
+    # 1. Recherche prioritaire du binaire Rust natif (ELF)
+    native_bin = find_atspi_mediator_binary(exclude_scripts=True)
+    if native_bin and os.path.isfile(native_bin) and os.access(native_bin, os.X_OK):
+        with contextlib.suppress(OSError):
+            res = subprocess.run([native_bin, *args], check=False)
+            sys.exit(res.returncode)
+
+    # 2. Si le binaire compilé n'est pas encore disponible, tentative de compilation locale via Cargo
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    cargo_manifest = os.path.join(project_root, "Cargo.toml")
+    if os.path.isfile(cargo_manifest) and shutil.which("cargo"):
+        try:
+            logger.info("Compilation initiale du médiateur Rust gui-agent-atspi via Cargo...")
+            subprocess.run(
+                ["cargo", "build", "--release", "--manifest-path", cargo_manifest, "--bin", "gui-agent-atspi"],
+                cwd=project_root,
+                capture_output=True,
+                check=True,
+            )
+            built_bin = os.path.join(project_root, "target", "release", "gui-agent-atspi")
+            if os.path.isfile(built_bin) and os.access(built_bin, os.X_OK):
+                built_res = subprocess.run([built_bin, *args], check=False)
+                sys.exit(built_res.returncode)
+        except Exception as exc:
+            logger.debug("Échec de compilation à la volée: %s", exc)
+
+    # 3. Fallback d'exécution Python pour les commandes de base
+    _run_python_atspi_cli(args)
 
 
 def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 15.0) -> bool:

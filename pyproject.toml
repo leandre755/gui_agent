@@ -60,6 +60,7 @@ dev = [
 [project.scripts]
 gui-agent = "gui_agent.server:main"
 mcp-gui-server = "gui_agent.server:main"
+gui-agent-atspi = "gui_agent.layers.accessibility:main_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["gui_agent"]
