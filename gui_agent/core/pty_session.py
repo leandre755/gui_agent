@@ -5,12 +5,15 @@ from __future__ import annotations
 import contextlib
 import logging
 import os
-import pty
 import select
 import signal
 import subprocess
+import sys
 import time
 from typing import Any
+
+if sys.platform != "win32":
+    import pty
 
 logger = logging.getLogger("gui_agent.core.pty")
 
@@ -23,6 +26,8 @@ class PTYSession:
 
     def execute(self, cmd: list[str], stdin_payload: str | None = None) -> tuple[int, str]:
         """Exécute une commande dans un pseudo-terminal PTY isolé."""
+        if sys.platform == "win32" or "pty" not in sys.modules:
+            return -1, "PTY non supporté sur cette plateforme."
         master_fd, slave_fd = pty.openpty()
         chunks, returncode, proc = [], -1, None
         start = time.monotonic()

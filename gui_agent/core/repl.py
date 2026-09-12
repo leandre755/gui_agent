@@ -86,30 +86,42 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
             if err:
                 break
 
-        for fd in readers:
-            while c := _safe_read(fd):
-                (out_ch if fd == out_fd else err_ch).append(c)
-                out_len += len(c) if fd == out_fd else 0
-                err_len += len(c) if fd != out_fd else 0
-                if out_len > max_output_chars or err_len > max_output_chars:
-                    status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
-                    break
-        with contextlib.suppress(Exception):
-            proc.wait(timeout=0.5)
-        for s in (proc.stdin, proc.stdout, proc.stderr):
-            with contextlib.suppress(Exception):
-                if s:
-                    s.close()
+        if not err:
+            for fd in readers:
+                while c := _safe_read(fd):
+                    (out_ch if fd == out_fd else err_ch).append(c)
+        _close_proc(proc)
         if proc.returncode != 0 and status == "success":
             status, err = "error", "".join(err_ch).strip() or f"Code {proc.returncode}"
     except Exception as exc:
         status, err = "error", f"{type(exc).__name__}: {exc!s}"
 
     dur = round((time.monotonic() - start) * 1000, 2)
-    res: dict[str, Any] = {"status": status, "stdout": "".join(out_ch), "stderr": "".join(err_ch), "duration_ms": dur}
+    s_out, s_err, status, err = _clamp_output(out_ch, err_ch, max_output_chars, status, err)
+    res: dict[str, Any] = {"status": status, "stdout": s_out, "stderr": s_err, "duration_ms": dur}
     if err:
         res["error"] = err
     return res
+
+
+def _clamp_output(
+    out_ch: list[str], err_ch: list[str], max_chars: int, status: str, err: str | None
+) -> tuple[str, str, str, str | None]:
+    s_out, s_err = "".join(out_ch), "".join(err_ch)
+    if len(s_out) > max_chars:
+        s_out, status, err = s_out[:max_chars], "error", f"Taille de sortie maximale dépassée ({max_chars} caractères)."
+    if len(s_err) > max_chars:
+        s_err, status, err = s_err[:max_chars], "error", f"Taille de sortie maximale dépassée ({max_chars} caractères)."
+    return s_out, s_err, status, err
+
+
+def _close_proc(proc: subprocess.Popen[str]) -> None:
+    with contextlib.suppress(Exception):
+        proc.wait(timeout=0.5)
+    for s in (proc.stdin, proc.stdout, proc.stderr):
+        with contextlib.suppress(Exception):
+            if s:
+                s.close()
 
 
 def _safe_read(fd: int) -> str:
