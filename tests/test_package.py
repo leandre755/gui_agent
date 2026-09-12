@@ -853,6 +853,25 @@ def test_modular_architecture_scaffolding(monkeypatch):
     assert core.execute_script("while True: print('X'*50)", max_output_chars=100)["status"] == "error"
     pty_rc, pty_out = core.PTYSession(timeout=2.0).execute(["cat"], "eof_ok")
     assert pty_rc == 0 and "eof_ok" in pty_out
+    pty_rc_ov, pty_out_ov = core.PTYSession(timeout=2.0, max_output_chars=30).execute(
+        ["sh", "-c", "while true; do echo 'unbounded'; done"]
+    )
+    assert pty_rc_ov == -1 and "dépassée" in pty_out_ov
+    pty_rc_bg, pty_out_bg = core.PTYSession(timeout=2.0).execute(["sh", "-c", "sleep 30 & echo $!"])
+    assert pty_rc_bg == 0
+    bg_pid = int(pty_out_bg.strip().split()[-1])
+    import time
+
+    time.sleep(0.1)
+    import os
+
+    with pytest.raises(OSError):
+        os.kill(bg_pid, 0)
+    monkeypatch.setenv("DISPLAY", "")
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    with pytest.raises(RuntimeError, match="Aucun serveur graphique"):
+        utils.coordinates.check_display_env()
+    monkeypatch.undo()
     assert layers.get_app_state()["status"] == "not_implemented"
     assert layers.mouse_click_at(100, 200)["status"] == "not_implemented"
     monkeypatch.setattr("os.path.exists", lambda p: p != "/proc")

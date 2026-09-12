@@ -9,7 +9,7 @@ import mss
 
 def check_display_env() -> None:
     """Vérifie la présence d'un serveur d'affichage graphique valide."""
-    if "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
+    if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
         raise RuntimeError("Aucun serveur graphique détecté (DISPLAY ou WAYLAND_DISPLAY requis).")
 
 
