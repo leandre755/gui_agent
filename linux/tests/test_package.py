@@ -155,6 +155,18 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     custom_screenshot.write_text("fake capture", encoding="utf-8")
     unrelated_file = custom_dir / "non-gui-agent-file.txt"
     unrelated_file.write_text("important user document", encoding="utf-8")
+    vacation_capture = custom_dir / "capture-vacation.txt"
+    vacation_capture.write_text("my vacation notes", encoding="utf-8")
+    video_notes = custom_dir / "video-notes.txt"
+    video_notes.write_text("video conference notes", encoding="utf-8")
+
+    # Répertoire externe contenant 'gui-agent' dans son chemin (ex. un repo de dev)
+    dev_repo = tmp_path / "gui-agent-projects" / "my-repo"
+    dev_repo.mkdir(parents=True)
+    dev_code = dev_repo / "main.py"
+    dev_code.write_text("print('hello')", encoding="utf-8")
+    dev_screenshot = dev_repo / "screenshot_999.png"
+    dev_screenshot.write_text("fake capture", encoding="utf-8")
 
     env = os.environ.copy()
     env["HOME"] = str(isolated_home)
@@ -173,8 +185,10 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert (default_screenshots / "screenshot_1.png").exists()
     assert custom_screenshot.exists()
     assert unrelated_file.exists()
+    assert vacation_capture.exists()
+    assert video_notes.exists()
 
-    # 2. Mode Purge réel : les captures doivent être supprimées, le fichier tiers préservé
+    # 2. Mode Purge réel : les captures doivent être supprimées, les fichiers tiers préservés
     res_real = subprocess.run(
         ["bash", "linux/uninstall.sh", "--purge-data", "-y"],
         env=env,
@@ -186,8 +200,26 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert not default_screenshots.exists()
     assert not custom_screenshot.exists()
     assert unrelated_file.exists(), "Les fichiers tiers non liés ne doivent jamais être supprimés !"
+    assert vacation_capture.exists(), "capture-vacation.txt doit être préservé !"
+    assert video_notes.exists(), "video-notes.txt doit être préservé !"
+    assert custom_dir.exists(), "Le dossier personnalisé contenant des fichiers tiers ne doit pas être supprimé !"
 
-    # 3. Mode Protection racine : si GUI_AGENT_SCREENSHOTS_DIR pointe vers HOME ou racine
+    # 3. Mode purge sur répertoire externe contenant 'gui-agent' dans son chemin :
+    # il ne doit PAS être supprimé récursivement !
+    env["GUI_AGENT_SCREENSHOTS_DIR"] = str(dev_repo)
+    res_repo = subprocess.run(
+        ["bash", "linux/uninstall.sh", "--purge-data", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_repo.returncode == 0
+    assert not dev_screenshot.exists()
+    assert dev_code.exists(), "Le code source d'un repo tiers contenant 'gui-agent' ne doit pas être supprimé !"
+    assert dev_repo.exists(), "Le dossier du repo ne doit pas être supprimé récursivement !"
+
+    # 4. Mode Protection racine : si GUI_AGENT_SCREENSHOTS_DIR pointe vers HOME ou racine
     env["GUI_AGENT_SCREENSHOTS_DIR"] = str(isolated_home)
     res_unsafe = subprocess.run(
         ["bash", "linux/uninstall.sh", "--purge-data", "-y"],

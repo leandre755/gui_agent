@@ -138,7 +138,7 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ```
 
 ### Step 7: Prise en charge sécurisée des répertoires de captures personnalisés lors de la désinstallation (Greptile 5/5)
-- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour consulter et purger `GUI_AGENT_SCREENSHOTS_DIR` en plus du cache par défaut, tout en maintenant la protection contre les répertoires système/racines/utilisateurs critiques (`/`, `$HOME`, `/tmp`, `/var`, etc.), la vérification stricte de propriété UID (`-O`), la purge ciblée des captures sans destruction des fichiers tiers dans les dossiers partagés, et l'ajout de tests unitaires dans `linux/tests/test_package.py` (112 tests PASS).
+- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour consulter et purger `GUI_AGENT_SCREENSHOTS_DIR` en plus du cache par défaut, avec frontière stricte d'approbation (`$APPROVED_CACHE`, `$APPROVED_DATA`) pour la suppression récursive, protection contre les répertoires système/racines/utilisateurs critiques (`/`, `$HOME`, `/tmp`, `/var`, etc.), vérification stricte de propriété UID (`-O`), et pour tout répertoire personnalisé/externe, purge ciblée exclusive des motifs exacts de captures générés (`screenshot_[0-9]*.png`, `raw_screenshot_[0-9]*.png`, `video_[0-9]*.mp4`, etc.) préservant 100% des fichiers tiers (`capture-vacation.txt`, `video-notes.txt`, repos de dev contenant `gui-agent`), et tests unitaires exhaustifs dans `linux/tests/test_package.py` (112 tests PASS).
 - [x] **Verify**: `./ci.sh && cargo test --all-features`
 - **Verification Proof**:
 ```text
