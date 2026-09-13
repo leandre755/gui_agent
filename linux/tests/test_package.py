@@ -138,6 +138,69 @@ def test_uninstall_script_cleans_standalone_atspi_mediator(tmp_path):
     assert not fake_bin.exists()
 
 
+def test_uninstall_script_purges_screenshots_securely(tmp_path):
+    """Vérifie que uninstall.sh --purge-data purge le cache par défaut et les répertoires personnalisés de manière sécurisée."""
+    import os
+    import subprocess
+
+    isolated_home = tmp_path / "home"
+    isolated_cache = isolated_home / ".cache"
+    default_screenshots = isolated_cache / "gui-agent" / "screenshots"
+    default_screenshots.mkdir(parents=True)
+    (default_screenshots / "screenshot_1.png").write_text("fake png", encoding="utf-8")
+
+    custom_dir = tmp_path / "custom_screenshots"
+    custom_dir.mkdir(parents=True)
+    custom_screenshot = custom_dir / "screenshot_2026.png"
+    custom_screenshot.write_text("fake capture", encoding="utf-8")
+    unrelated_file = custom_dir / "non-gui-agent-file.txt"
+    unrelated_file.write_text("important user document", encoding="utf-8")
+
+    env = os.environ.copy()
+    env["HOME"] = str(isolated_home)
+    env["XDG_CACHE_HOME"] = str(isolated_cache)
+    env["GUI_AGENT_SCREENSHOTS_DIR"] = str(custom_dir)
+
+    # 1. Mode Dry-run : rien ne doit être supprimé
+    res_dry = subprocess.run(
+        ["bash", "linux/uninstall.sh", "--dry-run", "--purge-data", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_dry.returncode == 0
+    assert (default_screenshots / "screenshot_1.png").exists()
+    assert custom_screenshot.exists()
+    assert unrelated_file.exists()
+
+    # 2. Mode Purge réel : les captures doivent être supprimées, le fichier tiers préservé
+    res_real = subprocess.run(
+        ["bash", "linux/uninstall.sh", "--purge-data", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_real.returncode == 0
+    assert not default_screenshots.exists()
+    assert not custom_screenshot.exists()
+    assert unrelated_file.exists(), "Les fichiers tiers non liés ne doivent jamais être supprimés !"
+
+    # 3. Mode Protection racine : si GUI_AGENT_SCREENSHOTS_DIR pointe vers HOME ou racine
+    env["GUI_AGENT_SCREENSHOTS_DIR"] = str(isolated_home)
+    res_unsafe = subprocess.run(
+        ["bash", "linux/uninstall.sh", "--purge-data", "-y"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert res_unsafe.returncode == 0
+    assert "non sécurisé détecté" in res_unsafe.stderr or "non sécurisé détecté" in res_unsafe.stdout
+    assert isolated_home.exists()
+
+
 def test_install_doc_structure():
     """Valide la conformité structurelle du guide d'installation INSTALL.md."""
     import os

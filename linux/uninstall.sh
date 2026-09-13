@@ -186,28 +186,68 @@ fi
 
 # Step 3: Purge Screenshots and Runtime Cache
 log_info "3/3 - Nettoyage des données temporaires et captures d'écran..."
-# Pour la purge destructive, ignorer tout override d'environnement arbitraire afin d'éviter la suppression récursive de répertoires tiers
 CACHE_BASE="${XDG_CACHE_HOME:-${HOME}/.cache}"
-SCREENSHOTS_DIR="${CACHE_BASE}/gui-agent/screenshots"
+REAL_HOME="$(cd "${HOME}" 2>/dev/null && pwd -P || echo "${HOME}")"
+REAL_CACHE="$(cd "${CACHE_BASE}" 2>/dev/null && pwd -P || echo "${CACHE_BASE}")"
 
-if [[ -d "$SCREENSHOTS_DIR" ]]; then
-    CANONICAL_DIR="$(cd "$SCREENSHOTS_DIR" 2>/dev/null && pwd -P || true)"
-    REAL_HOME="$(cd "${HOME}" 2>/dev/null && pwd -P || echo "${HOME}")"
-    REAL_CACHE="$(cd "${CACHE_BASE}" 2>/dev/null && pwd -P || echo "${CACHE_BASE}")"
+# Collecte des répertoires cibles : emplacement personnalisé documenté et cache par défaut
+TARGET_DIRS=()
+if [[ -n "${GUI_AGENT_SCREENSHOTS_DIR:-}" && -d "${GUI_AGENT_SCREENSHOTS_DIR}" ]]; then
+    TARGET_DIRS+=("${GUI_AGENT_SCREENSHOTS_DIR}")
+fi
 
-    # Vérification stricte : le répertoire à supprimer doit impérativement être un sous-dossier gui-agent approuvé
-    if [[ -z "$CANONICAL_DIR" || "$CANONICAL_DIR" == "/" || "$CANONICAL_DIR" == "$REAL_HOME" || "$CANONICAL_DIR" == "$REAL_CACHE" || "$CANONICAL_DIR" == "/tmp" || "$CANONICAL_DIR" == "/var" ]]; then
-        log_error "Chemin de captures d'écran non sécurisé détecté : $SCREENSHOTS_DIR. Purge annulée."
-    elif [[ "$CANONICAL_DIR" != *"/gui-agent/screenshots"* && "$CANONICAL_DIR" != *"/gui-agent" ]]; then
-        log_error "Le répertoire ($CANONICAL_DIR) n'appartient pas au cache approuvé de gui-agent. Purge annulée par sécurité."
-    elif [[ "$DRY_RUN" == "true" ]]; then
+DEFAULT_SCREENSHOTS_DIR="${CACHE_BASE}/gui-agent/screenshots"
+if [[ -d "$DEFAULT_SCREENSHOTS_DIR" ]]; then
+    TARGET_DIRS+=("$DEFAULT_SCREENSHOTS_DIR")
+fi
+
+PROCESSED_DIRS=()
+for candidate in "${TARGET_DIRS[@]}"; do
+    [[ -d "$candidate" ]] || continue
+    CANONICAL_DIR="$(cd "$candidate" 2>/dev/null && pwd -P || true)"
+    [[ -z "$CANONICAL_DIR" ]] && continue
+
+    # Dédoublonnage des répertoires déjà traités
+    ALREADY_DONE=false
+    for done_dir in "${PROCESSED_DIRS[@]}"; do
+        if [[ "$done_dir" == "$CANONICAL_DIR" ]]; then
+            ALREADY_DONE=true
+            break
+        fi
+    done
+    [[ "$ALREADY_DONE" == "true" ]] && continue
+    PROCESSED_DIRS+=("$CANONICAL_DIR")
+
+    # Protection stricte contre la suppression accidentelle de racines système ou répertoires utilisateur critiques
+    if [[ "$CANONICAL_DIR" == "/" || "$CANONICAL_DIR" == "$REAL_HOME" || "$CANONICAL_DIR" == "$REAL_CACHE" || \
+          "$CANONICAL_DIR" == "/tmp" || "$CANONICAL_DIR" == "/var" || "$CANONICAL_DIR" == "/etc" || \
+          "$CANONICAL_DIR" == "/usr" || "$CANONICAL_DIR" == "/bin" || "$CANONICAL_DIR" == "/sbin" || \
+          "$CANONICAL_DIR" == "/home" || "$CANONICAL_DIR" == "/root" || "$CANONICAL_DIR" == "/opt" || \
+          "$CANONICAL_DIR" == "/boot" || "$CANONICAL_DIR" == "/dev" || "$CANONICAL_DIR" == "/proc" || \
+          "$CANONICAL_DIR" == "/sys" || "$CANONICAL_DIR" == "$REAL_HOME/Desktop" || \
+          "$CANONICAL_DIR" == "$REAL_HOME/Documents" || "$CANONICAL_DIR" == "$REAL_HOME/Downloads" || \
+          "$CANONICAL_DIR" == "$REAL_HOME/Pictures" || "$CANONICAL_DIR" == "$REAL_HOME/Music" || \
+          "$CANONICAL_DIR" == "$REAL_HOME/Videos" ]]; then
+        log_error "Chemin de captures d'écran non sécurisé détecté : $candidate. Purge annulée."
+        continue
+    fi
+
+    # Validation stricte de propriété : vérification que le dossier appartient à l'utilisateur courant
+    dir_uid="$(stat -c '%u' "$CANONICAL_DIR" 2>/dev/null || stat -f '%u' "$CANONICAL_DIR" 2>/dev/null || true)"
+    user_uid="$(id -u 2>/dev/null || true)"
+    if [[ ! -O "$CANONICAL_DIR" && -n "$user_uid" && -n "$dir_uid" && "$dir_uid" != "$user_uid" ]]; then
+        log_error "Le répertoire ($CANONICAL_DIR) n'appartient pas à l'utilisateur courant (UID ${user_uid}). Purge annulée par sécurité."
+        continue
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
         log_info "[Dry-Run] Purge possible du répertoire de captures : $CANONICAL_DIR"
     else
         DO_PURGE=false
         if [[ "$PURGE_DATA" == "true" ]]; then
             DO_PURGE=true
         elif [[ "$NON_INTERACTIVE" != "true" ]]; then
-            echo -e "${YELLOW}Voulez-vous supprimer définitivement le répertoire de captures ($CANONICAL_DIR) ? [o/N]${NC} "
+            echo -e "${YELLOW}Voulez-vous supprimer définitivement les captures dans ($CANONICAL_DIR) ? [o/N]${NC} "
             response=""
             read -r response || response="n"
             if [[ "$response" =~ ^([oO][uU][iI]|[oO])$ ]]; then
@@ -216,13 +256,22 @@ if [[ -d "$SCREENSHOTS_DIR" ]]; then
         fi
 
         if [[ "$DO_PURGE" == "true" ]]; then
-            rm -rf -- "$CANONICAL_DIR"
-            log_success "Répertoire de captures supprimé : $CANONICAL_DIR"
+            if [[ "$CANONICAL_DIR" == *"/gui-agent"* ]]; then
+                rm -rf -- "$CANONICAL_DIR"
+                log_success "Répertoire de captures supprimé : $CANONICAL_DIR"
+            else
+                # Emplacement personnalisé : purge ciblée des captures et artefacts GUI Agent sans détruire les fichiers tiers non liés
+                find "$CANONICAL_DIR" -maxdepth 1 -type f \( -name "screenshot*" -o -name "raw_screenshot*" -o -name "capture*" -o -name "video*" -o -name "_mcp_screen*" -o -name ".gui-agent*" \) -delete 2>/dev/null || true
+                rmdir "$CANONICAL_DIR" 2>/dev/null || true
+                log_success "Captures purgées dans l'emplacement personnalisé : $CANONICAL_DIR"
+            fi
         else
             log_info "Répertoire de captures conservé : $CANONICAL_DIR"
         fi
     fi
-else
+done
+
+if [[ ${#PROCESSED_DIRS[@]} -eq 0 ]]; then
     log_info "Aucun répertoire de capture résiduel trouvé."
 fi
 

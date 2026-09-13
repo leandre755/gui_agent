@@ -137,6 +137,29 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
+### Step 7: Prise en charge sécurisée des répertoires de captures personnalisés lors de la désinstallation (Greptile 5/5)
+- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour consulter et purger `GUI_AGENT_SCREENSHOTS_DIR` en plus du cache par défaut, tout en maintenant la protection contre les répertoires système/racines/utilisateurs critiques (`/`, `$HOME`, `/tmp`, `/var`, etc.), la vérification stricte de propriété UID (`-O`), la purge ciblée des captures sans destruction des fichiers tiers dans les dossiers partagés, et l'ajout de tests unitaires dans `linux/tests/test_package.py` (112 tests PASS).
+- [x] **Verify**: `./ci.sh && cargo test --all-features`
+- **Verification Proof**:
+```text
+============================= 112 passed in 38.04s =============================
+✔ Validé (39766ms)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Étape de Validation                       | Statut     | Durée     |
+|--------------------------------------------|------------|------------|
+| Compilation Bytecode Python (compileall)   | PASS     | 282ms      |
+| Validation Workflows GitHub Actions        | PASS     | 86ms       |
+| Linter de Code (Ruff Check)                | PASS     | 23ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 20ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 631ms      |
+| Suite de Tests Pytest                      | PASS     | 39766ms    |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Toutes les étapes CI sont validées avec succès !
+```
+
 ## ⚠️ Mitigations & Edge Cases
 - **Risk**: Saturation CPU / mémoire lors de la compilation de `atspi` et `zbus` sur machine modeste.
 - **Mitigation**: Compilation séquentielle contrôlée avec build profile release optimisé (`codegen-units = 1`, `lto = "fat"`, `strip = "symbols"`), exclusion de `target/` de git via `.gitignore` pour préserver la légèreté du dépôt (binaire release 3,0M).
