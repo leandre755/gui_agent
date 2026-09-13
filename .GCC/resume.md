@@ -1,33 +1,35 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Résolution intégrale de tous les constats Greptile (passage de 1/5 à 3/5 puis 4/5 et résolution finale du constat P1 sur `linux/uninstall.sh` pour 5/5) et CodeRabbit (12 fils résolus) sur la PR #137 (`feat/accessibility-mediation-phase-1`).
+- **Requested Task**: Résolution intégrale de tous les constats de revue Greptile (passage de 1/5 à 5/5) et CodeRabbit (résolution de 100% des fils, confirmation officielle de levée des blocages) sur la PR #137 (`feat/accessibility-mediation-phase-1`).
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  - Exécution complète de `./ci.sh` : 112/112 tests unitaires et d'intégration validés sans aucune erreur (`112 passed in 38.04s`).
-  - Validation Rust complète : `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test --all-features` validés sans avertissement.
+  - Exécution complète de `./ci.sh` : 112/112 tests unitaires et d'intégration validés sans aucune erreur (`112 passed in 54.98s` en local et `112 passed in 80.93s` en pré-push).
+  - Validation Rust complète : `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test` validés avec 13/13 tests PASS (9 tests dans `lib.rs`, 4 tests dans `main.rs`).
   - Binaire autonome `gui-agent-atspi` recompilé en release et synchronisé dans `linux/bin/` et `~/.local/bin/`.
   - Linter Ruff : `ruff check .` validé avec 0 erreur.
   - Formateur Ruff : `ruff format --check .` validé avec 0 anomalie.
   - Typage Mypy : `mypy -p linux` validé avec 0 erreur sur 36 fichiers sources.
   - Validation des workflows GitHub Actions : `verify_workflows.py` validé.
+  - Confirmation textuelle officielle CodeRabbit : *"Oui. Les corrections demandées ont été vérifiées dans le commit 2e931e8... Je ne vois plus de blocage lié à ma demande de changements."*
+  - 100% des fils de discussion de revue résolus sur GitHub (25/25 threads résolus, 0 thread non résolu).
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `linux/uninstall.sh`
-  - **Scope**: Script de désinstallation Linux.
-  - **Exact Technical Change**: Remplacement des globs `find` par une boucle de validation stricte par expressions régulières directes (`[[ "$fname" =~ ... ]]`) inspectant chaque fichier dans les répertoires personnalisés : timestamps numériques stricts (`screenshot_[0-9]+...`, `recording_[0-9]+...`) et UUID stricts (`recording_<8-4-4-4-12>` ou 32 hex), interdisant tout faux-positif sur les médias utilisateur tiers (`recording_1_interview.mp4`, `screenshot_1_final.png`, `video_projet.mp4`).
-- **File**: `linux/tests/test_package.py`
-  - **Scope**: Tests du packaging et de désinstallation.
-  - **Exact Technical Change**: Enrichissement de `test_uninstall_script_purges_screenshots_securely()` avec vérification de la préservation de `recording_1_interview.mp4` et `screenshot_1_final.png`.
-- **File**: `.GCC/branches/plan_accessibility_phase_1.md`
-  - **Scope**: Documentation du plan tactique de la Phase 1.
-  - **Exact Technical Change**: Correction du compte des tests Rust de Step 3 (passage de 8 à 9 tests unitaires Rust) et actualisation de la preuve d'exécution terminale.
 - **File**: `linux/crates/atspi_mediator/src/main.rs`
   - **Scope**: Médiateur Rust AT-SPI et serveur stdio MCP.
-  - **Exact Technical Change**: Priorité aux identifiants textuels explicites résolus (`element_identifier`), évitant l'erreur "Aucun snapshot actif".
-- **File**: `linux/layers/accessibility.py`
-  - **Scope**: Couche d'accessibilité Linux.
-  - **Exact Technical Change**: Transmission directe de `element_identifier` sans `element_index`, parsing universel de `_get_atspi_bus_address()` acceptant les formats bruts ou cités de `busctl` et `dbus-send`.
+  - **Exact Technical Change**: Sécurisation de `resolve_mcp_target` via `u32::try_from(i)` rejetant immédiatement les entiers `element_index` hors limites (`> u32::MAX`) évitant tout débordement silencieux vers le nœud 0, tout en préservant la priorité absolue aux identifiants non-numériques explicites (`element_identifier`). Ajout de 4 tests unitaires dédiés dans `src/main.rs`.
+- **File**: `.GCC/main.md`
+  - **Scope**: Registre macro du projet.
+  - **Exact Technical Change**: Harmonisation des mentions de tests historiques (lignes 138 et 147) vers 112/112 tests CI validés.
+- **File**: `.GCC/resume.md`
+  - **Scope**: Journal de transition technique.
+  - **Exact Technical Change**: Remplacement des anciennes instructions de re-tag/push par des directives de vérification en lecture seule et d'attente d'approbation.
+- **File**: `.GCC/branches/plan_accessibility_phase_1.md`
+  - **Scope**: Plan tactique Phase 1.
+  - **Exact Technical Change**: Ajout du Step 9 documentant la validation de `element_index` et l'exécution des 13 tests unitaires Rust.
+- **File**: `.GCC/branches/test.md`
+  - **Scope**: Journal de test persistent.
+  - **Exact Technical Change**: Enregistrement des exécutions `./ci.sh` (112/112 PASS) et `cargo test` (13/13 PASS).
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh && cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml`
