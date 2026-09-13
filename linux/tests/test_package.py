@@ -153,6 +153,12 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     custom_dir.mkdir(parents=True)
     custom_screenshot = custom_dir / "screenshot_2026.png"
     custom_screenshot.write_text("fake capture", encoding="utf-8")
+    custom_recording_ts = custom_dir / "recording_20260913_120000.mp4"
+    custom_recording_ts.write_text("fake video ts", encoding="utf-8")
+    custom_recording_uuid = custom_dir / "recording_550e8400-e29b-41d4-a716-446655440000.mp4"
+    custom_recording_uuid.write_text("fake video uuid", encoding="utf-8")
+    custom_web_screenshot = custom_dir / "web_screenshot_20260913_120000.png"
+    custom_web_screenshot.write_text("fake web screenshot", encoding="utf-8")
     unrelated_file = custom_dir / "non-gui-agent-file.txt"
     unrelated_file.write_text("important user document", encoding="utf-8")
     vacation_capture = custom_dir / "capture-vacation.txt"
@@ -184,6 +190,9 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert res_dry.returncode == 0
     assert (default_screenshots / "screenshot_1.png").exists()
     assert custom_screenshot.exists()
+    assert custom_recording_ts.exists()
+    assert custom_recording_uuid.exists()
+    assert custom_web_screenshot.exists()
     assert unrelated_file.exists()
     assert vacation_capture.exists()
     assert video_notes.exists()
@@ -199,6 +208,9 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert res_real.returncode == 0
     assert not default_screenshots.exists()
     assert not custom_screenshot.exists()
+    assert not custom_recording_ts.exists()
+    assert not custom_recording_uuid.exists()
+    assert not custom_web_screenshot.exists()
     assert unrelated_file.exists(), "Les fichiers tiers non liés ne doivent jamais être supprimés !"
     assert vacation_capture.exists(), "capture-vacation.txt doit être préservé !"
     assert video_notes.exists(), "video-notes.txt doit être préservé !"
