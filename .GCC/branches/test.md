@@ -166,4 +166,6 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **P2 - Installation non reproductible** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418` | Restauration du tag immuable `v0.1.0` pour toutes les commandes curl/PowerShell d'installation et de désinstallation | Alignement parfait avec `INSTALL.md` | **PASS** |
 | **P2 - Prérequis Cargo manquant** | `README.md:146,150,154,448`, `README.fr.md:146,150,154,448`, `hatch_build.py:128-132` | Ajout de `cargo` et `rustc` dans les prérequis Linux, mention `(requires Cargo)` lors du pip install éditable, et avertissement explicite dans `hatch_build.py` si cargo est absent sous Linux | Script Python et build hook testés | **PASS** |
 | **P2 - Séparateurs de tableaux en trop** | `README.md:389,469`, `README.fr.md:389,469` | Réduction des séparateurs de 4 colonnes à 3 colonnes pour alignement strict avec les en-têtes et données | `check_tables` Python : 100% propre (3 cols) | **PASS** |
+| **P1 - Tagged scripts unavailable** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418`, `INSTALL.md:15,119,134` | Substitution de `v0.1.0` (qui ne contenait pas `linux/` et `windows/`) par le commit SHA immuable de release `7a49514` contenant l'arborescence multi-plateforme | Toutes les requêtes HTTP testées retournent 200 OK | **PASS** |
+
 

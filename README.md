@@ -105,7 +105,7 @@ Run the automated installer to check dependencies, install Astral uv, build the 
 
 ```bash
 # Download and execute the automated installer via curl
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/install.sh | bash
 
 # Or execute locally from a cloned repository
 ./linux/install.sh
@@ -116,7 +116,7 @@ Launch PowerShell (standard user or administrator) and execute the automated set
 
 ```powershell
 # Download and execute the installation script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/install.ps1" -OutFile "install.ps1"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Or execute locally from a cloned repository
@@ -404,7 +404,7 @@ To cleanly purge `gui-agent`, delete isolated environments, and remove registere
 
 ```bash
 # Download and execute the automated uninstaller
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/uninstall.sh
 chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 # Or local uninstall with full data and cache purge
@@ -415,7 +415,7 @@ chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 ```powershell
 # Download and execute the automated uninstaller
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
 # Or local uninstall with full data and cache purge

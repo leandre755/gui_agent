@@ -105,7 +105,7 @@ Exécutez le script d'installation automatisé pour vérifier les dépendances, 
 
 ```bash
 # Téléchargement et exécution de l'installateur automatisé via curl
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/install.sh | bash
 
 # Ou exécuter localement depuis un dépôt cloné
 ./linux/install.sh
@@ -116,7 +116,7 @@ Lancez PowerShell (utilisateur standard ou administrateur) et exécutez le scrip
 
 ```powershell
 # Téléchargement et exécution du script d'installation
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/install.ps1" -OutFile "install.ps1"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Ou exécuter localement depuis un dépôt cloné
@@ -404,7 +404,7 @@ Pour purger proprement `gui-agent`, supprimer les environnements isolés et reti
 
 ```bash
 # Téléchargement et exécution du désinstallateur automatisé
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/uninstall.sh
 chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 # Ou désinstallation locale avec purge complète des données et caches
@@ -415,7 +415,7 @@ chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 ```powershell
 # Téléchargement et exécution du désinstallateur automatisé
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
 # Ou désinstallation locale avec purge complète des données et caches
