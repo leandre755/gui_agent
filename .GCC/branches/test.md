@@ -132,5 +132,10 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Rejet obligatoire d'index sans snapshot_id** | `pytest tests/test_accessibility.py -k test_numeric_index_without_snapshot_id_rejected` | Rejet fail-closed systématique sans Popen si snapshot_id manquant sur index numérique | Test unitaire validé | **PASS** |
 | **Livraison native et fallbacks install.sh** | `./install.sh --dry-run` | Détection cibles workspace/crate target et fallback git cargo install | 0 erreur, code 0 | **PASS** |
 | **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, workflows, ruff check/format, mypy, pytest) | 84/84 tests passés en 32.31s, 0 avertissement, 0 erreur | **PASS** |
+| **Validation CodeRabbit 3 remarques mineures** | `coderabbit review --agent --uncommitted` | 0 finding bloquant / avertissement sur `windows/install.ps1`, `linux/core/repl.py`, `linux/tests/test_package.py` | `review_completed`, `findings: 0` | **PASS** |
+| **Gardiens repl incrémental UTF-8 & install.ps1** | `pytest linux/tests/test_package.py -k "test_repl_safe_read_incremental_utf8 or test_repl_execute_script_multibyte_utf8 or test_windows_install_ps1_guards"` | Validation fragments multi-octets UTF-8, script repl émettant des emojis/accents et gardes PowerShell | 3/3 tests unitaires passés | **PASS** |
+| **Validation Globale CI (Phase 1 finale)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 105/105 tests passés en 36.20s, 0 avertissement, 0 erreur | **PASS** |
+| **Compilation Rust native Workspace** | `cargo check` | Vérification du crate natif `atspi_mediator` | Compilé en 0.09s (code 0) | **PASS** |
+| **Revue Greptile finale sur commit `45ca723`** | `greptile review --agent --branch main` | Vérification exhaustive de la branche contre main | `Confidence: 5/5`, 0 finding, `The PR appears safe to merge` | **PASS** |
 
 
