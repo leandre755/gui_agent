@@ -12,6 +12,7 @@
 - [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57, Confidence Score 5/5 Greptile)
 - [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55, Confidence Score 5/5 Greptile)
 - [2026-09-12] Modular Architecture Scaffolding, Execution Primitives Hardening & Dependencies Modernization (PR #136, Confidence Score 5/5 Greptile, 0 findings CodeRabbit, 65/65 tests)
+- [2026-09-13] Médiation d'Accessibilité Programmatique AT-SPI & Durcissement Purge Uninstall (PR #137, Confidence Score 5/5 Greptile, 12/12 fils CodeRabbit résolus, 112/112 tests)
 
 ## 🎯 Objective
 High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -144,10 +145,10 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
   - Validation CI 105/105 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
-  - Application intégrale et exhaustive des retours de revue Greptile (1/5 -> 3/5 -> 4/5 -> 5/5 cible) et CodeRabbit (12 fils résolus) : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs et vérification de propriété UID, formatage rustfmt, et validation CI locale 112/112 tests PASS.
-  - Invitation et attribution des droits de contribution GitHub (`write`) accordés à `personnal-agent` sur le dépôt `leandre755/gui_agent`.
-  - Création et publication formelle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) par le compte `personnal-agent`.
-- 🔄 In progress: Push final du lot exhaustif de corrections sur PR #137 et surveillance du score 5/5 Greptile.
+  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs, vérification de propriété UID, restriction chirurgicale aux motifs applicatifs authentiques (timestamps numériques et UUID stricts), et préservation à 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`).
+  - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge; there are no outstanding blocking issues*, et **12/12 fils CodeRabbit résolus** sur GitHub.
+  - Validation CI complète : 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep, Rust clippy/test/fmt et quality gate pre-commit PASS.
+- 🔄 In progress: Approbation et fusion de la Pull Request #137 par le mainteneur.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
