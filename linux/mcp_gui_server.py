@@ -1,3 +1,19 @@
+import importlib.util
+import os
+import sys
+
+# Si 'gui_agent' n'est pas encore enregistré dans l'environnement (ex: exécution directe depuis source),
+# initialiser le package dynamique pour mapper 'gui_agent' vers le répertoire source courant (linux/)
+if "gui_agent" not in sys.modules:
+    _pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    _pkg_init = os.path.join(_pkg_dir, "__init__.py")
+    if os.path.isfile(_pkg_init):
+        _spec = importlib.util.spec_from_file_location("gui_agent", _pkg_init, submodule_search_locations=[_pkg_dir])
+        if _spec and _spec.loader:
+            _pkg = importlib.util.module_from_spec(_spec)
+            sys.modules["gui_agent"] = _pkg
+            _spec.loader.exec_module(_pkg)
+
 from gui_agent.server import (
     FastMCP,
     SCREENSHOTS_DIR,

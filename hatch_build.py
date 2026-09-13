@@ -23,6 +23,32 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 logger = logging.getLogger(__name__)
 
 
+def _detect_linux_platform_tag() -> str:
+    """Détermine le tag de compatibilité manylinux ou musllinux audité de la plateforme hôte."""
+    try:
+        import packaging.tags as p_tags
+
+        for t in p_tags.sys_tags():
+            if t.platform.startswith(("manylinux", "musllinux")):
+                return t.platform
+    except Exception as exc:
+        logger.debug("Échec de détection packaging.tags: %s", exc)
+
+    libc_name, libc_version = platform.libc_ver()
+    arch = platform.machine().lower()
+    if libc_name == "glibc" and libc_version:
+        parts = libc_version.split(".")
+        if len(parts) >= 2:
+            return f"manylinux_{parts[0]}_{parts[1]}_{arch}"
+    elif "musl" in sys.version.lower() or os.path.exists("/lib/ld-musl-x86_64.so.1"):
+        return f"musllinux_1_2_{arch}"
+
+    raise RuntimeError(
+        f"Impossible de déterminer un tag de compatibilité manylinux ou musllinux audité pour l'hôte "
+        f"({libc_name} {libc_version} {arch})."
+    )
+
+
 class CustomBuildHook(BuildHookInterface):
     """Hook de construction personnalisée pour compiler le médiateur AT-SPI Rust."""
 
@@ -93,10 +119,9 @@ if os.path.isfile(__file__):
             mode = os.stat(dest_bin).st_mode
             os.chmod(dest_bin, mode | stat.S_IXUSR)
 
-            # Le binaire natif ELF est embarqué : marquer la wheel avec le tag de plateforme exact de l'hôte
-            # sans revendiquer abusivement la conformité manylinux/musllinux non auditée
+            # Le binaire natif ELF est embarqué : marquer la wheel avec un tag de compatibilité audité (manylinux / musllinux)
             build_data["pure_python"] = False
-            plat = f"linux_{platform.machine().lower()}"
+            plat = _detect_linux_platform_tag()
             build_data["tag"] = f"py3-none-{plat}"
         else:
             # Aucun binaire natif embarqué : garantir une wheel pure Python cohérente

@@ -737,8 +737,8 @@ def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout
             text=True,
         )
     except Exception as exc:
-        logger.error("Impossible de lancer le processus MCP %s: %s", binary, exc)
-        return False
+        logger.error("Impossible de lancer le processus MCP %s: %s, repli sur D-Bus", binary, exc)
+        return _dbus_call_action_or_value(tool_name, arguments, timeout=timeout)
 
     init_req = {
         "jsonrpc": "2.0",
@@ -900,6 +900,13 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
     # 2. Résolution de l'exécutable Rust
     binary = find_atspi_mediator_binary()
     if not binary:
+        logger.info("Moteur Rust AT-SPI introuvable, tentative de repli D-Bus pour get_app_state")
+        dbus_tree = _dbus_get_app_state(app_name=app_name)
+        if dbus_tree:
+            res = _format_snapshot_result(dbus_tree, app_name, include_screenshot)
+            res["degraded"] = True
+            return res
+
         _clear_accessibility_cache()
         return {
             "status": "error",
@@ -924,9 +931,15 @@ def get_app_state(include_screenshot: bool = False, app_name: str | None = None)
             check=False,
         )
         if proc.returncode != 0:
-            _clear_accessibility_cache()
             err_msg = proc.stderr.strip() or f"Code sortie {proc.returncode}"
-            logger.warning("Échec de l'extraction de l'arbre AT-SPI : %s", err_msg)
+            logger.warning("Échec de l'extraction de l'arbre AT-SPI (%s), tentative de repli D-Bus", err_msg)
+            dbus_tree = _dbus_get_app_state(app_name=app_name)
+            if dbus_tree:
+                res = _format_snapshot_result(dbus_tree, app_name, include_screenshot)
+                res["degraded"] = True
+                return res
+
+            _clear_accessibility_cache()
             return {
                 "status": "error",
                 "layer": "accessibility",
@@ -1014,11 +1027,10 @@ def perform_action(
     element_id = str(element_id)
 
     with _cache_lock:
-        if snapshot_id is not None and snapshot_id != _last_snapshot_id:
+        if snapshot_id is not None and snapshot_id not in _snapshots:
             logger.error(
-                "Snapshot ID '%s' périmé (dernier snapshot valide: '%s'). Action rejetée.",
+                "Snapshot ID '%s' inconnu ou expiré. Action rejetée.",
                 snapshot_id,
-                _last_snapshot_id,
             )
             return False
 
@@ -1031,14 +1043,6 @@ def perform_action(
             return False
 
         with _cache_lock:
-            if snapshot_id != _last_snapshot_id:
-                logger.error(
-                    "Snapshot ID '%s' périmé pour l'index %s (dernier snapshot: '%s'). Action rejetée.",
-                    snapshot_id,
-                    element_id,
-                    _last_snapshot_id,
-                )
-                return False
             snapshot_entry = _snapshots.get(snapshot_id)
             if snapshot_entry is None:
                 logger.error(
@@ -1097,11 +1101,10 @@ def set_value(
     element_id = str(element_id)
 
     with _cache_lock:
-        if snapshot_id is not None and snapshot_id != _last_snapshot_id:
+        if snapshot_id is not None and snapshot_id not in _snapshots:
             logger.error(
-                "Snapshot ID '%s' périmé (dernier snapshot valide: '%s'). Écriture de valeur rejetée.",
+                "Snapshot ID '%s' inconnu ou expiré. Écriture de valeur rejetée.",
                 snapshot_id,
-                _last_snapshot_id,
             )
             return False
 
@@ -1114,14 +1117,6 @@ def set_value(
             return False
 
         with _cache_lock:
-            if snapshot_id != _last_snapshot_id:
-                logger.error(
-                    "Snapshot ID '%s' périmé pour l'index %s (dernier snapshot: '%s'). Écriture de valeur rejetée.",
-                    snapshot_id,
-                    element_id,
-                    _last_snapshot_id,
-                )
-                return False
             snapshot_entry = _snapshots.get(snapshot_id)
             if snapshot_entry is None:
                 logger.error(

@@ -751,3 +751,77 @@ def test_dbus_get_app_state_deadline_interruption(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr("time.monotonic", mock_time)
     nodes_mid = accessibility._dbus_get_app_state(timeout=2.0)
     assert isinstance(nodes_mid, list)
+
+
+def test_multi_snapshot_concurrent_validity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie que la capture d'un second snapshot n'invalide pas les requêtes sur le premier snapshot."""
+    called_refs: list[str] = []
+
+    def mock_mcp_call(tool_name: str, args: dict[str, Any], timeout: float = 15.0) -> bool:
+        called_refs.append(args.get("element_identifier", ""))
+        return True
+
+    monkeypatch.setattr(accessibility, "_call_mcp_action_or_value", mock_mcp_call)
+
+    # Créer deux snapshots distincts (simulant deux applications ou requêtes concurrentes)
+    accessibility._snapshots["snap_app_a"] = {
+        "nodes": {"1": ":1.10/node/button_a"},
+        "app_name": "AppA",
+    }
+    accessibility._snapshots["snap_app_b"] = {
+        "nodes": {"1": ":1.20/node/button_b"},
+        "app_name": "AppB",
+    }
+
+    # Agir sur snap_app_a après la création de snap_app_b
+    ok_a = perform_action("1", "click", snapshot_id="snap_app_a")
+    assert ok_a is True
+    assert called_refs[-1] == ":1.10/node/button_a"
+
+    # Agir sur snap_app_b
+    ok_b = perform_action("1", "press", snapshot_id="snap_app_b")
+    assert ok_b is True
+    assert called_refs[-1] == ":1.20/node/button_b"
+
+    # set_value sur les deux snapshots
+    val_a = set_value("1", "texte_a", snapshot_id="snap_app_a")
+    assert val_a is True
+    val_b = set_value("1", "texte_b", snapshot_id="snap_app_b")
+    assert val_b is True
+
+
+def test_get_app_state_dbus_fallback_when_binary_missing_or_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie le repli sur D-Bus pur quand le binaire Rust est manquant ou échoue."""
+    fake_tree = [{"name": "FallbackBtn", "role": "push button", "object_ref": ":1.99/node"}]
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *a, **kw: None)
+    monkeypatch.setattr(accessibility, "_dbus_get_app_state", lambda app_name=None: fake_tree)
+
+    res = get_app_state(include_screenshot=False, app_name="test_app")
+    assert res["status"] == "success"
+    assert res.get("degraded") is True
+    assert res["count"] == 1
+    assert res["tree"][0]["name"] == "FallbackBtn"
+
+
+def test_call_mcp_action_or_value_fallback_on_popen_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie le repli direct sur _dbus_call_action_or_value en cas d'erreur de lancement Popen."""
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *a, **kw: "/bin/false")
+
+    def mock_popen_fail(*args: Any, **kwargs: Any) -> Any:
+        raise OSError("Processus non exécutable")
+
+    monkeypatch.setattr(subprocess, "Popen", mock_popen_fail)
+    dbus_called = False
+
+    def mock_dbus_call(tool_name: str, args: dict[str, Any], timeout: float = 10.0) -> bool:
+        nonlocal dbus_called
+        dbus_called = True
+        return True
+
+    monkeypatch.setattr(accessibility, "_dbus_call_action_or_value", mock_dbus_call)
+
+    res = accessibility._call_mcp_action_or_value(
+        "perform_action", {"element_identifier": ":1.1/node", "action": "click"}
+    )
+    assert res is True
+    assert dbus_called is True
