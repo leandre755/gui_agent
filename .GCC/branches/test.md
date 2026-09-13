@@ -137,5 +137,5 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Validation Globale CI (Phase 1 finale)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 105/105 tests passés en 36.20s, 0 avertissement, 0 erreur | **PASS** |
 | **Compilation Rust native Workspace** | `cargo check` | Vérification du crate natif `atspi_mediator` | Compilé en 0.09s (code 0) | **PASS** |
 | **Revue Greptile finale sur commit `45ca723`** | `greptile review --agent --branch main` | Vérification exhaustive de la branche contre main | `Confidence: 5/5`, 0 finding, `The PR appears safe to merge` | **PASS** |
-
-
+| **Certification Greptile finale sur commit `f8c261c`** | `greptile review --agent --branch main --instructions "..."` | Certification des 3 ajustements finaux (Review ID `9369eadb-09f9-439d-94e5-ca3a78d6c94a`) | `Confidence: 5/5`, 0 comment, `The reviewed adjustments appear safe to merge` | **PASS** |
+| **Certification CodeRabbit finale sur commit `f8c261c`** | `coderabbit review --agent --base-commit 6d6686c` | 0 finding sur l'ensemble des fichiers modifiés | `review_completed`, `findings: 0` | **PASS** |

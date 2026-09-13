@@ -11,7 +11,7 @@
   - Compilation Rust : `cargo check` validé en 0.09s (code 0).
   - Revue CodeRabbit locale : `coderabbit review --agent --base-commit 6d6686c` validée avec **0 finding** sur `windows/install.ps1`, `linux/core/repl.py`, `linux/tests/test_package.py`.
   - Commit git : `45ca723` validé par les 8/8 hooks pre-commit de qualité (gitleaks, pip-audit, ruff check, ruff format, mypy, sonar/bugbear, bandit, semgrep).
-  - Revue Greptile locale : `greptile review --agent --branch main` sur commit `45ca723` exécutée avec temporisation de 300s via `schedule` -> **Confidence: 5/5**, 0 constat, `The PR appears safe to merge`.
+  - Revue Greptile locale : `greptile review --agent --branch main` certifiée avec temporisation de 300s via `schedule` (Review ID `9369eadb-09f9-439d-94e5-ca3a78d6c94a`) -> **Confidence: 5/5**, 0 constat, `The reviewed adjustments appear safe to merge`.
 
 ## ⚡ Technical Diffs / Atomic Modifications
 - **File**: `windows/install.ps1`
