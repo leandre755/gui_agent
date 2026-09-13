@@ -125,7 +125,7 @@ if (-not $DryRun) {
 
 # Step 4: Install GUI Agent via `uv tool install`
 Log-Info "4/5 - Installation isolée de 'gui-agent' via 'uv tool install'..."
-$scriptDir = $PSScriptRoot
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $projectRoot = $scriptDir
 if (-not (Test-Path (Join-Path $projectRoot "pyproject.toml")) -and (Test-Path (Join-Path (Split-Path $scriptDir -Parent) "pyproject.toml"))) {
     $projectRoot = Split-Path $scriptDir -Parent
@@ -191,7 +191,11 @@ if ($SkipMcpConfig -or $DryRun) {
         if ($configClaude) {
             try {
                 & claude mcp add gui-agent -- gui-agent
-                Log-Success "Serveur MCP configuré pour Claude Code."
+                if ($LASTEXITCODE -eq 0) {
+                    Log-Success "Serveur MCP configuré pour Claude Code."
+                } else {
+                    Log-Warn "Échec de configuration dans Claude Code (code de sortie $LASTEXITCODE). Le serveur est peut-être déjà configuré."
+                }
             } catch {
                 Log-Warn "Le serveur est peut-être déjà configuré dans Claude Code."
             }

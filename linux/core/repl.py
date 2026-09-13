@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 import contextlib
 import logging
 import os
@@ -61,6 +62,10 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
         for fd in (in_fd, out_fd, err_fd):
             os.set_blocking(fd, False)
         inp, off, in_closed, out_len, err_len, readers = code.encode("utf-8"), 0, False, 0, 0, [out_fd, err_fd]
+        decoders: dict[int, codecs.IncrementalDecoder] = {
+            out_fd: codecs.getincrementaldecoder("utf-8")(errors="replace"),
+            err_fd: codecs.getincrementaldecoder("utf-8")(errors="replace"),
+        }
 
         while True:
             el = time.monotonic() - start
@@ -80,28 +85,18 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
             r, w, _ = select.select(readers, wl, [], min(max(0.01, timeout - el), 0.05))
             if w and not in_closed:
                 off, in_closed = _write_input(proc, in_fd, inp, off)
-            for fd in r:
-                chunk = _safe_read(fd)
-                if chunk is None:
-                    continue
-                if not chunk:
-                    if fd in readers:
-                        readers.remove(fd)
-                    continue
-                (out_ch if fd == out_fd else err_ch).append(chunk)
-                out_len += len(chunk) if fd == out_fd else 0
-                err_len += len(chunk) if fd != out_fd else 0
-                if out_len > max_output_chars or err_len > max_output_chars:
-                    _kill_proc(proc)
-                    status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
-                    break
+            out_len, err_len, exceeded = _handle_readable_fds(
+                r, readers, out_fd, out_ch, err_ch, decoders, out_len, err_len, max_output_chars
+            )
+            if exceeded:
+                _kill_proc(proc)
+                status, err = "error", f"Taille de sortie maximale dépassée ({max_output_chars} caractères)."
+                break
             if err:
                 break
 
         if not err:
-            for fd in readers:
-                while c := _safe_read(fd):
-                    (out_ch if fd == out_fd else err_ch).append(c)
+            _drain_readers(readers, out_fd, out_ch, err_ch, decoders)
         if proc.returncode is None:
             _close_proc(proc)
         if proc.returncode != 0 and status == "success":
@@ -120,6 +115,50 @@ def execute_script(code: str, timeout: float = 30.0, max_output_chars: int = MAX
     if err:
         res["error"] = err
     return res
+
+
+def _handle_readable_fds(
+    r: list[int],
+    readers: list[int],
+    out_fd: int,
+    out_ch: list[str],
+    err_ch: list[str],
+    decoders: dict[int, codecs.IncrementalDecoder],
+    out_len: int,
+    err_len: int,
+    max_output_chars: int,
+) -> tuple[int, int, bool]:
+    for fd in r:
+        chunk = _safe_read(fd, decoders.get(fd))
+        if chunk is None:
+            continue
+        if not chunk:
+            if fd in readers:
+                readers.remove(fd)
+            continue
+        (out_ch if fd == out_fd else err_ch).append(chunk)
+        if fd == out_fd:
+            out_len += len(chunk)
+        else:
+            err_len += len(chunk)
+        if out_len > max_output_chars or err_len > max_output_chars:
+            return out_len, err_len, True
+    return out_len, err_len, False
+
+
+def _drain_readers(
+    readers: list[int],
+    out_fd: int,
+    out_ch: list[str],
+    err_ch: list[str],
+    decoders: dict[int, codecs.IncrementalDecoder],
+) -> None:
+    for fd in readers:
+        while c := _safe_read(fd, decoders.get(fd)):
+            (out_ch if fd == out_fd else err_ch).append(c)
+    for fd, dec in decoders.items():
+        if rest := dec.decode(b"", final=True):
+            (out_ch if fd == out_fd else err_ch).append(rest)
 
 
 def _clamp_output(
@@ -142,13 +181,34 @@ def _close_proc(proc: subprocess.Popen[str]) -> None:
                 s.close()
 
 
-def _safe_read(fd: int) -> str | None:
+def _safe_read(fd: int, decoder: codecs.IncrementalDecoder | None = None) -> str | None:
     try:
-        return os.read(fd, 4096).decode("utf-8", errors="replace")
+        data = os.read(fd, 4096)
     except (BlockingIOError, InterruptedError):
         return None
     except OSError:
-        return ""
+        return decoder.decode(b"", final=True) if decoder else ""
+
+    if not data:
+        return decoder.decode(b"", final=True) if decoder else ""
+
+    if decoder is None:
+        return data.decode("utf-8", errors="replace")
+
+    text = decoder.decode(data)
+    for _ in range(4):
+        if text:
+            break
+        try:
+            more = os.read(fd, 4096)
+            if not more:
+                return decoder.decode(b"", final=True)
+            text = decoder.decode(more)
+        except (BlockingIOError, InterruptedError):
+            return None
+        except OSError:
+            return decoder.decode(b"", final=True)
+    return text if text else None
 
 
 def _kill_proc(proc: subprocess.Popen[str]) -> None:

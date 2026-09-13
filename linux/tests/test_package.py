@@ -929,3 +929,54 @@ def test_modular_architecture_scaffolding(monkeypatch):
 
     monkeypatch.setattr("subprocess.run", mock_run)
     assert utils.type_char_human("a", base_delay=0.0) is True and any("type" in c and "a" in c for c in emitted)
+
+
+def test_repl_safe_read_incremental_utf8() -> None:
+    """Vérifie que _safe_read gère les fragments multi-octets UTF-8 sans corrompre ni couper le flux."""
+    import codecs
+    import os
+    from linux.core.repl import _safe_read
+
+    r, w = os.pipe()
+    try:
+        os.set_blocking(r, False)
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+
+        # 1. Écriture des 2 premiers octets du caractère € (\xe2\x82\xac)
+        os.write(w, b"\xe2\x82")
+        # _safe_read doit bufferiser et retourner None car le caractère est incomplet
+        assert _safe_read(r, decoder) is None
+
+        # 2. Écriture du 3ème octet et d'un suffixe ASCII
+        os.write(w, b"\xac_valid")
+        assert _safe_read(r, decoder) == "€_valid"
+
+        # 3. Écriture d'un emoji 4 octets 🚀 (\xf0\x9f\x9a\x80) scindé en 2 écritures
+        os.write(w, b"\xf0\x9f")
+        assert _safe_read(r, decoder) is None
+        os.write(w, b"\x9a\x80")
+        assert _safe_read(r, decoder) == "🚀"
+
+        # 4. Flush sur fermeture du descripteur (EOF)
+        os.close(w)
+        assert _safe_read(r, decoder) == ""
+    finally:
+        os.close(r)
+
+
+def test_repl_execute_script_multibyte_utf8() -> None:
+    """Vérifie l'exécution nominale d'un script émettant de l'UTF-8 complexe."""
+    from linux.core.repl import execute_script
+
+    res = execute_script("print('Bonjour 🚀 € 🌟 àéïôù')")
+    assert res["status"] == "success"
+    assert "Bonjour 🚀 € 🌟 àéïôù" in res["stdout"]
+
+
+def test_windows_install_ps1_guards() -> None:
+    """Vérifie la présence des gardes PSScriptRoot/Get-Location et LASTEXITCODE dans windows/install.ps1."""
+    with open("windows/install.ps1", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }" in content
+    assert "if ($LASTEXITCODE -eq 0) {" in content
