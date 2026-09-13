@@ -75,7 +75,6 @@ path = "hatch_build.py"
 [tool.ruff]
 line-length = 120
 target-version = "py313"
-cache-dir = "/tmp/.ruff_cache"
 exclude = [
     ".git",
     ".GCC",
@@ -119,7 +118,6 @@ max-complexity = 25
 [tool.mypy]
 python_version = "3.13"
 mypy_path = "."
-cache_dir = "/tmp/.mypy_cache"
 ignore_missing_imports = true
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -141,6 +139,5 @@ skips = ["B603", "B607", "B404"]
 testpaths = ["linux/tests"]
 python_files = ["test_*.py"]
 pythonpath = ["linux", "."]
-addopts = "-o cache_dir=/tmp/.pytest_cache"
 
 

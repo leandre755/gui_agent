@@ -47,7 +47,7 @@ print_banner() {
 
 show_help() {
     print_banner
-    echo "Usage: ./uninstall.sh [OPTIONS]"
+    echo "Usage: ./linux/uninstall.sh [OPTIONS]"
     echo ""
     echo "Options:"
     echo "  -y, --yes, --no-prompt   Non-interactive mode (accept defaults)"

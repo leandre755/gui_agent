@@ -58,7 +58,11 @@ if ($uvCmd -or (Test-Path $uvPath)) {
     } else {
         try {
             & $uvExec tool uninstall gui-agent
-            Log-Success "Outil 'gui-agent' désinstallé avec succès de uv."
+            if ($LASTEXITCODE -eq 0) {
+                Log-Success "Outil 'gui-agent' désinstallé avec succès de uv."
+            } else {
+                Log-Warn "Le package 'gui-agent' n'était pas présent dans les outils uv ou code de sortie : $LASTEXITCODE."
+            }
         } catch {
             Log-Warn "Le package 'gui-agent' n'était pas présent dans les outils uv."
         }
@@ -78,7 +82,11 @@ if ($DryRun) {
     if ($claudeCmd) {
         try {
             & claude mcp remove gui-agent
-            Log-Success "Configuration Claude Code nettoyée."
+            if ($LASTEXITCODE -eq 0) {
+                Log-Success "Configuration Claude Code nettoyée."
+            } else {
+                Log-Warn "Le serveur MCP n'était pas enregistré dans Claude Code ou code de sortie : $LASTEXITCODE."
+            }
         } catch {
             Log-Warn "Le serveur MCP n'était pas enregistré dans Claude Code."
         }
@@ -92,7 +100,8 @@ if ($DryRun) {
             $parsed = $rawJson | ConvertFrom-Json
             if ($parsed.mcpServers -and $parsed.mcpServers."gui-agent") {
                 $parsed.mcpServers.PSObject.Properties.Remove("gui-agent")
-                $parsed | ConvertTo-Json -Depth 5 | Set-Content -Path $geminiConfigFile -Encoding UTF8
+                $jsonOut = $parsed | ConvertTo-Json -Depth 10
+                [System.IO.File]::WriteAllText($geminiConfigFile, $jsonOut, (New-Object System.Text.UTF8Encoding($false)))
                 Log-Success "Entrée 'gui-agent' retirée de $geminiConfigFile"
             }
         } catch {
@@ -103,29 +112,53 @@ if ($DryRun) {
 
 # Step 3: Purge Screenshots and Runtime Cache
 Log-Info "3/3 - Nettoyage des données temporaires et captures d'écran..."
-$screenshotsDir = Join-Path $env:USERPROFILE ".local\share\gui-agent\screenshots"
+$dataDirs = @(
+    (Join-Path $env:LOCALAPPDATA "gui-agent"),
+    (Join-Path $env:USERPROFILE ".local\share\gui-agent")
+)
 
-if (Test-Path $screenshotsDir) {
+$targetDirs = @()
+foreach ($dir in $dataDirs) {
+    if (Test-Path $dir) {
+        $targetDirs += $dir
+    }
+}
+
+if ($targetDirs.Count -gt 0) {
     if ($DryRun) {
-        Log-Info "[Dry-Run] Purge possible du répertoire : $screenshotsDir"
+        foreach ($dir in $targetDirs) {
+            Log-Info "[Dry-Run] Purge possible du répertoire : $dir"
+        }
     } else {
         $doPurge = $false
         if ($PurgeData) {
             $doPurge = $true
         } elseif (-not $Yes) {
-            $resp = Read-Host "Voulez-vous supprimer définitivement le dossier de captures ($screenshotsDir) ? [o/N]"
+            $resp = Read-Host "Voulez-vous supprimer définitivement les données et captures résiduelles ($($targetDirs -join ', ')) ? [o/N]"
             if ($resp -match "^(o|oui|y|yes)$") { $doPurge = $true }
         }
 
         if ($doPurge) {
-            Remove-Item -Path $screenshotsDir -Recurse -Force -ErrorAction SilentlyContinue
-            Log-Success "Dossier de captures supprimé : $screenshotsDir"
+            foreach ($dir in $targetDirs) {
+                try {
+                    Remove-Item -Path $dir -Recurse -Force
+                    if (Test-Path $dir) {
+                        Log-Warn "Impossible de supprimer complètement : $dir (fichiers verrouillés ou droits insuffisants)"
+                    } else {
+                        Log-Success "Données et captures supprimées avec succès : $dir"
+                    }
+                } catch {
+                    Log-Warn "Erreur lors de la suppression de $dir : $_"
+                }
+            }
         } else {
-            Log-Info "Dossier de captures conservé : $screenshotsDir"
+            foreach ($dir in $targetDirs) {
+                Log-Info "Données conservées : $dir"
+            }
         }
     }
 } else {
-    Log-Info "Aucun dossier de capture résiduel trouvé."
+    Log-Info "Aucun dossier de données résiduelles trouvé."
 }
 
 Write-Host ""

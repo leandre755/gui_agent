@@ -103,7 +103,7 @@ La réponse architecturale réside dans **l'inversion du contrôle via un REPL l
 
 ## 5. Synthèse des Invariants Système & Conclusion
 
-Au terme de cette recherche, treize outils chirurgicaux et non-redondants suffisent à garantir une couverture intégrale (100% de succès sur les douze cas limites réputés insolubles) :
+Au terme de cette recherche, treize outils chirurgicaux d'interaction directe (complétés par deux outils d'enregistrement vidéo pour la traçabilité continue) suffisent à garantir une couverture intégrale (100% de succès sur les douze cas limites réputés insolubles) :
 
 1. **`execute_script`** (Cerveau d'exécution locale, abolition de la latence RTT)
 2. **`process_run`** (Contournement PTY des verrous Polkit/Wayland)
@@ -118,6 +118,8 @@ Au terme de cette recherche, treize outils chirurgicaux et non-redondants suffis
 11. **`mouse_drag_smooth`** (Flux cinématique continu d'arrachement)
 12. **`mouse_scroll`** (Matérialisation active d'états virtualisés)
 13. **`key_tap`** (Raccourcis conventionnels système et applicatifs)
+14. **`gui_start_video_recording`** (Capture vidéo continue du flux d'écran pour audit comportemental et relecture déterministe)
+15. **`gui_stop_video_recording`** (Finalisation sécurisée du conteneur vidéo et nettoyage des ressources ffmpeg)
 
 ### Épilogue : De l'Artifice à la Maîtrise
 Cette note de conception ne propose pas une énième surcouche heuristique. Elle acte le passage d'une informatique d'illusion — où l'on tentait de faire croire qu'un réseau de neurones « voyait » un bureau comme un œil humain — à une informatique de vérité mécanique. 

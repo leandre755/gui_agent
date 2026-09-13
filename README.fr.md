@@ -104,10 +104,10 @@ Exécutez le script d'installation automatisé pour vérifier les dépendances, 
 
 ```bash
 # Installateur curl en une ligne
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
 
 # Ou localement depuis un dépôt cloné
-./install.sh
+./linux/install.sh
 ```
 
 #### Microsoft Windows (PowerShell)
@@ -115,10 +115,10 @@ Lancez PowerShell (utilisateur standard ou administrateur) et exécutez :
 
 ```powershell
 # Installateur PowerShell en une ligne
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
 
 # Ou localement depuis un dépôt cloné
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 ### 2. Déploiement Isolé via uv tool
@@ -405,20 +405,20 @@ Pour purger proprement `gui-agent`, supprimer les environnements isolés et reti
 
 ```bash
 # Désinstallateur distant automatisé
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh | bash
 
 # Désinstallation locale avec purge complète des données et captures
-./uninstall.sh --purge-data --yes
+./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
 # Désinstallateur distant automatisé
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
 
 # Désinstallation locale avec purge complète des données et captures
-.\uninstall.ps1 -PurgeData -Yes
+.\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 #### Éléments nettoyés par le désinstallateur :

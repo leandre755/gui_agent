@@ -191,7 +191,15 @@ async fn run_mcp_server() -> Result<()> {
     let mut reader = BufReader::new(stdin).lines();
     let cached_nodes: Arc<Mutex<Vec<AccessibilityNode>>> = Arc::new(Mutex::new(Vec::new()));
 
-    while let Ok(Some(line)) = reader.next_line().await {
+    loop {
+        let line = match reader.next_line().await {
+            Ok(Some(line)) => line,
+            Ok(None) => break,
+            Err(err) => {
+                eprintln!("gui-agent-atspi: erreur de lecture stdin : {err}");
+                continue;
+            }
+        };
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;

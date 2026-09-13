@@ -105,10 +105,10 @@ Run the automated installer to check dependencies, install Astral `uv`, configur
 
 ```bash
 # Single-line curl installer
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
 
 # Or locally from a cloned repository
-./install.sh
+./linux/install.sh
 ```
 
 #### Microsoft Windows (PowerShell)
@@ -116,10 +116,10 @@ Launch PowerShell (standard user or administrator) and execute:
 
 ```powershell
 # Single-line PowerShell installer
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
 
 # Or locally from a cloned repository
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 ### 2. Isolated Deployment via uv tool
@@ -406,20 +406,20 @@ To cleanly purge `gui-agent`, delete isolated environments, and remove registere
 
 ```bash
 # Automated remote uninstaller
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh | bash
 
 # Local uninstall with full data and screenshot purge
-./uninstall.sh --purge-data --yes
+./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
 # Automated remote uninstaller
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
 
 # Local uninstall with full data and screenshot purge
-.\uninstall.ps1 -PurgeData -Yes
+.\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 #### What the uninstaller cleans:

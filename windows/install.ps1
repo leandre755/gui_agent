@@ -130,21 +130,36 @@ $projectRoot = $scriptDir
 if (-not (Test-Path (Join-Path $projectRoot "pyproject.toml")) -and (Test-Path (Join-Path (Split-Path $scriptDir -Parent) "pyproject.toml"))) {
     $projectRoot = Split-Path $scriptDir -Parent
 }
+
+# Vérification de la disponibilité du backend Windows natif (Phase 5, Issue #134)
+$windowsBackendDir = Join-Path $projectRoot "windows\crates"
+$windowsSrcDir = Join-Path $projectRoot "windows\gui_agent"
+if (-not (Test-Path $windowsBackendDir) -and -not (Test-Path $windowsSrcDir)) {
+    Log-Error "Le backend Windows natif (UI Automation / Win32 API) est actuellement en cours de développement (Phase 5, Issue #134)."
+    Log-Error "L'installation est suspendue sur cette plateforme jusqu'à la livraison du module Windows dédié pour éviter d'installer le backend Linux."
+    exit 1
+}
+
 if ($Local -or (Test-Path (Join-Path $projectRoot "pyproject.toml"))) {
     Log-Info "Installation en mode local depuis $projectRoot..."
     if (-not $DryRun) {
         & $uvExecName tool install "$projectRoot" --force
+        if ($LASTEXITCODE -ne 0) {
+            throw "uv tool install a échoué avec le code de sortie $LASTEXITCODE"
+        }
     } else {
         Log-Info "[Dry-Run] uv tool install `"$projectRoot`" --force"
     }
 } else {
     Log-Info "Installation depuis le registre de packages..."
     if (-not $DryRun) {
-        try {
-            & $uvExecName tool install gui-agent --force
-        } catch {
+        & $uvExecName tool install gui-agent --force
+        if ($LASTEXITCODE -ne 0) {
             Log-Info "Installation depuis le dépôt Git distant..."
             & $uvExecName tool install "git+https://github.com/leandre755/gui_agent.git" --force
+            if ($LASTEXITCODE -ne 0) {
+                throw "uv tool install distant a échoué avec le code de sortie $LASTEXITCODE"
+            }
         }
     } else {
         Log-Info "[Dry-Run] uv tool install gui-agent --force"
@@ -198,7 +213,8 @@ if ($SkipMcpConfig -or $DryRun) {
                 $rawJson = Get-Content -Path $geminiConfigFile -Raw -Encoding UTF8
                 $configData = $rawJson | ConvertFrom-Json
             } catch {
-                Log-Warn "Fichier mcp_config.json corrompu, réinitialisation."
+                Log-Error "Fichier mcp_config.json invalide. Le fichier existant est conservé."
+                throw "Échec de lecture de $geminiConfigFile : $_"
             }
         }
         if ($null -eq $configData -or -not ($configData -is [PSCustomObject])) {

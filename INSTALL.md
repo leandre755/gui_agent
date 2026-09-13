@@ -11,13 +11,13 @@ Ce guide détaille l'installation, la configuration et le dépannage du serveur 
 Ouvrez une invite de commande **PowerShell** (en utilisateur standard ou administrateur) et lancez :
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
 ```
 
 Ou en local depuis le dépôt cloné :
 
 ```powershell
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 #### Ce que prend en charge automatiquement le script `install.ps1` :
@@ -114,10 +114,10 @@ Pour désinstaller complètement le serveur et nettoyer les configurations MCP :
 
 ```powershell
 # Désinstallation automatique
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
 
 # Ou avec purge complète des captures d'écran :
-.\uninstall.ps1 -PurgeData -Yes
+.\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 ---
@@ -126,7 +126,7 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 ### Installation automatisée en une seule commande :
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
 ```
 
 Le script d'installation configure automatiquement :
@@ -138,5 +138,5 @@ Le script d'installation configure automatiquement :
 
 ### Désinstallation sous Linux :
 ```bash
-./uninstall.sh --purge-data --yes
+./linux/uninstall.sh --purge-data --yes
 ```

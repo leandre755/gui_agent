@@ -70,22 +70,10 @@ class CustomBuildHook(BuildHookInterface):
             mode = os.stat(dest_bin).st_mode
             os.chmod(dest_bin, mode | stat.S_IXUSR)
 
-            # Le binaire natif ELF est embarqué : marquer la wheel avec le tag de plateforme conforme
+            # Le binaire natif ELF est embarqué : marquer la wheel avec le tag de plateforme exact de l'hôte
+            # sans revendiquer abusivement la conformité manylinux/musllinux non auditée
             build_data["pure_python"] = False
-            try:
-                from packaging.tags import sys_tags
-
-                # Retenir le premier tag audité conforme (manylinux ou musllinux) pour conformité PyPI
-                plat = next(
-                    iter(t.platform for t in sys_tags() if "manylinux" in t.platform or "musllinux" in t.platform)
-                )
-            except Exception:
-                try:
-                    from packaging.tags import sys_tags
-
-                    plat = next(iter(sys_tags())).platform
-                except Exception:
-                    plat = f"linux_{platform.machine().lower()}"
+            plat = f"linux_{platform.machine().lower()}"
             build_data["tag"] = f"py3-none-{plat}"
         else:
             # Aucun binaire natif embarqué : garantir une wheel pure Python cohérente

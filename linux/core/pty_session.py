@@ -42,9 +42,17 @@ class PTYSession:
         proc: subprocess.Popen[Any] | None = None
         try:
             os.set_blocking(master_fd, False)
-            proc = subprocess.Popen(
-                cmd, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, close_fds=True, preexec_fn=os.setsid
-            )
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdin=slave_fd,
+                    stdout=slave_fd,
+                    stderr=slave_fd,
+                    close_fds=True,
+                    start_new_session=True,
+                )
+            except OSError as exc:
+                return -1, f"Échec de démarrage du processus PTY : {exc}"
             with contextlib.suppress(OSError):
                 os.close(slave_fd)
                 slave_fd = -1
@@ -87,6 +95,7 @@ class PTYSession:
                 total_chars += len(c)
                 if total_chars > limit:
                     _kill_pty(proc)
+                    return -1, "Taille de sortie PTY maximale dépassée."
             returncode = proc.poll()
         finally:
             for fd in (slave_fd, master_fd):

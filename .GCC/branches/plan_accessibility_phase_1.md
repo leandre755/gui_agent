@@ -1,24 +1,24 @@
 # Execution Plan: Médiation d'Accessibilité Programmatique via AT-SPI / D-Bus (Issue #130)
 
 ## 📋 Target Invariant & Pre-requisites
-- **Target Invariant**: CI 100% PASS (`./ci.sh` : compileall, workflows, ruff check, ruff format, mypy, pytest 100%). Intégrité et robustesse du connecteur AT-SPI en Rust (`crates/atspi_mediator`) et de la couche Python `gui_agent.layers.accessibility`. Zéro régression sur les 65 tests initiaux.
-- **Pre-requisites**: Branche `feat/accessibility-mediation-phase-1`. Compilation locale du binaire Rust `crates/atspi_mediator/target/release/gui-agent-atspi` et connectivité D-Bus AT-SPI (`org.a11y.Bus`).
+- **Target Invariant**: CI 100% PASS (`./ci.sh` : compileall, workflows, ruff check, ruff format, mypy, pytest 100%). Intégrité et robustesse du connecteur AT-SPI en Rust (`linux/crates/atspi_mediator`) et de la couche Python `linux.layers.accessibility`. Zéro régression sur les 65 tests initiaux.
+- **Pre-requisites**: Branche `feat/accessibility-mediation-phase-1`. Compilation locale du binaire Rust `linux/crates/atspi_mediator/target/release/gui-agent-atspi` et connectivité D-Bus AT-SPI (`org.a11y.Bus`).
 
 ## 🛠️ Step-by-Step Sequence
 
-### Step 1: Création & Compilation du Crate Rust Natif `crates/atspi_mediator`
-- [x] **Action**: Implémentation de `crates/atspi_mediator/` avec `Cargo.toml`, `src/lib.rs` et `src/main.rs`. Implémentation des primitives AT-SPI2 / D-Bus (`snapshot_tree`, `perform_action`, `set_element_value`, `list_accessible_apps`, `connect`). Support CLI unifié (`state`, `action`, `value`, `apps`, `doctor`) et serveur MCP stdio JSON-RPC (`mcp`) pour les requêtes distantes. Résolution automatique des index numériques vers `object_ref` et repli sur les actions génériques (`activate`, `click`, `press`, `default`).
-- [x] **Verify**: `cargo build --release --manifest-path crates/atspi_mediator/Cargo.toml`
+### Step 1: Création & Compilation du Crate Rust Natif `linux/crates/atspi_mediator`
+- [x] **Action**: Implémentation de `linux/crates/atspi_mediator/` avec `Cargo.toml`, `src/lib.rs` et `src/main.rs`. Implémentation des primitives AT-SPI2 / D-Bus (`snapshot_tree`, `perform_action`, `set_element_value`, `list_accessible_apps`, `connect`). Support CLI unifié (`state`, `action`, `value`, `apps`, `doctor`) et serveur MCP stdio JSON-RPC (`mcp`) pour les requêtes distantes. Résolution automatique des index numériques vers `object_ref` et repli sur les actions génériques (`activate`, `click`, `press`, `default`).
+- [x] **Verify**: `cargo build --release --manifest-path linux/crates/atspi_mediator/Cargo.toml`
 - **Verification Proof**:
 ```text
-   Compiling atspi-mediator v0.1.0 (/home/omni/Code/gui_agent/crates/atspi_mediator)
+   Compiling atspi-mediator v0.1.0 (/home/omni/Code/gui_agent/linux/crates/atspi_mediator)
     Finished `release` profile [optimized] target(s) in 1m 06s
--rwxrwxr-x 2 omni omni 3,0M 12 sept. 02:28 /home/omni/Code/gui_agent/crates/atspi_mediator/target/release/gui-agent-atspi
+-rwxrwxr-x 2 omni omni 3,0M 12 sept. 02:28 /home/omni/Code/gui_agent/linux/crates/atspi_mediator/target/release/gui-agent-atspi
 ```
 
-### Step 2: Implémentation & Durcissement de la couche Python `gui_agent/layers/accessibility.py`
-- [x] **Action**: Connecteur AT-SPI dans `gui_agent/layers/accessibility.py`. Détection prioritaire du binaire Rust natif compilé localement (`gui-agent-atspi` en release ou debug), extraction d'arbres sémantiques en JSON, cache local de correspondance `_last_node_cache` (`element_index -> object_ref`), priorisation de `element_identifier` pour éviter les échecs de nœuds non trouvés, déclenchement d'actions et mutation de valeurs.
-- [x] **Verify**: `./venv/bin/python -c "from gui_agent.layers.accessibility import get_app_state, perform_action; s = get_app_state(app_name='antigravity'); print('State:', s['status'], s['count']); print('Action on 0:', perform_action('0', '0'))"`
+### Step 2: Implémentation & Durcissement de la couche Python `linux/layers/accessibility.py`
+- [x] **Action**: Connecteur AT-SPI dans `linux/layers/accessibility.py`. Détection prioritaire du binaire Rust natif compilé localement (`gui-agent-atspi` en release ou debug), extraction d'arbres sémantiques en JSON, cache local de correspondance `_last_node_cache` (`element_index -> object_ref`), priorisation de `element_identifier` pour éviter les échecs de nœuds non trouvés, déclenchement d'actions et mutation de valeurs.
+- [x] **Verify**: `./venv/bin/python -c "from linux.layers.accessibility import get_app_state, perform_action; s = get_app_state(app_name='antigravity'); print('State:', s['status'], s['count']); print('Action on 0:', perform_action('0', '0'))"`
 - **Verification Proof**:
 ```text
 State: success 2
@@ -26,8 +26,8 @@ Action on 0: True
 ```
 
 ### Step 3: Tests Unitaires & Intégration de la Couche Accessibilité
-- [x] **Action**: Ajout de 18 tests unitaires dans `tests/test_accessibility.py` et 8 tests unitaires Rust dans `crates/atspi_mediator/src/lib.rs` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), gestion stricte de `snapshot_id`, sélection déterministe d'action (`select_action_index`), rejet fail-closed des index périmés, et intégration façade `mcp_core`.
-- [x] **Verify**: `./venv/bin/pytest tests/test_accessibility.py -v && cargo test --manifest-path crates/atspi_mediator/Cargo.toml`
+- [x] **Action**: Ajout de 18 tests unitaires dans `linux/tests/test_accessibility.py` et 8 tests unitaires Rust dans `linux/crates/atspi_mediator/src/lib.rs` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), gestion stricte de `snapshot_id`, sélection déterministe d'action (`select_action_index`), rejet fail-closed des index périmés, et intégration façade `mcp_core`.
+- [x] **Verify**: `./venv/bin/pytest linux/tests/test_accessibility.py -v && cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml`
 - **Verification Proof**:
 ```text
 ============================= test session starts ==============================

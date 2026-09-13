@@ -144,6 +144,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
   - Validation CI 99/99 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
+  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : alignement des chemins de scripts d'installation dans la documentation et les scripts, tag de plateforme exact hôte dans `hatch_build.py` sans revendication abusive manylinux/musllinux, durcissement PTY (`start_new_session`, capture OSError, limite de taille drain), capture d'erreur lecture stdin MCP Rust, gating Windows et suppression des caches /tmp hardcodés.
 - 🔄 In progress: Préparation de la Pull Request de synthèse Phase 1 et restructuration multi-plateforme.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).

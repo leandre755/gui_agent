@@ -50,7 +50,7 @@ print_banner() {
 
 show_help() {
     print_banner
-    echo "Usage: ./install.sh [OPTIONS]"
+    echo "Usage: ./linux/install.sh [OPTIONS]"
     echo ""
     echo "Options:"
     echo "  -y, --yes, --no-prompt   Non-interactive mode (accept all defaults)"

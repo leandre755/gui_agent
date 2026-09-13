@@ -65,6 +65,7 @@ def run_evolution_tests():
         match_x = res_match.get("x")
         match_y = res_match.get("y")
         confidence = res_match.get("confidence")
+        assert confidence is not None, "Confiance de matching absente"
         print(f"Modèle trouvé aux coordonnées : ({match_x}, {match_y}) avec confiance {confidence:.4f}")
 
         assert match_x is not None and match_x > 0 and match_y is not None and match_y > 0, (
