@@ -139,3 +139,6 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Revue Greptile finale sur commit `45ca723`** | `greptile review --agent --branch main` | Vérification exhaustive de la branche contre main | `Confidence: 5/5`, 0 finding, `The PR appears safe to merge` | **PASS** |
 | **Certification Greptile finale sur commit `f8c261c`** | `greptile review --agent --branch main --instructions "..."` | Certification des 3 ajustements finaux (Review ID `9369eadb-09f9-439d-94e5-ca3a78d6c94a`) | `Confidence: 5/5`, 0 comment, `The reviewed adjustments appear safe to merge` | **PASS** |
 | **Certification CodeRabbit finale sur commit `f8c261c`** | `coderabbit review --agent --base-commit 6d6686c` | 0 finding sur l'ensemble des fichiers modifiés | `review_completed`, `findings: 0` | **PASS** |
+| **Validation Globale CI (Phase 1 durcie)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 54.98s, 0 avertissement, 0 erreur | **PASS** |
+| **Rejet index u32 hors plage & tests MCP** | `cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique > u32::MAX + priorité identifiant explicite | 13/13 tests passés (9 lib, 4 main), 0 avertissement | **PASS** |
+

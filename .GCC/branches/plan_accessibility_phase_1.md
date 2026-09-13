@@ -185,6 +185,33 @@ test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
+### Step 9: Validation stricte et rejet des index numériques hors plage u32 dans le médiateur Rust
+- [x] **Action**: Mise à jour de `resolve_mcp_target` dans `linux/crates/atspi_mediator/src/main.rs` pour valider `target_index` via `u32::try_from(i)` et rejeter immédiatement les valeurs supérieures à `u32::MAX` (`> 4294967295`) au lieu d'autoriser un débordement silencieux vers 0. Préservation de la priorité absolue des identifiants non-numériques explicites (`element_identifier`), et ajout de 4 tests unitaires dédiés dans `src/main.rs`.
+- [x] **Verify**: `cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml`
+- **Verification Proof**:
+```text
+running 9 tests
+test tests::test_select_action_index_ambiguous_rejected ... ok
+test tests::test_select_action_index_duplicate_exact_names_rejected ... ok
+test tests::test_select_action_index_empty_actions ... ok
+test tests::test_select_action_index_exact_match ... ok
+test tests::test_select_action_index_numeric_index ... ok
+test tests::test_select_action_index_single_action ... ok
+test tests::test_select_action_index_single_unrelated_action_rejected_for_click ... ok
+test tests::test_split_object_ref_id_invalid ... ok
+test tests::test_split_object_ref_id_valid ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+running 4 tests
+test tests::test_resolve_mcp_target_element_index_overflow_rejected ... ok
+test tests::test_resolve_mcp_target_explicit_identifier_priority ... ok
+test tests::test_resolve_mcp_target_element_index_valid ... ok
+test tests::test_resolve_mcp_target_numeric_identifier_fallback ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
 ## ⚠️ Mitigations & Edge Cases
 - **Risk**: Saturation CPU / mémoire lors de la compilation de `atspi` et `zbus` sur machine modeste.
 - **Mitigation**: Compilation séquentielle contrôlée avec build profile release optimisé (`codegen-units = 1`, `lto = "fat"`, `strip = "symbols"`), exclusion de `target/` de git via `.gitignore` pour préserver la légèreté du dépôt (binaire release 3,0M).

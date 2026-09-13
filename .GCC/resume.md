@@ -52,11 +52,11 @@
 ```
 
 ## 🚧 Unfinished Work & Technical Failures
-- Les 12 fils CodeRabbit et l'ensemble des fils Greptile sont résolus (`isResolved: true` sur 100% des threads).
-- Score Greptile 5/5 validé sur la PR.
-- Validation stricte des noms par regex appliquée pour satisfaire la checklist CodeRabbit.
-- Re-taguer `@coderabbitai` pour valider la levée du Changes Requested.
+- PR #137 entièrement soumise et passée en revue avec score Greptile 5/5 validé.
+- Tous les constats de revue résolus et validés localement (112/112 tests CI et 13/13 tests Rust).
+- En attente de consultation en lecture seule de l'état de la PR et de l'approbation formelle du mainteneur.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target Action**: Pousser le commit atomique sur `origin/feat/accessibility-mediation-phase-1` et notifier CodeRabbit.
-2. **Verification Command**: Attendre 480s puis relever les commentaires et scores via `gh pr view 137 --json comments,reviews`.
+1. **Target File**: `linux/crates/atspi_mediator/src/main.rs`
+2. **Immediate Action**: Effectuer une consultation en lecture seule de l'état de la PR #137 et attendre l'approbation du mainteneur avant toute action distante.
+3. **Verification Command**: `gh pr view 137 --json state,reviewDecision,statusCheckRollup`

@@ -208,9 +208,17 @@ fn resolve_mcp_target(
         }
     }
 
-    let numeric_idx = target_index
-        .map(|i| i as u32)
-        .or_else(|| target_ident.and_then(|id| id.trim().parse::<u32>().ok()));
+    let numeric_idx = match target_index {
+        Some(i) => Some(u32::try_from(i).map_err(|_| (
+            serde_json::json!({
+                "status": "error",
+                "error": "element_index hors plage (doit tenir dans un entier 32 bits non signé).",
+                "ok": false
+            }),
+            true,
+        ))?),
+        None => target_ident.and_then(|id| id.trim().parse::<u32>().ok()),
+    };
 
     if let Some(idx) = numeric_idx {
         let Some(snap) = cache else {
@@ -589,4 +597,100 @@ async fn run_mcp_server() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_resolve_mcp_target_explicit_identifier_priority() {
+        let args = json!({
+            "element_identifier": ":1.42/org/a11y/root",
+            "element_index": 4294967296u64,
+        });
+        let res = resolve_mcp_target(&args, &None);
+        assert_eq!(res.unwrap(), ":1.42/org/a11y/root");
+    }
+
+    #[test]
+    fn test_resolve_mcp_target_element_index_overflow_rejected() {
+        let args = json!({
+            "element_index": 4294967296u64,
+            "snapshot_token": "token_123"
+        });
+        let res = resolve_mcp_target(&args, &None);
+        assert!(res.is_err());
+        let (err_val, is_err) = res.unwrap_err();
+        assert!(is_err);
+        assert_eq!(
+            err_val["error"],
+            "element_index hors plage (doit tenir dans un entier 32 bits non signé)."
+        );
+    }
+
+    #[test]
+    fn test_resolve_mcp_target_element_index_valid() {
+        let node: AccessibilityNode = serde_json::from_value(json!({
+            "index": 42,
+            "parent_index": null,
+            "depth": 0,
+            "object_ref": ":1.42/button_42",
+            "role": "push button",
+            "name": "Test Button",
+            "description": null,
+            "child_count": 0,
+            "bounds": null,
+            "states": ["visible"],
+            "actions": [],
+            "value": null,
+            "text": null,
+            "supports_editable_text": false
+        }))
+        .unwrap();
+
+        let cache = Some(SnapshotState {
+            token: "tok42".to_string(),
+            nodes: vec![node],
+        });
+        let args = json!({
+            "element_index": 42,
+            "snapshot_token": "tok42"
+        });
+        let res = resolve_mcp_target(&args, &cache);
+        assert_eq!(res.unwrap(), ":1.42/button_42");
+    }
+
+    #[test]
+    fn test_resolve_mcp_target_numeric_identifier_fallback() {
+        let node: AccessibilityNode = serde_json::from_value(json!({
+            "index": 5,
+            "parent_index": null,
+            "depth": 0,
+            "object_ref": ":1.42/item_5",
+            "role": "list item",
+            "name": "Item",
+            "description": null,
+            "child_count": 0,
+            "bounds": null,
+            "states": [],
+            "actions": [],
+            "value": null,
+            "text": null,
+            "supports_editable_text": false
+        }))
+        .unwrap();
+
+        let cache = Some(SnapshotState {
+            token: "tok5".to_string(),
+            nodes: vec![node],
+        });
+        let args = json!({
+            "element_identifier": "5",
+            "snapshot_token": "tok5"
+        });
+        let res = resolve_mcp_target(&args, &cache);
+        assert_eq!(res.unwrap(), ":1.42/item_5");
+    }
 }

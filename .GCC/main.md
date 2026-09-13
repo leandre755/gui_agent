@@ -135,7 +135,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
   - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
   - Fusion de la PR #136 (`refactor/modular-architecture-issue-129`, Closes #129) avec Confidence Score 5/5 sur Greptile et 0 findings CodeRabbit (65/65 tests validés).
-  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `linux/crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `linux/layers/accessibility.py`, 105/105 tests CI validés au dernier `./ci.sh`).
+  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `linux/crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `linux/layers/accessibility.py`, 112/112 tests CI validés au dernier `./ci.sh`).
   - Fermeture de la PR obsolète #112 (traitement de la sécurité subprocess #44 transféré à l'Issue #132).
   - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
@@ -144,7 +144,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Durcissement exhaustif de `.gitignore` et purge des caches résiduels (1,5 Go de target crate et __pycache__).
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
-  - Validation CI 105/105 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
+  - Validation CI 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
   - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs, vérification de propriété UID, restriction chirurgicale aux motifs applicatifs authentiques (timestamps numériques et UUID stricts), et préservation à 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`).
   - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge; there are no outstanding blocking issues*, et **12/12 fils CodeRabbit résolus** sur GitHub.
   - Validation CI complète : 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep, Rust clippy/test/fmt et quality gate pre-commit PASS.
