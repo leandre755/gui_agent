@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 import shutil
 import subprocess
 from typing import Any
@@ -92,7 +94,8 @@ def test_get_app_state_mock() -> None:
 
 def test_get_app_state_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """Vérifie la gestion gracieuse en cas d'absence de moteur Rust."""
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: None)
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: None)
+    monkeypatch.setattr(accessibility, "_dbus_get_app_state", lambda app_name=None: [])
     res = get_app_state()
     assert res["status"] == "error"
     assert "introuvable" in res["error"]
@@ -102,7 +105,7 @@ def test_get_app_state_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_app_state_subprocess_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Vérifie la gestion d'un échec d'exécution du binaire Rust."""
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     mock_proc = MagicMock()
     mock_proc.returncode = 1
@@ -116,7 +119,7 @@ def test_get_app_state_subprocess_error(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_get_app_state_subprocess_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     """Vérifie la levée et la capture propre d'un timeout sur le binaire."""
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     def raise_timeout(*args: Any, **kwargs: Any) -> Any:
         raise subprocess.TimeoutExpired(cmd=["test"], timeout=10.0)
@@ -150,7 +153,7 @@ def test_perform_action_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_perform_action_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
     """Vérifie l'interaction JSON-RPC avec le protocole MCP stdio pour perform_action."""
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     written_lines: list[str] = []
 
@@ -238,7 +241,7 @@ def test_set_value_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_set_value_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
     """Vérifie l'interaction JSON-RPC avec le protocole MCP stdio pour set_value."""
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     written_lines: list[str] = []
 
@@ -349,7 +352,7 @@ def test_perform_action_and_set_value_with_node_cache(monkeypatch: pytest.Monkey
             pass
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     # Peupler le cache avec un snapshot explicite
     accessibility._snapshots["snap_7"] = {
@@ -394,7 +397,7 @@ def test_get_app_state_invalid_tree_payload(monkeypatch: pytest.MonkeyPatch) -> 
     """Vérifie le rejet d'un payload AT-SPI mal formé et le nettoyage du cache."""
     accessibility._last_node_cache["1"] = ":1.1/old"
     accessibility._last_snapshot_id = "old_snap"
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     mock_proc = MagicMock()
     mock_proc.returncode = 0
@@ -458,7 +461,7 @@ def test_perform_action_and_set_value_with_snapshot_id_mismatch(monkeypatch: pyt
             pass
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     accessibility._snapshots["current_snap"] = {"nodes": {"5": ":1.99/stale/ref"}, "app_name": "app"}
     accessibility._last_node_cache["5"] = ":1.99/stale/ref"
@@ -478,7 +481,7 @@ def test_perform_action_and_set_value_with_missing_cache_index(monkeypatch: pyte
     """Vérifie qu'un index numérique absent du cache est rejeté sans appel externe."""
     mock_popen = MagicMock()
     monkeypatch.setattr(subprocess, "Popen", mock_popen)
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
     accessibility._snapshots["snap_1"] = {"nodes": {}, "app_name": "app"}
     accessibility._last_node_cache.clear()
     accessibility._last_snapshot_id = "snap_1"
@@ -653,7 +656,7 @@ def test_perform_action_and_set_value_numeric_int_type(monkeypatch: pytest.Monke
             pass
 
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: MockProcess())
-    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda: "/bin/sh")
+    monkeypatch.setattr(accessibility, "find_atspi_mediator_binary", lambda *args, **kwargs: "/bin/sh")
 
     accessibility._snapshots["snap_int"] = {"nodes": {"42": ":1.42/btn/42"}, "app_name": "app"}
     accessibility._last_snapshot_id = "snap_int"
@@ -825,3 +828,57 @@ def test_call_mcp_action_or_value_fallback_on_popen_error(monkeypatch: pytest.Mo
     )
     assert res is True
     assert dbus_called is True
+
+
+def test_get_atspi_bus_address_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie la résolution de l'adresse AT-SPI via variable d'environnement puis busctl."""
+    # 1. Via variable d'environnement explicite
+    monkeypatch.setenv("AT_SPI_BUS_ADDRESS", "unix:path=/custom/atspi")
+    assert accessibility._get_atspi_bus_address() == "unix:path=/custom/atspi"
+
+    # 2. Sans variable, via busctl
+    monkeypatch.delenv("AT_SPI_BUS_ADDRESS", raising=False)
+    mock_run = MagicMock()
+    mock_run.returncode = 0
+    mock_run.stdout = 's "unix:path=/run/user/1000/at-spi/bus_0"\n'
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: mock_run)
+    assert accessibility._get_atspi_bus_address() == "unix:path=/run/user/1000/at-spi/bus_0"
+
+
+def test_mcp_stale_index_rejection_with_token() -> None:
+    """Vérifie que le serveur MCP Rust rejette un index numérique avec un snapshot_token périmé ou absent."""
+    bin_path = str(Path(__file__).resolve().parent.parent / "bin" / "gui-agent-atspi")
+    if not os.path.isfile(bin_path) or not os.access(bin_path, os.X_OK):
+        pytest.skip("gui-agent-atspi binaire non présent")
+
+    proc = subprocess.Popen(
+        [bin_path, "mcp"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    init_req = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+    action_no_snap = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {"name": "perform_action", "arguments": {"element_index": 7}},
+    }
+    action_stale_token = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {"name": "perform_action", "arguments": {"element_index": 7, "snapshot_token": "stale-snap-999"}},
+    }
+    payload = "\n".join([json.dumps(init_req), json.dumps(action_no_snap), json.dumps(action_stale_token)]) + "\n"
+    out, _ = proc.communicate(input=payload, timeout=5.0)
+    lines = [json.loads(line_str) for line_str in out.strip().splitlines() if line_str.strip()]
+
+    resp_2 = next((line_item for line_item in lines if line_item.get("id") == 2), None)
+    assert resp_2 is not None
+    assert resp_2["result"]["isError"] is True
+
+    resp_3 = next((line_item for line_item in lines if line_item.get("id") == 3), None)
+    assert resp_3 is not None
+    assert resp_3["result"]["isError"] is True

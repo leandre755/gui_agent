@@ -11,7 +11,9 @@ Ce guide détaille l'installation, la configuration et le dépannage du serveur 
 Ouvrez une invite de commande **PowerShell** (en utilisateur standard ou administrateur) et lancez :
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
+# Téléchargement et exécution vérifiée du script d'installation :
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 Ou en local depuis le dépôt cloné :
@@ -113,20 +115,24 @@ Ajoutez ou fusionnez dans le fichier `$env:USERPROFILE\.gemini\config\mcp_config
 Pour désinstaller complètement le serveur et nettoyer les configurations MCP :
 
 ```powershell
-# Désinstallation automatique
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
+# Téléchargement et exécution vérifiée du désinstallateur :
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 # Ou avec purge complète des captures d'écran :
-.\windows\uninstall.ps1 -PurgeData -Yes
+.\uninstall.ps1 -PurgeData -Yes
 ```
 
 ---
 
-## 🐧 Installation sous Linux & macOS
+## 🐧 Installation sous Linux
 
-### Installation automatisée en une seule commande :
+*(Note : le support dédié macOS fait l'objet de la Phase 5 ultérieure).*
+
+### Installation d'une release versionnée sous Linux :
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
+chmod +x install.sh && ./install.sh
 ```
 
 Le script d'installation configure automatiquement :

@@ -14,6 +14,34 @@ import sys
 import tempfile
 
 
+def _validate_xdg_env_path(var_name: str) -> Path | None:
+    """Valide une variable d'environnement XDG selon la spécification XDG Base Directory.
+
+    Une variable XDG doit contenir un chemin absolu. Si elle est vide, non définie
+    ou relative, elle doit être ignorée et le repli par défaut utilisé.
+    """
+    raw = os.environ.get(var_name)
+    if not raw or not raw.strip():
+        return None
+    raw_path = Path(raw.strip()).expanduser()
+    if not raw_path.is_absolute():
+        return None
+    return raw_path.resolve()
+
+
+def _is_secure_runtime_directory(p: Path, uid: int | None) -> bool:
+    """Vérifie qu'un répertoire d'exécution est un dossier réel, non-symlink, appartenant à l'UID avec mode 0700."""
+    try:
+        if not p.is_dir() or p.is_symlink():
+            return False
+        st = p.stat()
+        if uid is not None and st.st_uid != uid:
+            return False
+        return (st.st_mode & 0o077) == 0
+    except OSError:
+        return False
+
+
 class LinuxPaths:
     """Gestionnaire de chemins système pour Linux conforme aux standards XDG."""
 
@@ -23,39 +51,39 @@ class LinuxPaths:
 
     def get_xdg_data_home(self) -> Path:
         """XDG_DATA_HOME (défaut : $HOME/.local/share)."""
-        xdg = os.environ.get("XDG_DATA_HOME")
-        if xdg and xdg.strip():
-            return Path(xdg).expanduser().resolve()
+        valid = _validate_xdg_env_path("XDG_DATA_HOME")
+        if valid is not None:
+            return valid
         return Path(os.environ.get("HOME", "~")).expanduser().resolve() / ".local" / "share"
 
     def get_xdg_config_home(self) -> Path:
         """XDG_CONFIG_HOME (défaut : $HOME/.config)."""
-        xdg = os.environ.get("XDG_CONFIG_HOME")
-        if xdg and xdg.strip():
-            return Path(xdg).expanduser().resolve()
+        valid = _validate_xdg_env_path("XDG_CONFIG_HOME")
+        if valid is not None:
+            return valid
         return Path(os.environ.get("HOME", "~")).expanduser().resolve() / ".config"
 
     def get_xdg_cache_home(self) -> Path:
         """XDG_CACHE_HOME (défaut : $HOME/.cache)."""
-        xdg = os.environ.get("XDG_CACHE_HOME")
-        if xdg and xdg.strip():
-            return Path(xdg).expanduser().resolve()
+        valid = _validate_xdg_env_path("XDG_CACHE_HOME")
+        if valid is not None:
+            return valid
         return Path(os.environ.get("HOME", "~")).expanduser().resolve() / ".cache"
 
     def get_xdg_runtime_dir(self) -> Path:
         """XDG_RUNTIME_DIR (défaut : /run/user/$UID ou /tmp/gui-agent-$UID sécurisé)."""
-        xdg = os.environ.get("XDG_RUNTIME_DIR")
-        if xdg and xdg.strip():
-            return Path(xdg).expanduser().resolve()
-        temp_dir = Path(tempfile.gettempdir())
         uid = os.getuid() if hasattr(os, "getuid") else None
+        valid_xdg = _validate_xdg_env_path("XDG_RUNTIME_DIR")
+        if valid_xdg is not None and _is_secure_runtime_directory(valid_xdg, uid):
+            return valid_xdg
+
         if uid is not None:
             user_run = Path(f"/run/user/{uid}")
-            if user_run.is_dir():
+            if _is_secure_runtime_directory(user_run, uid):
                 return user_run
-            fallback_dir = temp_dir / f"gui-agent-{uid}"
-        else:
-            fallback_dir = temp_dir / "gui-agent"
+
+        temp_dir = Path(tempfile.gettempdir())
+        fallback_dir = temp_dir / (f"gui-agent-{uid}" if uid is not None else "gui-agent")
         try:
             if fallback_dir.is_symlink():
                 try:
@@ -72,7 +100,7 @@ class LinuxPaths:
                 fallback_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
                 fallback_dir.chmod(0o700)
         except OSError:
-            pass
+            return Path(tempfile.mkdtemp(prefix=f"gui-agent-{uid or 'safe'}-"))
         return fallback_dir
 
     def get_data_dir(self) -> Path:

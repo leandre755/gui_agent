@@ -149,7 +149,7 @@ def test_install_doc_structure():
 
     assert "Guide d'Installation" in content
     assert "Microsoft Windows" in content
-    assert "Linux & macOS" in content
+    assert "Installation sous Linux" in content
     assert "Dépannage" in content
     assert "powershell" in content.lower()
     assert "uv tool install" in content
@@ -974,9 +974,25 @@ def test_repl_execute_script_multibyte_utf8() -> None:
 
 
 def test_windows_install_ps1_guards() -> None:
-    """Vérifie la présence des gardes PSScriptRoot/Get-Location et LASTEXITCODE dans windows/install.ps1."""
+    """Vérifie la présence des gardes PSScriptRoot/Get-Location, LASTEXITCODE et mcpServers dans windows/install.ps1."""
     with open("windows/install.ps1", encoding="utf-8") as f:
         content = f.read()
 
     assert "$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }" in content
     assert "if ($LASTEXITCODE -eq 0) {" in content
+    assert "$null -eq $configData.mcpServers" in content
+    assert 'throw "mcpServers doit être un objet JSON valide."' in content
+
+
+def test_pty_session_output_limit_no_unbound_error() -> None:
+    """Vérifie que pty_session ne lève pas UnboundLocalError lors d'un dépassement de limite de sortie."""
+    import sys
+
+    if sys.platform == "win32":
+        pytest.skip("PTY non supporté sous Windows")
+    from linux.core.pty_session import PTYSession
+
+    session = PTYSession(timeout=2.0, max_output_chars=10)
+    code, out = session.execute(["python3", "-c", "print('A' * 100)"])
+    assert code == -1
+    assert "Taille de sortie PTY maximale dépassée" in out

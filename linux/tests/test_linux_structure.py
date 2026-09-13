@@ -157,3 +157,54 @@ def test_video_recording_tool_preserved_and_configured() -> None:
     assert hasattr(s, "VIDEOS_DIR")
     assert os.path.isabs(s.VIDEOS_DIR)
     assert os.path.isdir(s.VIDEOS_DIR)
+
+
+def test_linux_paths_rejects_relative_xdg_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie que les variables XDG relatives sont ignorées et remplacées par les chemins par défaut."""
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("XDG_DATA_HOME", "relative/data")
+    monkeypatch.setenv("XDG_CONFIG_HOME", "relative/config")
+    monkeypatch.setenv("XDG_CACHE_HOME", "relative/cache")
+
+    paths = LinuxPaths()
+    assert paths.get_data_dir() == fake_home / ".local" / "share" / "gui-agent"
+    assert paths.get_config_dir() == fake_home / ".config" / "gui-agent"
+    assert paths.get_cache_dir() == fake_home / ".cache" / "gui-agent"
+
+
+def test_linux_paths_runtime_dir_security(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Vérifie la validation de sécurité (mode 0700 et UID) pour XDG_RUNTIME_DIR."""
+    insecure_dir = tmp_path / "insecure_run"
+    insecure_dir.mkdir()
+
+    fake_stat = insecure_dir.stat()
+    insecure_stat = os.stat_result(
+        (
+            fake_stat.st_mode | 0o077,
+            fake_stat.st_ino,
+            fake_stat.st_dev,
+            fake_stat.st_nlink,
+            fake_stat.st_uid,
+            fake_stat.st_gid,
+            fake_stat.st_size,
+            int(fake_stat.st_atime),
+            int(fake_stat.st_mtime),
+            int(fake_stat.st_ctime),
+        )
+    )
+
+    orig_stat = Path.stat
+
+    def mocked_stat(self: Path, *, follow_symlinks: bool = True) -> os.stat_result:
+        if self == insecure_dir:
+            return insecure_stat
+        return orig_stat(self, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(Path, "stat", mocked_stat)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(insecure_dir))
+    paths = LinuxPaths()
+    runtime_dir = paths.get_xdg_runtime_dir()
+    assert runtime_dir != insecure_dir
+    assert os.path.isdir(runtime_dir)

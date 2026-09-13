@@ -185,11 +185,98 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+#[derive(Clone)]
+struct SnapshotState {
+    token: String,
+    nodes: Vec<AccessibilityNode>,
+}
+
+fn resolve_mcp_target(
+    arguments: &Value,
+    cache: &Option<SnapshotState>,
+) -> Result<String, (Value, bool)> {
+    let target_ident = arguments.get("element_identifier").and_then(Value::as_str);
+    let target_index = arguments.get("element_index").and_then(Value::as_u64);
+    let snapshot_token = arguments.get("snapshot_token").and_then(Value::as_str);
+
+    let numeric_idx = target_index.map(|i| i as u32).or_else(|| {
+        target_ident.and_then(|id| id.parse::<u32>().ok())
+    });
+
+    if let Some(idx) = numeric_idx {
+        let Some(snap) = cache else {
+            return Err((
+                serde_json::json!({
+                    "status": "error",
+                    "error": "Aucun snapshot actif. Veuillez d'abord appeler get_app_state.",
+                    "ok": false
+                }),
+                true,
+            ));
+        };
+        let Some(token) = snapshot_token else {
+            return Err((
+                serde_json::json!({
+                    "status": "error",
+                    "error": "L'utilisation d'un index numérique (element_index) requiert le paramètre snapshot_token pour éviter d'agir sur un contrôle obsolète.",
+                    "ok": false
+                }),
+                true,
+            ));
+        };
+        if token != snap.token {
+            return Err((
+                serde_json::json!({
+                    "status": "error",
+                    "error": format!("snapshot_token périmé ('{token}' != '{}'). Veuillez rafraîchir get_app_state.", snap.token),
+                    "ok": false
+                }),
+                true,
+            ));
+        }
+        let node = snap.nodes.iter().find(|n| n.index == idx);
+        let Some(node) = node else {
+            return Err((
+                serde_json::json!({
+                    "status": "error",
+                    "error": format!("Index {idx} introuvable dans le snapshot actuel ({})", snap.token),
+                    "ok": false
+                }),
+                true,
+            ));
+        };
+        Ok(node.object_ref.clone())
+    } else if let Some(ident) = target_ident {
+        if ident.is_empty() {
+            Err((
+                serde_json::json!({
+                    "status": "error",
+                    "error": "L'identifiant d'élément (element_identifier) ne peut pas être vide.",
+                    "ok": false
+                }),
+                true,
+            ))
+        } else {
+            Ok(ident.to_string())
+        }
+    } else {
+        Err((
+            serde_json::json!({
+                "status": "error",
+                "error": "Paramètres element_index ou element_identifier requis.",
+                "ok": false
+            }),
+            true,
+        ))
+    }
+}
+
 async fn run_mcp_server() -> Result<()> {
     let stdin = tokio::io::stdin();
     let mut stdout = tokio::io::stdout();
     let mut reader = BufReader::new(stdin).lines();
-    let cached_nodes: Arc<Mutex<Vec<AccessibilityNode>>> = Arc::new(Mutex::new(Vec::new()));
+    let cached_snapshot: Arc<Mutex<Option<SnapshotState>>> = Arc::new(Mutex::new(None));
+    let snapshot_seq = Arc::new(std::sync::atomic::AtomicU64::new(1));
 
     loop {
         let line = match reader.next_line().await {
@@ -197,7 +284,7 @@ async fn run_mcp_server() -> Result<()> {
             Ok(None) => break,
             Err(err) => {
                 eprintln!("gui-agent-atspi: erreur de lecture stdin : {err}");
-                continue;
+                break;
             }
         };
         let trimmed = line.trim();
@@ -299,6 +386,10 @@ async fn run_mcp_server() -> Result<()> {
                                         "action": {
                                             "type": "string",
                                             "description": "Action name to perform, defaults to activate"
+                                        },
+                                        "snapshot_token": {
+                                            "type": "string",
+                                            "description": "Snapshot token returned by get_app_state (required when targeting by element_index)"
                                         }
                                     }
                                 }
@@ -316,6 +407,10 @@ async fn run_mcp_server() -> Result<()> {
                                         "element_index": {
                                             "type": "integer",
                                             "description": "Numeric index from the latest get_app_state snapshot"
+                                        },
+                                        "snapshot_token": {
+                                            "type": "string",
+                                            "description": "Snapshot token returned by get_app_state (required when targeting by element_index)"
                                         },
                                         "value": {
                                             "type": "string",
@@ -341,13 +436,18 @@ async fn run_mcp_server() -> Result<()> {
                         let app_name = arguments.get("app_name").and_then(Value::as_str);
                         match snapshot_tree(app_name, None, 1000, 32).await {
                             Ok(nodes) => {
-                                let mut cache = cached_nodes.lock().await;
-                                *cache = nodes.clone();
+                                let token = format!("snap-{}", snapshot_seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+                                let mut cache = cached_snapshot.lock().await;
+                                *cache = Some(SnapshotState {
+                                    token: token.clone(),
+                                    nodes: nodes.clone(),
+                                });
                                 (
                                     serde_json::json!({
                                         "status": "success",
                                         "count": nodes.len(),
                                         "tree": nodes,
+                                        "snapshot_token": token,
                                         "ok": true
                                     }),
                                     false,
@@ -365,117 +465,63 @@ async fn run_mcp_server() -> Result<()> {
                     }
                     "perform_action" => {
                         let action_name = arguments.get("action").and_then(Value::as_str);
-                        let target = arguments
-                            .get("element_identifier")
-                            .and_then(Value::as_str)
-                            .map(ToString::to_string)
-                            .or_else(|| {
-                                arguments
-                                    .get("element_index")
-                                    .and_then(Value::as_u64)
-                                    .map(|idx| idx.to_string())
-                            });
+                        let cache = cached_snapshot.lock().await;
+                        let target_res = resolve_mcp_target(&arguments, &cache);
+                        drop(cache);
 
-                        if let Some(target_ref) = target {
-                            let cache = cached_nodes.lock().await;
-                            match resolve_ref(&target_ref, Some(&cache)).await {
-                                Ok(resolved) => {
-                                    drop(cache);
-                                    match perform_action(&resolved, action_name).await {
-                                        Ok(inv) => (
-                                            serde_json::json!({
-                                                "status": "success",
-                                                "ok": inv.ok,
-                                                "action_index": inv.action_index,
-                                                "action_name": inv.action_name
-                                            }),
-                                            !inv.ok,
-                                        ),
-                                        Err(err) => (
-                                            serde_json::json!({
-                                                "status": "error",
-                                                "error": format!("{err:#}"),
-                                                "ok": false
-                                            }),
-                                            true,
-                                        ),
-                                    }
+                        match target_res {
+                            Ok(resolved) => {
+                                match perform_action(&resolved, action_name).await {
+                                    Ok(inv) => (
+                                        serde_json::json!({
+                                            "status": "success",
+                                            "ok": inv.ok,
+                                            "action_index": inv.action_index,
+                                            "action_name": inv.action_name
+                                        }),
+                                        !inv.ok,
+                                    ),
+                                    Err(err) => (
+                                        serde_json::json!({
+                                            "status": "error",
+                                            "error": format!("{err:#}"),
+                                            "ok": false
+                                        }),
+                                        true,
+                                    ),
                                 }
-                                Err(err) => (
-                                    serde_json::json!({
-                                        "status": "error",
-                                        "error": format!("{err:#}"),
-                                        "ok": false
-                                    }),
-                                    true,
-                                ),
                             }
-                        } else {
-                            (
-                                serde_json::json!({
-                                    "status": "error",
-                                    "error": "Paramètres element_index ou element_identifier requis",
-                                    "ok": false
-                                }),
-                                true,
-                            )
+                            Err(err_tuple) => err_tuple,
                         }
                     }
                     "set_value" => {
                         let val = arguments.get("value").and_then(Value::as_str).unwrap_or("");
-                        let target = arguments
-                            .get("element_identifier")
-                            .and_then(Value::as_str)
-                            .map(ToString::to_string)
-                            .or_else(|| {
-                                arguments
-                                    .get("element_index")
-                                    .and_then(Value::as_u64)
-                                    .map(|idx| idx.to_string())
-                            });
+                        let cache = cached_snapshot.lock().await;
+                        let target_res = resolve_mcp_target(&arguments, &cache);
+                        drop(cache);
 
-                        if let Some(target_ref) = target {
-                            let cache = cached_nodes.lock().await;
-                            match resolve_ref(&target_ref, Some(&cache)).await {
-                                Ok(resolved) => {
-                                    drop(cache);
-                                    match set_element_value(&resolved, val).await {
-                                        Ok(inv) => (
-                                            serde_json::json!({
-                                                "status": "success",
-                                                "ok": true,
-                                                "result": format!("{inv:?}")
-                                            }),
-                                            false,
-                                        ),
-                                        Err(err) => (
-                                            serde_json::json!({
-                                                "status": "error",
-                                                "error": format!("{err:#}"),
-                                                "ok": false
-                                            }),
-                                            true,
-                                        ),
-                                    }
+                        match target_res {
+                            Ok(resolved) => {
+                                match set_element_value(&resolved, val).await {
+                                    Ok(inv) => (
+                                        serde_json::json!({
+                                            "status": "success",
+                                            "ok": true,
+                                            "result": format!("{inv:?}")
+                                        }),
+                                        false,
+                                    ),
+                                    Err(err) => (
+                                        serde_json::json!({
+                                            "status": "error",
+                                            "error": format!("{err:#}"),
+                                            "ok": false
+                                        }),
+                                        true,
+                                    ),
                                 }
-                                Err(err) => (
-                                    serde_json::json!({
-                                        "status": "error",
-                                        "error": format!("{err:#}"),
-                                        "ok": false
-                                    }),
-                                    true,
-                                ),
                             }
-                        } else {
-                            (
-                                serde_json::json!({
-                                    "status": "error",
-                                    "error": "Paramètres element_index ou element_identifier requis",
-                                    "ok": false
-                                }),
-                                true,
-                            )
+                            Err(err_tuple) => err_tuple,
                         }
                     }
                     _ => (

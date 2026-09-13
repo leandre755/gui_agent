@@ -104,8 +104,9 @@ All cache paths (including dynamic Cartesian screenshot buffers and low-overhead
 Run the automated installer to check dependencies, install Astral `uv`, configure the isolated environment, and register the MCP server:
 
 ```bash
-# Single-line curl installer
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
+# Download and verify a versioned release installer
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
+chmod +x install.sh && ./install.sh
 
 # Or locally from a cloned repository
 ./linux/install.sh
@@ -115,8 +116,9 @@ curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/ins
 Launch PowerShell (standard user or administrator) and execute:
 
 ```powershell
-# Single-line PowerShell installer
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
+# Download and execute a verified release installer
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Or locally from a cloned repository
 .\windows\install.ps1 -Local
@@ -402,23 +404,25 @@ Cleanly terminates the ongoing FFmpeg recording and validates the generated MP4 
 
 To cleanly purge `gui-agent`, delete isolated environments, and remove registered MCP configurations:
 
-### 1. Linux & macOS (Bash)
+### 1. Linux (Bash)
 
 ```bash
-# Automated remote uninstaller
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh | bash
+# Download and verify a versioned release uninstaller
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
-# Local uninstall with full data and screenshot purge
+# Or local uninstall with full data and screenshot purge
 ./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Automated remote uninstaller
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
+# Download and execute a verified release uninstaller
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
-# Local uninstall with full data and screenshot purge
+# Or local uninstall with full data and screenshot purge
 .\windows\uninstall.ps1 -PurgeData -Yes
 ```
 

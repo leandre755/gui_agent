@@ -94,7 +94,10 @@ def capture_screen_pil(monitor_index: int = 1) -> Image.Image:
                     with contextlib.suppress(Exception):
                         left, top, width, height = get_monitor_geometry(monitor_index)
                         if (width, height) != img.size:
-                            img = img.crop((left, top, left + width, top + height))
+                            v_left, v_top, _, _ = get_monitor_geometry(0)
+                            rel_left = left - v_left
+                            rel_top = top - v_top
+                            img = img.crop((rel_left, rel_top, rel_left + width, rel_top + height))
                     return img
         except Exception as e_spec:
             logger.debug(f"Fallback spectacle ignoré : {e_spec}")

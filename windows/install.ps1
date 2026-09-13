@@ -224,8 +224,11 @@ if ($SkipMcpConfig -or $DryRun) {
         if ($null -eq $configData -or -not ($configData -is [PSCustomObject])) {
             $configData = [PSCustomObject]@{}
         }
-        if (-not $configData.PSObject.Properties["mcpServers"]) {
+        if (-not $configData.PSObject.Properties["mcpServers"] -or $null -eq $configData.mcpServers) {
             $configData | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value ([PSCustomObject]@{}) -Force
+        } elseif (-not ($configData.mcpServers -is [PSCustomObject])) {
+            Log-Error "Propriété mcpServers invalide dans $geminiConfigFile (dictionnaire attendu)."
+            throw "mcpServers doit être un objet JSON valide."
         }
 
         $serverEntry = [PSCustomObject]@{

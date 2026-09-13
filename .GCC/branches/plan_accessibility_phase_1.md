@@ -93,6 +93,37 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ============================= 83 passed in 33.29s ==============================
 ```
 
+### Step 5: Durcissement exhaustif suite aux retours de revues (Greptile & CodeRabbit)
+- [x] **Action**: Correction complète de l'ensemble des constats :
+  1. Résolution du bus AT-SPI dédié (`_get_atspi_bus_address` interrogeant `AT_SPI_BUS_ADDRESS`, `org.a11y.Bus.GetAddress` et `/run/user/<uid>/at-spi/bus_0`).
+  2. Durcissement du serveur stdio Rust MCP : interruption de boucle sur EOF/erreur stdin (`break`), liaison stricte des index numériques aux snapshots (`snapshot_token`).
+  3. Sécurisation XDG et répertoires d'exécution (`_validate_xdg_env_path` absolu, `_is_secure_runtime_directory` vérifiant UID et mode `0700`).
+  4. Isolation du build Cargo dans `linux/install.sh` avec `TARGET_DIR` dédié et validation d'artefact.
+  5. Correction de l'interpolation de chemin hatchling dans `hatch_build.py`.
+  6. Décalage des coordonnées d'écran virtuel sous KDE spectacle multi-écrans dans `linux/server.py`.
+  7. Correction des chemins de test CI dans `.github/workflows/ci.yml` (`linux/tests/`).
+  8. Ajout des tests de non-régression (110 tests au total).
+- [x] **Verify**: `./ci.sh && cargo check`
+- **Verification Proof**:
+```text
+============================= 110 passed in 33.40s =============================
+✔ Validé (35302ms)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Étape de Validation                       | Statut     | Durée     |
+|--------------------------------------------|------------|------------|
+| Compilation Bytecode Python (compileall)   | PASS     | 480ms      |
+| Validation Workflows GitHub Actions        | PASS     | 99ms       |
+| Linter de Code (Ruff Check)                | PASS     | 22ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 21ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 427ms      |
+| Suite de Tests Pytest                      | PASS     | 35302ms    |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 Toutes les étapes CI sont validées avec succès !
+```
+
 ## ⚠️ Mitigations & Edge Cases
 - **Risk**: Saturation CPU / mémoire lors de la compilation de `atspi` et `zbus` sur machine modeste.
 - **Mitigation**: Compilation séquentielle contrôlée avec build profile release optimisé (`codegen-units = 1`, `lto = "fat"`, `strip = "symbols"`), exclusion de `target/` de git via `.gitignore` pour préserver la légèreté du dépôt (binaire release 3,0M).

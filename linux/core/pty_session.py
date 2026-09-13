@@ -40,6 +40,7 @@ class PTYSession:
         total_chars = 0
         start = time.monotonic()
         proc: subprocess.Popen[Any] | None = None
+        returncode: int | None = None
         try:
             os.set_blocking(master_fd, False)
             try:

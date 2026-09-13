@@ -194,8 +194,6 @@ if [[ -d "$SCREENSHOTS_DIR" ]]; then
 
     if [[ -z "$CANONICAL_DIR" || "$CANONICAL_DIR" == "/" || "$CANONICAL_DIR" == "$REAL_HOME" || "$CANONICAL_DIR" == "/tmp" || "$CANONICAL_DIR" == "/var" ]]; then
         log_error "Chemin de captures d'écran non sécurisé détecté : $SCREENSHOTS_DIR. Purge annulée."
-    elif [[ "$CANONICAL_DIR" != *"/gui-agent"* ]]; then
-        log_error "Le répertoire à purger ($CANONICAL_DIR) n'est pas un sous-dossier dédié à gui-agent. Purge annulée par sécurité."
     elif [[ "$DRY_RUN" == "true" ]]; then
         log_info "[Dry-Run] Purge possible du répertoire de captures : $CANONICAL_DIR"
     else

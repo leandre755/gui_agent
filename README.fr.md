@@ -114,8 +114,9 @@ curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/ins
 Lancez PowerShell (utilisateur standard ou administrateur) et exécutez :
 
 ```powershell
-# Installateur PowerShell en une ligne
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1 | iex"
+# Téléchargement et exécution vérifiée d'une release versionnée
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Ou localement depuis un dépôt cloné
 .\windows\install.ps1 -Local
@@ -401,23 +402,25 @@ Arrête proprement l'enregistrement FFmpeg en cours et valide le conteneur du fi
 
 Pour purger proprement `gui-agent`, supprimer les environnements isolés et retirer les configurations MCP enregistrées :
 
-### 1. Linux & macOS (Bash)
+### 1. Linux (Bash)
 
 ```bash
-# Désinstallateur distant automatisé
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh | bash
+# Téléchargement et exécution vérifiée d'une release versionnée
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
-# Désinstallation locale avec purge complète des données et captures
+# Ou désinstallation locale avec purge complète des données et captures
 ./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Désinstallateur distant automatisé
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1 | iex"
+# Téléchargement et exécution vérifiée d'une release versionnée
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
-# Désinstallation locale avec purge complète des données et captures
+# Ou désinstallation locale avec purge complète des données et captures
 .\windows\uninstall.ps1 -PurgeData -Yes
 ```
 

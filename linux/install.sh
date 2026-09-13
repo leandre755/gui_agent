@@ -244,35 +244,41 @@ else
             CARGO_TOML_PATH="${PROJECT_DIR}/crates/atspi_mediator/Cargo.toml"
         fi
 
-        if [[ -n "$PROJECT_DIR" && -f "${PROJECT_DIR}/target/release/gui-agent-atspi" ]]; then
-            cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-            cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
-            chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
-            log_success "Médiateur AT-SPI natif précompilé copié dans ~/.local/bin/gui-agent-atspi"
-        elif [[ -n "$WORKSPACE_CARGO_PATH" && -f "$WORKSPACE_CARGO_PATH" ]]; then
-            if cargo build --release --manifest-path "$WORKSPACE_CARGO_PATH" --bin gui-agent-atspi; then
-                if [[ -f "${PROJECT_DIR}/target/release/gui-agent-atspi" ]]; then
-                    cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-                    cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
-                    chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+        TARGET_DIR="${PROJECT_DIR:+$PROJECT_DIR/target}"
+        if [[ -z "$TARGET_DIR" ]]; then
+            TARGET_DIR="$(mktemp -d /tmp/gui-agent-cargo-target-XXXXXX)"
+        fi
+        mkdir -p "$TARGET_DIR"
+
+        if [[ -n "$WORKSPACE_CARGO_PATH" && -f "$WORKSPACE_CARGO_PATH" ]]; then
+            if CARGO_TARGET_DIR="$TARGET_DIR" cargo build --release --manifest-path "$WORKSPACE_CARGO_PATH" --bin gui-agent-atspi; then
+                if [[ -f "${TARGET_DIR}/release/gui-agent-atspi" ]]; then
+                    cp "${TARGET_DIR}/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
+                    if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
+                        cp "${TARGET_DIR}/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+                        chmod +x "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+                    fi
+                    chmod +x "${HOME}/.local/bin/gui-agent-atspi" 2>/dev/null || true
                     log_success "Médiateur AT-SPI natif compilé et installé avec succès dans ~/.local/bin/gui-agent-atspi"
                 else
-                    log_warn "Binaire compilé introuvable dans target/release. Le fallback Python/D-Bus sera utilisé."
+                    log_warn "Binaire compilé introuvable dans ${TARGET_DIR}/release. Le fallback Python/D-Bus sera utilisé."
                 fi
             else
                 log_warn "Échec de la compilation Cargo du médiateur natif AT-SPI. Le fallback Python/D-Bus sera utilisé."
             fi
         elif [[ -n "$CARGO_TOML_PATH" && -f "$CARGO_TOML_PATH" ]]; then
-            if cargo build --release --manifest-path "$CARGO_TOML_PATH"; then
-                if [[ -f "${PROJECT_DIR}/target/release/gui-agent-atspi" ]]; then
-                    cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-                    cp "${PROJECT_DIR}/target/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
-                elif [[ -f "${PROJECT_DIR}/linux/crates/atspi_mediator/target/release/gui-agent-atspi" ]]; then
-                    cp "${PROJECT_DIR}/linux/crates/atspi_mediator/target/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
-                    cp "${PROJECT_DIR}/linux/crates/atspi_mediator/target/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+            if CARGO_TARGET_DIR="$TARGET_DIR" cargo build --release --manifest-path "$CARGO_TOML_PATH"; then
+                if [[ -f "${TARGET_DIR}/release/gui-agent-atspi" ]]; then
+                    cp "${TARGET_DIR}/release/gui-agent-atspi" "${HOME}/.local/bin/gui-agent-atspi"
+                    if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
+                        cp "${TARGET_DIR}/release/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+                        chmod +x "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
+                    fi
+                    chmod +x "${HOME}/.local/bin/gui-agent-atspi" 2>/dev/null || true
+                    log_success "Médiateur AT-SPI natif installé avec succès dans ~/.local/bin/gui-agent-atspi"
+                else
+                    log_warn "Binaire compilé introuvable après build. Le fallback Python/D-Bus sera utilisé."
                 fi
-                chmod +x "${HOME}/.local/bin/gui-agent-atspi" "${PROJECT_DIR}/linux/bin/gui-agent-atspi" 2>/dev/null || true
-                log_success "Médiateur AT-SPI natif installé avec succès dans ~/.local/bin/gui-agent-atspi"
             else
                 log_warn "Échec de la compilation Cargo du médiateur natif AT-SPI. Le fallback Python/D-Bus sera utilisé."
             fi
@@ -361,10 +367,10 @@ if os.path.exists(config_path):
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if not isinstance(data, dict):
-                raise ValueError("Format JSON invalide (dictionnaire attendu)")
-            if "mcpServers" not in data or not isinstance(data["mcpServers"], dict):
+            if "mcpServers" not in data:
                 data["mcpServers"] = {}
+            elif not isinstance(data["mcpServers"], dict):
+                raise ValueError("Format JSON invalide (mcpServers doit être un dictionnaire ou absent)")
     except Exception as err:
         print(f"Erreur lors de la lecture de {config_path}: {err}", file=sys.stderr)
         sys.exit(1)

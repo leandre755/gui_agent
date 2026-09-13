@@ -179,13 +179,77 @@ def find_atspi_mediator_binary(exclude_scripts: bool = False) -> str | None:
 
 
 def _get_atspi_bus_address() -> str | None:
-    """Résout l'adresse du bus d'accessibilité AT-SPI / D-Bus."""
+    """Résout l'adresse du bus d'accessibilité dédié AT-SPI / D-Bus.
+
+    Recherche en priorité AT_SPI_BUS_ADDRESS, puis interroge org.a11y.Bus sur le
+    bus de session utilisateur, et se replie sur le socket /run/user/$UID/at-spi/bus_0
+    ou le bus de session si aucun bus dédié n'est joignable.
+    """
+    # 1. Variable d'environnement explicite AT_SPI_BUS_ADDRESS
+    env_atspi = os.environ.get("AT_SPI_BUS_ADDRESS")
+    if env_atspi and env_atspi.strip():
+        return env_atspi.strip()
+
+    # 2. Interrogation d'org.a11y.Bus.GetAddress sur le bus de session via busctl
+    busctl_bin = shutil.which("busctl")
+    if busctl_bin:
+        try:
+            res = subprocess.run(
+                [busctl_bin, "--user", "call", "org.a11y.Bus", "/org/a11y/bus", "org.a11y.Bus", "GetAddress"],
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+            if res.returncode == 0 and 's "' in res.stdout:
+                addr = res.stdout.split('s "', 1)[1].split('"', 1)[0].strip()
+                if addr:
+                    return addr
+        except Exception as exc:
+            logger.debug("Échec de la résolution de l'adresse AT-SPI via busctl: %s", exc)
+
+    # 3. Interrogation via dbus-send si busctl est indisponible ou a échoué
+    dbus_send_bin = shutil.which("dbus-send")
+    if dbus_send_bin:
+        try:
+            res = subprocess.run(
+                [
+                    dbus_send_bin,
+                    "--session",
+                    "--print-reply=literal",
+                    "--dest=org.a11y.Bus",
+                    "/org/a11y/bus",
+                    "org.a11y.Bus.GetAddress",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=2.0,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                addr = res.stdout.strip()
+                if addr.startswith("string "):
+                    addr = addr.split("string ", 1)[1].strip()
+                if addr:
+                    return addr
+        except Exception as exc:
+            logger.debug("Échec de la résolution de l'adresse AT-SPI via dbus-send: %s", exc)
+
+    # 4. Socket standard /run/user/$UID/at-spi/bus_0
+    uid = os.getuid() if hasattr(os, "getuid") else None
+    if uid is not None:
+        atspi_socket = f"/run/user/{uid}/at-spi/bus_0"
+        if os.path.exists(atspi_socket):
+            return f"unix:path={atspi_socket}"
+
+    # 5. Repli sur le bus de session en dernier recours
     env_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS")
-    if env_addr:
-        return env_addr
-    user_bus = f"/run/user/{os.getuid()}/bus"
-    if os.path.exists(user_bus):
-        return f"unix:path={user_bus}"
+    if env_addr and env_addr.strip():
+        return env_addr.strip()
+    if uid is not None:
+        user_bus = f"/run/user/{uid}/bus"
+        if os.path.exists(user_bus):
+            return f"unix:path={user_bus}"
     return None
 
 
@@ -720,10 +784,7 @@ def main_cli() -> None:
 
 def _call_mcp_action_or_value(tool_name: str, arguments: dict[str, Any], timeout: float = 15.0) -> bool:
     """Invoque l'outil MCP perform_action ou set_value via le serveur stdio Rust ou le fallback D-Bus."""
-    try:
-        binary = find_atspi_mediator_binary(exclude_scripts=True)
-    except TypeError:
-        binary = find_atspi_mediator_binary()
+    binary = find_atspi_mediator_binary(exclude_scripts=True)
     if not binary:
         logger.info("Binaire AT-SPI Rust absent, repli sur l'invocation D-Bus directe pour %s", tool_name)
         return _dbus_call_action_or_value(tool_name, arguments, timeout=timeout)
@@ -1066,6 +1127,7 @@ def perform_action(
             "action": action,
             "element_identifier": resolved_ref,
             "element_index": int(element_id),
+            "snapshot_token": snapshot_id,
         }
     else:
         args = {
@@ -1139,6 +1201,7 @@ def set_value(
         args: dict[str, Any] = {
             "element_identifier": resolved_ref,
             "element_index": int(element_id),
+            "snapshot_token": snapshot_id,
             "value": text,
         }
     else:

@@ -61,7 +61,7 @@ class CustomBuildHook(BuildHookInterface):
             shim_content = f'''"""Editable installation shim for gui_agent pointing to linux/."""
 import os
 
-_linux_dir = os.path.abspath(r"{os.path.join(project_root, "linux")}")
+_linux_dir = os.path.abspath({os.path.join(project_root, "linux")!r})
 __path__ = [_linux_dir]
 __file__ = os.path.join(_linux_dir, "__init__.py")
 
