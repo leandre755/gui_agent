@@ -142,3 +142,30 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Validation Globale CI (Phase 1 durcie)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 54.98s, 0 avertissement, 0 erreur | **PASS** |
 | **Rejet index u32 hors plage & tests MCP** | `cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique > u32::MAX + priorité identifiant explicite | 13/13 tests passés (9 lib, 4 main), 0 avertissement | **PASS** |
 
+---
+
+## 🎨 Mise à Jour des README & Nouveaux Diagrammes Excalidraw (Architecture v1.0) (2026-09-13)
+
+| Cible / Scénario | Commande de Test | Résultat Attendu | Résultat Constaté | Statut |
+|---|---|---|---|---|
+| **Conception Excalidraw vectorielle** | Génération `how-it-works-en.excalidraw` & `how-it-works-fr.excalidraw` | Diagrammes conformes au schéma officiel Excalidraw reflétant les 2 Piliers (Escalade L3/L2/L1, REPL CodeAct) | Fichiers JSON Excalidraw valides créés | **PASS** |
+| **Rendu Canvas et Export SVG/PNG** | Automatisation navigateur Chromium sur `excalidraw.com` | Rendu fidèle, police Virgil manuscrite, palette Émeraude | SVG et PNG haute fidélité générés dans `assets/` | **PASS** |
+| **Inspection visuelle multimodale** | `view_file` sur images PNG générées | Conformité avec la référence `media_1789334163981.png` | Structure visuelle validée (niveaux L3/L2/L1, REPL, hôte) | **PASS** |
+| **Hébergement Gist public** | `gh gist create` | Liens SVG publics pérennes sans polluer le dépôt Git | Gist `f0b933b981a70de123282eb99fd6df44` créé et accessible | **PASS** |
+| **Isomorphisme bilingue strict** | `diff <(wc -l README.md \| awk '{print $1}') <(wc -l README.fr.md \| awk '{print $1}')` | Exacte égalité de lignes et de structure vide | 485 lignes dans les deux fichiers, parité parfaite | **PASS** |
+| **Zéro emoji Unicode dans en-têtes** | Script Python de scan de tous les titres `#`, `##`, `###`, `####` | Aucun emoji Unicode (uniquement CDN Fluent 3D `<img>`) | 0 emoji Unicode détecté | **PASS** |
+| **Absence de mentions d'historique** | Script Python de scan de termes bannis ("nouvelle version", "nouvelle maj", etc.) | Reflet pur de l'état actuel de l'architecture | 0 occurrence de mention d'historique | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 41.60s, 0 avertissement, 0 erreur | **PASS** |
+
+### 🛡️ Traitement Exhaustif des Retours Greptile sur PR #138 (2026-09-13)
+
+| Constat Greptile | Fichiers / Lignes | Correctif Appliqué | Vérification | Statut |
+|---|---|---|---|---|
+| **P1 - Fonctionnalités annoncées indisponibles** | `README.md:80-81`, `README.fr.md:80-81` | Piliers 1 & 2 précisés avec rigueur : L3 AT-SPI2 Rust actif, L2 RapidOCR/Tesseract actif, L1 screenshots actif avec uinput/evdev en feuille de route, REPL execute_script en Phase 2 | Lecture textuelle et conformité avec les 21 outils actuels | **PASS** |
+| **P1 - Backends multiplateformes absents** | `README.md:91-92`, `README.fr.md:91-92` | Qualification explicite de `windows/` et `macos/` comme répertoires avec backends natifs en cours de développement / réservés | Absence d'ambiguïté sur la disponibilité immédiate | **PASS** |
+| **P2 - Installation non reproductible** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418` | Restauration du tag immuable `v0.1.0` pour toutes les commandes curl/PowerShell d'installation et de désinstallation | Alignement parfait avec `INSTALL.md` | **PASS** |
+| **P2 - Prérequis Cargo manquant** | `README.md:146,150,154,448`, `README.fr.md:146,150,154,448`, `hatch_build.py:128-132` | Ajout de `cargo` et `rustc` dans les prérequis Linux, mention `(requires Cargo)` lors du pip install éditable, et avertissement explicite dans `hatch_build.py` si cargo est absent sous Linux | Script Python et build hook testés | **PASS** |
+| **P2 - Séparateurs de tableaux en trop** | `README.md:389,469`, `README.fr.md:389,469` | Réduction des séparateurs de 4 colonnes à 3 colonnes pour alignement strict avec les en-têtes et données | `check_tables` Python : 100% propre (3 cols) | **PASS** |
+| **P1 - Tagged scripts unavailable** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418`, `INSTALL.md:15,119,134` | Substitution de `v0.1.0` (qui ne contenait pas `linux/` et `windows/`) par le commit SHA immuable de release `7a49514` contenant l'arborescence multi-plateforme | Toutes les requêtes HTTP testées retournent 200 OK | **PASS** |
+
+

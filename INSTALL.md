@@ -12,7 +12,7 @@ Ouvrez une invite de commande **PowerShell** (en utilisateur standard ou adminis
 
 ```powershell
 # Téléchargement et exécution vérifiée du script d'installation :
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/install.ps1" -OutFile "install.ps1"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
@@ -116,7 +116,7 @@ Pour désinstaller complètement le serveur et nettoyer les configurations MCP :
 
 ```powershell
 # Téléchargement et exécution vérifiée du désinstallateur :
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 # Ou avec purge complète des captures d'écran :
@@ -131,7 +131,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 ### Installation d'une release versionnée sous Linux :
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/install.sh
 chmod +x install.sh && ./install.sh
 ```
 

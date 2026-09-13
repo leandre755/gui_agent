@@ -13,6 +13,7 @@
 - [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55, Confidence Score 5/5 Greptile)
 - [2026-09-12] Modular Architecture Scaffolding, Execution Primitives Hardening & Dependencies Modernization (PR #136, Confidence Score 5/5 Greptile, 0 findings CodeRabbit, 65/65 tests)
 - [2026-09-13] Médiation d'Accessibilité Programmatique AT-SPI & Durcissement Purge Uninstall (PR #137, Confidence Score 5/5 Greptile, 12/12 fils CodeRabbit résolus, 112/112 tests)
+- [2026-09-13] Documentation Architecture v1.0, Nouveaux Diagrammes Excalidraw Gist & Harmonisation Immuable (PR #138, Confidence Score 5/5 Greptile, 112/112 tests)
 
 ## 🎯 Objective
 High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -127,8 +128,8 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `feat/accessibility-mediation-phase-1` : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (Issue #130) [plan_accessibility_phase_1.md](.GCC/branches/plan_accessibility_phase_1.md) - Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) soumise par `personnal-agent`
-- `main` : Production release with decoupled modular architecture (core, layers, utils), bilingual landing pages, 65/65 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
+- `docs/readme-how-it-works-update` : Mise à jour des README (EN & FR) et génération des nouveaux diagrammes d'architecture Excalidraw (Architecture v1.0) [plan_readme_maj.md](.GCC/branches/plan_readme_maj.md) (Validé 5/5 Greptile sur PR #138).
+- `main` : Production release with multi-platform decoupled architecture (`linux/`, `windows/`, `macos/`), native Rust AT-SPI mediator, dynamic XDG path resolution, bilingual landing pages, 112/112 Zero-Slop test harness, and thread-safe video recording.
 
 ## 📈 Current Status
 - ✅ Done:
@@ -145,10 +146,12 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
   - Validation CI 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
-  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs, vérification de propriété UID, restriction chirurgicale aux motifs applicatifs authentiques (timestamps numériques et UUID stricts), et préservation à 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`).
-  - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge; there are no outstanding blocking issues*, et **12/12 fils CodeRabbit résolus** sur GitHub.
+  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit sur PR #137 : Confidence Score 5/5, 12/12 fils résolus, fusionné dans `main` (commit `7a49514`).
   - Validation CI complète : 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep, Rust clippy/test/fmt et quality gate pre-commit PASS.
-- 🔄 In progress: Approbation et fusion de la Pull Request #137 par le mainteneur.
+  - Conception et génération des nouveaux diagrammes vectoriels Excalidraw (`how-it-works-en.excalidraw`, `how-it-works-fr.excalidraw`, SVG/PNG dans `assets/`, hébergement GitHub Gist public `f0b933b981a70de123282eb99fd6df44`).
+  - Refonte intégrale et isomorphe de `README.md` et `README.fr.md` (485 lignes strictes, 0 emoji Unicode dans les en-têtes, 0 mention d'historique de version, intégration des 2 Piliers, de la médiation Rust AT-SPI2, des chemins dynamiques XDG et de la préservation vidéo).
+  - Publication et qualification de la Pull Request [#138](https://github.com/leandre755/gui_agent/pull/138) : résolution de 100% des constats Greptile (P1 capacités, P1 multi-plateforme, P2 reproductibilité, P2 Cargo, P2 séparateurs tables, P1 scripts taggués), obtention du **Confidence Score 5/5** et **0 finding**.
+- 🔄 In progress: Finalisation / Fusion de la PR #138.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
@@ -156,4 +159,4 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - 5. **Recherche OS tiers (#134, #135)** : Adaptation Windows (UI Automation) et macOS (NSAccessibility).
 
 ## 👉 Next Session Direction
-Finaliser la Pull Request pour la Phase 1 (Issue #130 : Médiation d'accessibilité programmatique via AT-SPI / D-Bus) puis initier la Phase 2 (Issue #131).
+Fusionner la PR #138 (`docs/readme-how-it-works-update`) dans `main` après confirmation utilisateur, puis initier la Phase 2 (Issue #131 : Moteur REPL CodeAct).
