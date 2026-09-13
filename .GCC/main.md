@@ -12,6 +12,7 @@
 - [2026-08-27] Synchronisation Concurrente et Nettoyage Déterministe de l'Enregistrement Vidéo (PR #57, Confidence Score 5/5 Greptile)
 - [2026-08-27] Bornage Déterministe et Deadline Globale pour le Listing X11 (PR #55, Confidence Score 5/5 Greptile)
 - [2026-09-12] Modular Architecture Scaffolding, Execution Primitives Hardening & Dependencies Modernization (PR #136, Confidence Score 5/5 Greptile, 0 findings CodeRabbit, 65/65 tests)
+- [2026-09-13] Médiation d'Accessibilité Programmatique AT-SPI & Durcissement Purge Uninstall (PR #137, Confidence Score 5/5 Greptile, 12/12 fils CodeRabbit résolus, 112/112 tests)
 
 ## 🎯 Objective
 High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
@@ -43,6 +44,8 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Règle d'échec sans boucle** : si une revue locale ou GitHub trouve un bug, ne pas relancer immédiatement l'agent. Lire 100 % du verdict, regrouper tous les constats, corriger localement, puis refaire toute la validation locale. Une nouvelle revue GitHub nécessite un changement réel, une validation locale complète et une autorisation explicite tenant compte du coût/quota.
   - **Portée Greptile à ne jamais confondre** : `greptile review` local analyse le commit/working tree selon le prompt fourni ; Greptile GitHub analyse la PR complète après push. Un score local 5/5 ne prédit donc pas le score GitHub.
   - Après chaque revue GitHub, lire le message principal de la PR, le résumé Greptile complet, le bilan T-Rex et 100 % des commentaires/threads ; ne jamais conclure à partir du seul score ou d'un check-run.
+  - **Temporisation d'attente Greptile** : Les revues automatiques Greptile GitHub prennent environ **8 minutes**. Ne jamais régler de timer d'attente court (ex: 30 secondes ou 5 minutes) qui entraîne des boucles de vérification prématurées ou inutiles ; configurer impérativement un délai d'attente de **8 minutes (480 secondes)** avant de relever le verdict Greptile.
+  - **Identité de publication de la PR** : La Pull Request doit être créée et finalisée avec le compte GitHub **personal agent**.
   - CodeRabbit distant est déclenché explicitement par un commentaire `@coderabbitai review` uniquement après la validation locale et avec autorisation explicite ; ne pas le relancer si une revue est déjà en cours, rate-limitée ou non nécessaire.
   - Les check-runs seuls ne valent pas validation ; le critère final reste Greptile **5/5**, zéro échec de sécurité, zéro commentaire actionnable et zéro bloquant Optibot/CodeRabbit. La priorité est de réduire le nombre total de reviews, pas de boucler jusqu'à un score parfait.
 - **Analyse des vulnérabilités de rollback capture identifiées par Greptile (PR #7)** :
@@ -50,6 +53,18 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-12] Bundle Unique Natif par Système d'Exploitation (Rust + REPL PyO3)
+  - **Context**: Besoin de livrer un artefact directement exécutable par OS (`gui-agent` sous Linux, `gui-agent.exe` sous Windows, `gui-agent` sous macOS), compilable directement sur la machine hôte via Cargo sans surcoût d'environnement virtuel Python ni fragmentation multi-processus.
+  - **Discarded Options**: Bundle Python auto-extractible via PyInstaller/Nuitka (>150 Mo, latence au démarrage, décompression) ; distribution multi-binaires fragmentée (FastMCP Python appelant des sous-processus séparés).
+  - **Rationale**: Un binaire autonome Rust garantit une latence quasi-nulle (<5 ms), une consommation mémoire minime (<15 Mo), une compilation locale unifiée (`cargo build --release`), une étanchéité par plateforme via des crates dédiés (`linux/crates/`, `windows/crates/`), et une intégration native du REPL CodeAct (`execute_script`) via PyO3.
+- [2026-09-12] Durcissement de la Résolution d'Index, Livraison Native et Sélection Déterministe d'Actions (Phase 1 #130)
+  - **Context**: Retours de revue Greptile et CodeRabbit : repli arbitraire sur l'index 1 dans `select_action_index`, maintien de l'exécution sur index périmés sans snapshot actif ou sur cache absent, et omission de la compilation/installation de `gui-agent-atspi` dans le workflow `install.sh`.
+  - **Discarded Options**: Tolérer un repli permissif sur une action arbitraire ; ignorer l'invalidation de cache et relancer un snapshot non filtré en tâche de fond ; exiger l'installation manuelle d'outils tiers.
+  - **Rationale**: Rejet fail-closed strict (return False) de tout index numérique non résolu dans `_last_node_cache` ou sur snapshot mismatch ; sélection d'action déterministe (exacte, numérique, sous-chaîne unique, synonymes sémantiques ou rejet avec listing des actions disponibles) ; build et installation automatique de `gui-agent-atspi` dans `install.sh` ; création du workspace `Cargo.toml` racine activant la détection CI native.
+- [2026-09-12] Médiation d'Accessibilité Programmatique via Moteur Natif Rust AT-SPI / D-Bus (Phase 1 #130)
+  - **Context**: L'accès à l'interface graphique Linux par perception visuelle seule (captures d'écran et OCR) souffre de cécité sémantique (menus contextuels éphémères, scaling HiDPI, dialogues modaux bloquants). L'accès direct à AT-SPI2 via D-Bus (`org.a11y.Bus`) est requis avec une latence d'extraction minimale (< 50 ms).
+  - **Discarded Options**: Bibliothèque Python `pyatspi` (obsolète, fuites mémoire et dépendances C non isolées) ; binding C pur / ctypes ; réécriture complète du serveur MCP en Rust (rupture de compatibilité avec l'écosystème FastMCP Python existant).
+  - **Rationale**: Moteur autonome bivalent écrit en Rust (`linux/crates/atspi_mediator` produisant le binaire release autonome `gui-agent-atspi` de 3,0M épuré) exploitant `atspi` et `zbus`, avec support CLI et mode serveur stdio JSON-RPC MCP (`initialize`, `tools/call`), interfacé depuis Python via `linux/layers/accessibility.py` avec mise en cache synchronisée par verrou (`_cache_lock`) des index vers `object_ref`, communication par flux process borné avec timeouts stricts et mocks complets pour CI headless.
 - [2026-09-11] Architecture Modulaire Découplée (core, layers, utils #129)
   - **Context**: Monolithe historique couplant REPL, gestion PTY, drivers bas niveau et helpers.
   - **Discarded Options**: Monolithe persistant ; micro-paquets distribués séparément.
@@ -112,6 +127,7 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
+- `feat/accessibility-mediation-phase-1` : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (Issue #130) [plan_accessibility_phase_1.md](.GCC/branches/plan_accessibility_phase_1.md) - Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) soumise par `personnal-agent`
 - `main` : Production release with decoupled modular architecture (core, layers, utils), bilingual landing pages, 65/65 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
 
 ## 📈 Current Status
@@ -119,18 +135,25 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Suppression définitive des 8 issues obsolètes (#3, #4, #5, #9, #12, #28, #30, #48).
   - Création des 7 issues d'architecture v1.0 (#129 à #135) couvrant l'arborescence, les phases 1-4 et la recherche d'équivalents Windows/macOS.
   - Fusion de la PR #136 (`refactor/modular-architecture-issue-129`, Closes #129) avec Confidence Score 5/5 sur Greptile et 0 findings CodeRabbit (65/65 tests validés).
+  - Implémentation et durcissement complets de la Phase 1 (#130) : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (moteur natif Rust `linux/crates/atspi_mediator` produisant `gui-agent-atspi`, couche Python `linux/layers/accessibility.py`, 112/112 tests CI validés au dernier `./ci.sh`).
   - Fermeture de la PR obsolète #112 (traitement de la sécurité subprocess #44 transféré à l'Issue #132).
   - Fusion des PRs précédentes (#7, #8, #16, #35, #50, #57, #55).
   - Fermeture des issues résolues (#42, #56, #69, #106, #70, #68, #63, #59, #46, #45, #13, #107, #43).
   - Nettoyage et suppression de l'ensemble des branches résiduelles distantes et locales.
-  - Validation CI 65/65 tests, quality gate PASS sur `main`.
-- 🔄 In progress: Aucun (arbre propre sur `main`).
+  - Restructuration étanche par système d'exploitation (`linux/`, `windows/`, `macos/`), migration de `tests/` et `examples/` dans `linux/`, zéro code/test/cache à la racine.
+  - Durcissement exhaustif de `.gitignore` et purge des caches résiduels (1,5 Go de target crate et __pycache__).
+  - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
+  - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
+  - Validation CI 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
+  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs, vérification de propriété UID, restriction chirurgicale aux motifs applicatifs authentiques (timestamps numériques et UUID stricts), et préservation à 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`).
+  - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge; there are no outstanding blocking issues*, et **12/12 fils CodeRabbit résolus** sur GitHub.
+  - Validation CI complète : 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep, Rust clippy/test/fmt et quality gate pre-commit PASS.
+- 🔄 In progress: Approbation et fusion de la Pull Request #137 par le mainteneur.
 - ⏳ Pending:
-  - 1. **Phase 1 (#130)** : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (`layers/accessibility.py`).
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
   - 4. **Phase 4 (#133)** : Déclaration FastMCP des 13 outils chirurgicaux, suppression des redondances et mise à jour CI.
   - 5. **Recherche OS tiers (#134, #135)** : Adaptation Windows (UI Automation) et macOS (NSAccessibility).
 
 ## 👉 Next Session Direction
-Initier la Phase 1 sur une nouvelle branche dédiée : Implémentation de l'Issue #130 (Médiation d'accessibilité programmatique via AT-SPI / D-Bus).
+Finaliser la Pull Request pour la Phase 1 (Issue #130 : Médiation d'accessibilité programmatique via AT-SPI / D-Bus) puis initier la Phase 2 (Issue #131).

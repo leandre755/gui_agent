@@ -109,4 +109,36 @@ La règle opérationnelle est désormais : `./ci.sh` + tests ciblés + Greptile 
 ## 🟢 Conclusion & Qualification
 La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 outils MCP GUI ainsi que du packaging standard Python (`gui-agent`), de la construction des artefacts de distribution, de l'isolation via `uv tool install`, du script d'installation Linux `install.sh`, du script PowerShell Windows `install.ps1`, du skill d'installation Windows `skills/gui-agent-windows-install/SKILL.md`, ainsi que du correctif de sécurité et de conformité du chemin de sortie pour `gui_take_screenshot` (PR #7).
 
+---
+
+## 🦾 Phase 1 : Médiation d'Accessibilité Programmatique via AT-SPI / D-Bus (Issue #130) (2026-09-12)
+
+| Cible / Scénario | Commande de Test | Résultat Attendu | Résultat Constaté | Statut |
+|---|---|---|---|---|
+| **Détection du moteur Rust** | `pytest tests/test_accessibility.py -k test_find_atspi_mediator_binary` | Résolution prioritaire variable d'env puis binaire local/upstream | Priorité respectée, détection `/bin/sh` et binaire Rust standard | **PASS** |
+| **Extraction d'arbre AT-SPI** | `pytest tests/test_accessibility.py -k 'test_get_app_state_nominal_or_error or test_get_app_state_with_screenshot'` | Format JSON textuel pur avec count et tree | Structure validée (`status in ('success', 'error')`, `layer: 'accessibility'`) | **PASS** |
+| **Gestion des erreurs et timeouts** | `pytest tests/test_accessibility.py -k 'test_get_app_state_subprocess_error or test_get_app_state_subprocess_timeout or test_get_app_state_binary_missing'` | Pas de crash, dict d'erreur clair et borné | Retours d'erreur structurés avec capture propre | **PASS** |
+| **Mocks d'état applicatif** | `pytest tests/test_accessibility.py -k test_get_app_state_mock` | Découplage complet sans bus graphique requis | Arbre synthétique injecté et inspecté fidèlement | **PASS** |
+| **Déclenchement d'actions RAM** | `pytest tests/test_accessibility.py -k 'test_perform_action_mock or test_perform_action_mcp_mock_protocol or test_perform_action_binary_missing'` | Format MCP element_index/element_identifier | Protocole JSON-RPC validé, exécution d'actions sans curseur | **PASS** |
+| **Écriture directe en mémoire** | `pytest tests/test_accessibility.py -k 'test_set_value_mock or test_set_value_mcp_mock_protocol or test_set_value_binary_missing'` | Mutation Value/EditableText directe | Valeurs assignées sans perte ni layout clavier | **PASS** |
+| **Résolution par cache de nœuds** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_node_cache` | Injection de element_identifier à partir du cache local | Résolution d'index numérique vérifiée et validée | **PASS** |
+| **Intégration façade SDK** | `pytest tests/test_accessibility.py -k test_mcp_core_sdk_facade_integration` | Exposition cohérente dans `mcp_core` | `mcp_core.get_app_state`, `perform_action`, `set_value` opérationnels | **PASS** |
+| **Régression Scaffolding** | `pytest tests/test_package.py -k test_modular_architecture_scaffolding` | Non-régression sur le découpage modulaire | Validation 100% de la structure core/layers/utils | **PASS** |
+| **Validation stricte de l'arbre** | `pytest tests/test_accessibility.py -k test_get_app_state_invalid_tree_payload` | Rejet explicite des payloads non conformes | Erreur structurée retournée, purge déterministe du cache de nœuds | **PASS** |
+| **Identité de snapshot & non-obsolescence** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_snapshot_id_mismatch` | Rejet immédiat (return False) si snapshot_id mismatch | Évite toute action accidentelle sur un index périmé | **PASS** |
+| **Rejet fail-closed d'index absent du cache** | `pytest tests/test_accessibility.py -k test_perform_action_and_set_value_with_missing_cache_index` | Rejet immédiat sans subprocess si index inconnu | Aucune action non coordonnée sur arbre sauvage | **PASS** |
+| **Validation CodeRabbit locale** | `coderabbit review --agent -t uncommitted` | 0 finding bloquant / avertissement sur l'ensemble des fichiers modifiés | 0 finding, review completed avec succès | **PASS** |
+| **Durcissement index bounds & hydratation D-Bus** | `cargo test --manifest-path crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique hors limites + mutex d'hydratation réessayable | 8/8 tests passés, 0 warning clippy | **PASS** |
+| **Rejet obligatoire d'index sans snapshot_id** | `pytest tests/test_accessibility.py -k test_numeric_index_without_snapshot_id_rejected` | Rejet fail-closed systématique sans Popen si snapshot_id manquant sur index numérique | Test unitaire validé | **PASS** |
+| **Livraison native et fallbacks install.sh** | `./install.sh --dry-run` | Détection cibles workspace/crate target et fallback git cargo install | 0 erreur, code 0 | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, workflows, ruff check/format, mypy, pytest) | 84/84 tests passés en 32.31s, 0 avertissement, 0 erreur | **PASS** |
+| **Validation CodeRabbit 3 remarques mineures** | `coderabbit review --agent --uncommitted` | 0 finding bloquant / avertissement sur `windows/install.ps1`, `linux/core/repl.py`, `linux/tests/test_package.py` | `review_completed`, `findings: 0` | **PASS** |
+| **Gardiens repl incrémental UTF-8 & install.ps1** | `pytest linux/tests/test_package.py -k "test_repl_safe_read_incremental_utf8 or test_repl_execute_script_multibyte_utf8 or test_windows_install_ps1_guards"` | Validation fragments multi-octets UTF-8, script repl émettant des emojis/accents et gardes PowerShell | 3/3 tests unitaires passés | **PASS** |
+| **Validation Globale CI (Phase 1 finale)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 105/105 tests passés en 36.20s, 0 avertissement, 0 erreur | **PASS** |
+| **Compilation Rust native Workspace** | `cargo check` | Vérification du crate natif `atspi_mediator` | Compilé en 0.09s (code 0) | **PASS** |
+| **Revue Greptile finale sur commit `45ca723`** | `greptile review --agent --branch main` | Vérification exhaustive de la branche contre main | `Confidence: 5/5`, 0 finding, `The PR appears safe to merge` | **PASS** |
+| **Certification Greptile finale sur commit `f8c261c`** | `greptile review --agent --branch main --instructions "..."` | Certification des 3 ajustements finaux (Review ID `9369eadb-09f9-439d-94e5-ca3a78d6c94a`) | `Confidence: 5/5`, 0 comment, `The reviewed adjustments appear safe to merge` | **PASS** |
+| **Certification CodeRabbit finale sur commit `f8c261c`** | `coderabbit review --agent --base-commit 6d6686c` | 0 finding sur l'ensemble des fichiers modifiés | `review_completed`, `findings: 0` | **PASS** |
+| **Validation Globale CI (Phase 1 durcie)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 54.98s, 0 avertissement, 0 erreur | **PASS** |
+| **Rejet index u32 hors plage & tests MCP** | `cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique > u32::MAX + priorité identifiant explicite | 13/13 tests passés (9 lib, 4 main), 0 avertissement | **PASS** |
 

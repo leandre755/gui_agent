@@ -82,6 +82,15 @@ Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cy
 4. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics de souris et opérations de glisser sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction utilisateur naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
 5. **Vision Locale, OCR & Automatisation Playwright** : La correspondance de motifs (`cv2.matchTemplate`) permet une détection robuste des icônes malgré les variations de thèmes. La détection de texte combine Tesseract OCR avec le repli ONNX RapidOCR. L'automatisation web s'appuie sur Playwright pour inspecter les arbres ARIA et manipuler directement les nœuds DOM sans ambiguïté visuelle.
 
+### Architecture Multi-Plateforme à la Racine
+
+Le projet structure les implémentations par système d'exploitation dans des répertoires dédiés à la racine :
+- **`linux/`** : Implémentation principale sous Linux regroupant le moteur `gui_agent`, le médiateur natif d'accessibilité AT-SPI2 / D-Bus (`linux/crates/atspi_mediator`), les scripts d'installation dédiés (`linux/install.sh`, `linux/uninstall.sh`) et la résolution dynamique des chemins conforme au standard XDG Base Directory (`XDG_CACHE_HOME`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME`).
+- **`windows/`** : Répertoire réservé pour l'implémentation Windows via UI Automation et l'API Win32 (Phase 5 #134).
+- **`macos/`** : Répertoire réservé pour l'implémentation macOS via NSAccessibility et Quartz Event Taps (Phase 5 #135).
+
+Tous les répertoires de cache (captures d'écran avec grille cartésienne et enregistrements vidéo MP4 gérés par `gui_start_video_recording` et `gui_stop_video_recording`) sont résolus dynamiquement sans aucun chemin utilisateur en dur.
+
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Installation
@@ -95,21 +104,22 @@ Exécutez le script d'installation automatisé pour vérifier les dépendances, 
 
 ```bash
 # Installateur curl en une ligne
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
 
 # Ou localement depuis un dépôt cloné
-./install.sh
+./linux/install.sh
 ```
 
 #### Microsoft Windows (PowerShell)
 Lancez PowerShell (utilisateur standard ou administrateur) et exécutez :
 
 ```powershell
-# Installateur PowerShell en une ligne
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+# Téléchargement et exécution vérifiée d'une release versionnée
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Ou localement depuis un dépôt cloné
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 ### 2. Déploiement Isolé via uv tool
@@ -392,24 +402,26 @@ Arrête proprement l'enregistrement FFmpeg en cours et valide le conteneur du fi
 
 Pour purger proprement `gui-agent`, supprimer les environnements isolés et retirer les configurations MCP enregistrées :
 
-### 1. Linux & macOS (Bash)
+### 1. Linux (Bash)
 
 ```bash
-# Désinstallateur distant automatisé
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.sh | bash
+# Téléchargement et exécution vérifiée d'une release versionnée
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
-# Désinstallation locale avec purge complète des données et captures
-./uninstall.sh --purge-data --yes
+# Ou désinstallation locale avec purge complète des données et captures
+./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Désinstallateur distant automatisé
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+# Téléchargement et exécution vérifiée d'une release versionnée
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
-# Désinstallation locale avec purge complète des données et captures
-.\uninstall.ps1 -PurgeData -Yes
+# Ou désinstallation locale avec purge complète des données et captures
+.\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 #### Éléments nettoyés par le désinstallateur :

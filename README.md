@@ -83,6 +83,15 @@ The server exposes 21 monolithic FastMCP tools covering the complete lifecycle o
 4. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
 5. **Local Vision, OCR & Playwright Automation**: Template matching (`cv2.matchTemplate`) enables robust icon detection even under theme variations. Text discovery combines Tesseract OCR with RapidOCR ONNX fallback. Web automation leverages Playwright to inspect ARIA trees and manipulate DOM nodes directly without visual ambiguity.
 
+### Multi-Platform Root Architecture
+
+The codebase organizes platform implementations into dedicated root directories:
+- **`linux/`** : Primary Linux implementation containing the `gui_agent` core engine, native AT-SPI2 / D-Bus accessibility mediator (`linux/crates/atspi_mediator`), dedicated installation scripts (`linux/install.sh`, `linux/uninstall.sh`), and dynamic XDG Base Directory path resolution (`XDG_CACHE_HOME`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME`).
+- **`windows/`** : Reserved directory for Windows UI Automation & Win32 API implementation (Phase 5 #134).
+- **`macos/`** : Reserved directory for macOS NSAccessibility & Quartz Event Taps implementation (Phase 5 #135).
+
+All cache paths (including dynamic Cartesian screenshot buffers and low-overhead MP4 video recordings via `gui_start_video_recording` and `gui_stop_video_recording`) are resolved dynamically without hardcoded user directories.
+
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Installation
@@ -95,22 +104,24 @@ The server exposes 21 monolithic FastMCP tools covering the complete lifecycle o
 Run the automated installer to check dependencies, install Astral `uv`, configure the isolated environment, and register the MCP server:
 
 ```bash
-# Single-line curl installer
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+# Download and verify a versioned release installer
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
+chmod +x install.sh && ./install.sh
 
 # Or locally from a cloned repository
-./install.sh
+./linux/install.sh
 ```
 
 #### Microsoft Windows (PowerShell)
 Launch PowerShell (standard user or administrator) and execute:
 
 ```powershell
-# Single-line PowerShell installer
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+# Download and execute a verified release installer
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Or locally from a cloned repository
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 ### 2. Isolated Deployment via uv tool
@@ -393,24 +404,26 @@ Cleanly terminates the ongoing FFmpeg recording and validates the generated MP4 
 
 To cleanly purge `gui-agent`, delete isolated environments, and remove registered MCP configurations:
 
-### 1. Linux & macOS (Bash)
+### 1. Linux (Bash)
 
 ```bash
-# Automated remote uninstaller
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.sh | bash
+# Download and verify a versioned release uninstaller
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
-# Local uninstall with full data and screenshot purge
-./uninstall.sh --purge-data --yes
+# Or local uninstall with full data and screenshot purge
+./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Automated remote uninstaller
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+# Download and execute a verified release uninstaller
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
-# Local uninstall with full data and screenshot purge
-.\uninstall.ps1 -PurgeData -Yes
+# Or local uninstall with full data and screenshot purge
+.\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 #### What the uninstaller cleans:

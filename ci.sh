@@ -178,11 +178,11 @@ if [ "$QUICK_MODE" -eq 0 ]; then
     run_step "Formatage de Code (Ruff Format)" "$RUFF_CMD format --check ."
 
     # 5. Typage Statique
-    run_step "Typage Statique Strict (Mypy)" "$MYPY_CMD gui_agent mcp_gui_server.py"
+    run_step "Typage Statique Strict (Mypy)" "$MYPY_CMD -p linux"
 fi
 
 # 6. Tests Pytest
-run_step "Suite de Tests Pytest" "$TEST_RUNNER -v tests/"
+run_step "Suite de Tests Pytest" "$TEST_RUNNER -v linux/tests/"
 
 # Affichage du tableau récapitulatif
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

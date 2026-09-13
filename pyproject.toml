@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "gui-agent"
 version = "0.1.0"
-description = "Monolithic FastMCP GUI Agent Server for Linux Desktop Computer Use"
+description = "Monolithic FastMCP GUI Agent Server for Desktop Computer Use"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -60,9 +60,16 @@ dev = [
 [project.scripts]
 gui-agent = "gui_agent.server:main"
 mcp-gui-server = "gui_agent.server:main"
+gui-agent-atspi-py = "gui_agent.layers.accessibility:main_cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["gui_agent"]
+packages = ["linux"]
+
+[tool.hatch.build.targets.wheel.sources]
+"linux" = "gui_agent"
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.ruff]
 line-length = 120
@@ -109,6 +116,7 @@ max-complexity = 25
 
 [tool.mypy]
 python_version = "3.13"
+mypy_path = "."
 ignore_missing_imports = true
 check_untyped_defs = true
 disallow_incomplete_defs = true
@@ -123,12 +131,12 @@ exclude = [
 ]
 
 [tool.bandit]
-exclude_dirs = ["venv", ".venv", "screenshots", ".GCC", "dist", "build"]
+exclude_dirs = ["venv", ".venv", "screenshots", ".GCC", "dist", "build", "linux/tests", "linux/examples", "tests", "examples"]
 skips = ["B603", "B607", "B404"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["linux/tests"]
 python_files = ["test_*.py"]
-pythonpath = ["."]
+pythonpath = ["linux", "."]
 
 

@@ -80,9 +80,9 @@ jobs:
           python -m compileall -q .
           ruff check .
           if command -v xvfb-run >/dev/null 2>&1; then
-            xvfb-run -a pytest -v tests/
+            xvfb-run -a pytest -v linux/tests/
           else
-            pytest -v tests/
+            pytest -v linux/tests/
           fi
 
       - name: Set up Java

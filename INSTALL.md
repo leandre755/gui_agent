@@ -11,13 +11,15 @@ Ce guide détaille l'installation, la configuration et le dépannage du serveur 
 Ouvrez une invite de commande **PowerShell** (en utilisateur standard ou administrateur) et lancez :
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/install.ps1 | iex"
+# Téléchargement et exécution vérifiée du script d'installation :
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 Ou en local depuis le dépôt cloné :
 
 ```powershell
-.\install.ps1 -Local
+.\windows\install.ps1 -Local
 ```
 
 #### Ce que prend en charge automatiquement le script `install.ps1` :
@@ -113,8 +115,9 @@ Ajoutez ou fusionnez dans le fichier `$env:USERPROFILE\.gemini\config\mcp_config
 Pour désinstaller complètement le serveur et nettoyer les configurations MCP :
 
 ```powershell
-# Désinstallation automatique
-powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/leandre755/gui_agent/main/uninstall.ps1 | iex"
+# Téléchargement et exécution vérifiée du désinstallateur :
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 # Ou avec purge complète des captures d'écran :
 .\uninstall.ps1 -PurgeData -Yes
@@ -122,14 +125,24 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 ---
 
-## 🐧 Installation sous Linux & macOS
+## 🐧 Installation sous Linux
 
-### Installation en une seule ligne :
+*(Note : le support dédié macOS fait l'objet de la Phase 5 ultérieure).*
+
+### Installation d'une release versionnée sous Linux :
 ```bash
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/install.sh | bash
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
+chmod +x install.sh && ./install.sh
 ```
+
+Le script d'installation configure automatiquement :
+1. **Les paquets système Linux** : X11, capture d'écran, OCR, AT-SPI2 Core (`at-spi2-core`, `python3-dbus`, `cargo`).
+2. **Le gestionnaire Astral `uv`** : Installation autonome dans `~/.local/bin/uv`.
+3. **Le serveur FastMCP `gui-agent`** : Déploiement isolé via `uv tool install`.
+4. **Le médiateur natif AT-SPI `gui-agent-atspi`** : Compilation Rust ultra-rapide et installation dans `~/.local/bin/gui-agent-atspi`.
+5. **L'intégration MCP** : Enregistrement direct pour Claude Code CLI et Antigravity CLI (`~/.gemini/config/mcp_config.json`).
 
 ### Désinstallation sous Linux :
 ```bash
-./uninstall.sh --purge-data --yes
+./linux/uninstall.sh --purge-data --yes
 ```
