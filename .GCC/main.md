@@ -127,8 +127,8 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `feat/accessibility-mediation-phase-1` : Médiation d'accessibilité programmatique via AT-SPI / D-Bus (Issue #130) [plan_accessibility_phase_1.md](.GCC/branches/plan_accessibility_phase_1.md) - Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) soumise par `personnal-agent`
-- `main` : Production release with decoupled modular architecture (core, layers, utils), bilingual landing pages, 65/65 Zero-Slop test harness, hardened screenshot rollback lifecycle, bounded X11 timeouts and thread-safe video recording.
+- `docs/readme-how-it-works-update` : Mise à jour des README (EN & FR) et génération des nouveaux diagrammes d'architecture Excalidraw (Architecture v1.0) [plan_readme_maj.md](.GCC/branches/plan_readme_maj.md)
+- `main` : Production release with multi-platform decoupled architecture (`linux/`, `windows/`, `macos/`), native Rust AT-SPI mediator, dynamic XDG path resolution, bilingual landing pages, 112/112 Zero-Slop test harness, and thread-safe video recording.
 
 ## 📈 Current Status
 - ✅ Done:
@@ -146,9 +146,11 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
   - Validation CI 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
   - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), prise en charge sécurisée des répertoires de captures personnalisés (`GUI_AGENT_SCREENSHOTS_DIR`) avec protection stricte des racines système/utilisateurs, vérification de propriété UID, restriction chirurgicale aux motifs applicatifs authentiques (timestamps numériques et UUID stricts), et préservation à 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`).
-  - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge; there are no outstanding blocking issues*, et **12/12 fils CodeRabbit résolus** sur GitHub.
+  - Validation et certification officielle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) : **Confidence Score: 5/5 sur Greptile**, **0 commentaire ajouté**, verdict *Safe to merge*, **12/12 fils CodeRabbit résolus** et fusion dans `main` (commit `7a49514`).
   - Validation CI complète : 112/112 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep, Rust clippy/test/fmt et quality gate pre-commit PASS.
-- 🔄 In progress: Approbation et fusion de la Pull Request #137 par le mainteneur.
+  - Conception et génération des nouveaux diagrammes vectoriels Excalidraw (`how-it-works-en.excalidraw`, `how-it-works-fr.excalidraw`, SVG/PNG dans `assets/`, hébergement GitHub Gist public `f0b933b981a70de123282eb99fd6df44`).
+  - Refonte intégrale et isomorphe de `README.md` et `README.fr.md` (485 lignes strictes, 0 emoji Unicode dans les en-têtes, 0 mention d'historique de version, intégration des 2 Piliers, de la médiation Rust AT-SPI2, des chemins dynamiques XDG et de la préservation vidéo).
+- 🔄 In progress: Revue et publication de la branche `docs/readme-how-it-works-update`.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).
@@ -156,4 +158,4 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - 5. **Recherche OS tiers (#134, #135)** : Adaptation Windows (UI Automation) et macOS (NSAccessibility).
 
 ## 👉 Next Session Direction
-Finaliser la Pull Request pour la Phase 1 (Issue #130 : Médiation d'accessibilité programmatique via AT-SPI / D-Bus) puis initier la Phase 2 (Issue #131).
+Soumettre la Pull Request pour `docs/readme-how-it-works-update` sous le compte `personnal-agent` ou initier la Phase 2 (Issue #131 : Moteur REPL CodeAct).

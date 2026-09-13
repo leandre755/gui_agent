@@ -1,64 +1,71 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Résolution intégrale de tous les constats de revue Greptile (passage de 1/5 à 5/5) et CodeRabbit (résolution de 100% des fils, confirmation officielle de levée des blocages) sur la PR #137 (`feat/accessibility-mediation-phase-1`).
+- **Requested Task**: Mise à jour intégrale des README (`README.md` et `README.fr.md`) avec la nouvelle architecture, conception et génération des nouveaux diagrammes vectoriels d'architecture Excalidraw, conversion en images (SVG/PNG), hébergement sur Gist, respect strict de l'isomorphisme bilingue ligne à ligne, 0 emoji Unicode dans les en-têtes, aucune mention d'historique de versions, et validation complète de `./ci.sh`.
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  - Exécution complète de `./ci.sh` : 112/112 tests unitaires et d'intégration validés sans aucune erreur (`112 passed in 54.98s` en local et `112 passed in 80.93s` en pré-push).
-  - Validation Rust complète : `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test` validés avec 13/13 tests PASS (9 tests dans `lib.rs`, 4 tests dans `main.rs`).
-  - Binaire autonome `gui-agent-atspi` recompilé en release et synchronisé dans `linux/bin/` et `~/.local/bin/`.
-  - Linter Ruff : `ruff check .` validé avec 0 erreur.
-  - Formateur Ruff : `ruff format --check .` validé avec 0 anomalie.
-  - Typage Mypy : `mypy -p linux` validé avec 0 erreur sur 36 fichiers sources.
-  - Validation des workflows GitHub Actions : `verify_workflows.py` validé.
-  - Confirmation textuelle officielle CodeRabbit : *"Oui. Les corrections demandées ont été vérifiées dans le commit 2e931e8... Je ne vois plus de blocage lié à ma demande de changements."*
-  - 100% des fils de discussion de revue résolus sur GitHub (25/25 threads résolus, 0 thread non résolu).
+  - Conception et génération des fichiers sources Excalidraw : `how-it-works-en.excalidraw` et `how-it-works-fr.excalidraw` (schéma officiel JSON avec palette Émeraude, style manuscrit Virgil).
+  - Rendu et conversion sur `excalidraw.com` via Chromium headless :
+    - `assets/exc-how-it-works-en.svg` (44 200 octets) & `assets/exc-how-it-works-en.png` (327 248 octets)
+    - `assets/exc-how-it-works-fr.svg` (45 225 octets) & `assets/exc-how-it-works-fr.png` (328 232 octets)
+  - Inspection visuelle multimodale validée par rapport à l'image de référence fournie par l'utilisateur (`media_1789334163981.png`).
+  - Hébergement sur GitHub Gist public : `https://gist.github.com/personnal-agent/f0b933b981a70de123282eb99fd6df44`
+    - EN SVG : `https://gist.githubusercontent.com/personnal-agent/f0b933b981a70de123282eb99fd6df44/raw/exc-how-it-works-en.svg`
+    - FR SVG : `https://gist.githubusercontent.com/personnal-agent/f0b933b981a70de123282eb99fd6df44/raw/exc-how-it-works-fr.svg`
+  - Parité bilingue stricte vérifiée : 485 lignes dans `README.md` et 485 lignes dans `README.fr.md`, correspondance parfaite des lignes vides et des blocs.
+  - Zéro emoji Unicode dans les en-têtes Markdown (`#`, `##`, `###`, `####`), exclusivement des images Fluent 3D via CDN.
+  - Reflet fidèle et souverain de l'état actuel : aucune mention de "Nouvelle version", "Nouvelle maj" ou historique de versions.
+  - Intégration complète des 2 Piliers (Escalade Progressive L3/L2/L1, Moteur REPL Local CodeAct `execute_script`), du médiateur Rust AT-SPI2 (`gui-agent-atspi`), de la séparation étanche par OS (`linux/`, `windows/`, `macos/`), de la résolution dynamique des chemins XDG (`paths.py`) et de la préservation intégrale des outils de capture vidéo (`gui_start_video_recording`, `gui_stop_video_recording`).
+  - Exécution complète de `./ci.sh` : 112/112 tests PASS en 41.60s (compileall, verify_workflows, ruff check, ruff format, mypy, pytest).
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `linux/crates/atspi_mediator/src/main.rs`
-  - **Scope**: Médiateur Rust AT-SPI et serveur stdio MCP.
-  - **Exact Technical Change**: Sécurisation de `resolve_mcp_target` via `u32::try_from(i)` rejetant immédiatement les entiers `element_index` hors limites (`> u32::MAX`) évitant tout débordement silencieux vers le nœud 0, tout en préservant la priorité absolue aux identifiants non-numériques explicites (`element_identifier`). Ajout de 4 tests unitaires dédiés dans `src/main.rs`.
+- **File**: `README.md`
+  - **Scope**: Documentation principale du projet (anglais).
+  - **Exact Technical Change**: Refonte complète intégrant les 2 Piliers d'architecture, la médiation AT-SPI2 Rust, les chemins dynamiques XDG, l'URL du nouveau diagramme Excalidraw Gist, les 21 outils FastMCP et les scripts d'installation par OS.
+- **File**: `README.fr.md`
+  - **Scope**: Documentation francophone du projet (français).
+  - **Exact Technical Change**: Traduction technique soignée en miroir parfait ligne à ligne avec `README.md` (485 lignes, structure identique).
+- **File**: `how-it-works-en.excalidraw` & `how-it-works-fr.excalidraw`
+  - **Scope**: Fichiers sources vectoriels Excalidraw.
+  - **Exact Technical Change**: Modélisation complète de l'architecture en deux versions linguistiques.
+- **File**: `assets/exc-how-it-works-*.svg` & `assets/exc-how-it-works-*.png`
+  - **Scope**: Artefacts visuels générés depuis excalidraw.com.
+- **File**: `.GCC/branches/plan_readme_maj.md`
+  - **Scope**: Plan tactique de la tâche.
+  - **Exact Technical Change**: Validation des étapes 1 à 5 avec preuves d'exécution.
+- **File**: `.GCC/branches/test.md`
+  - **Scope**: Registre de tests.
+  - **Exact Technical Change**: Ajout de la section de qualification pour les README et diagrammes Excalidraw.
 - **File**: `.GCC/main.md`
   - **Scope**: Registre macro du projet.
-  - **Exact Technical Change**: Harmonisation des mentions de tests historiques (lignes 138 et 147) vers 112/112 tests CI validés.
-- **File**: `.GCC/resume.md`
-  - **Scope**: Journal de transition technique.
-  - **Exact Technical Change**: Remplacement des anciennes instructions de re-tag/push par des directives de vérification en lecture seule et d'attente d'approbation.
-- **File**: `.GCC/branches/plan_accessibility_phase_1.md`
-  - **Scope**: Plan tactique Phase 1.
-  - **Exact Technical Change**: Ajout du Step 9 documentant la validation de `element_index` et l'exécution des 13 tests unitaires Rust.
-- **File**: `.GCC/branches/test.md`
-  - **Scope**: Journal de test persistent.
-  - **Exact Technical Change**: Enregistrement des exécutions `./ci.sh` (112/112 PASS) et `cargo test` (13/13 PASS).
+  - **Exact Technical Change**: Mise à jour du statut global et de la direction de prochaine session.
 
 ## 🛠️ Static Codebase Health
-- **Verification Command Run**: `./ci.sh && cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml`
+- **Verification Command Run**: `./ci.sh`
 - **Linter/Compiler Status**:
 ```text
-============================= 112 passed in 38.37s =============================
-✔ Validé (40648ms)
+============================= 112 passed in 41.60s =============================
+✔ Validé (44572ms)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS     | 452ms      |
-| Validation Workflows GitHub Actions        | PASS     | 78ms       |
-| Linter de Code (Ruff Check)                | PASS     | 112ms      |
-| Formatage de Code (Ruff Format)            | PASS     | 23ms       |
-| Typage Statique Strict (Mypy)              | PASS     | 2102ms     |
-| Suite de Tests Pytest                      | PASS     | 40648ms    |
+| Compilation Bytecode Python (compileall)   | PASS       | 560ms      |
+| Validation Workflows GitHub Actions        | PASS       | 83ms       |
+| Linter de Code (Ruff Check)                | PASS       | 19ms       |
+| Formatage de Code (Ruff Format)            | PASS       | 23ms       |
+| Typage Statique Strict (Mypy)              | PASS       | 955ms      |
+| Suite de Tests Pytest                      | PASS       | 44572ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
 ## 🚧 Unfinished Work & Technical Failures
-- PR #137 entièrement soumise et passée en revue avec score Greptile 5/5 validé.
-- Tous les constats de revue résolus et validés localement (112/112 tests CI et 13/13 tests Rust).
-- En attente de consultation en lecture seule de l'état de la PR et de l'approbation formelle du mainteneur.
+- Aucun blocage technique ni régression. La branche `docs/readme-how-it-works-update` est prête.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target File**: `linux/crates/atspi_mediator/src/main.rs`
-2. **Immediate Action**: Effectuer une consultation en lecture seule de l'état de la PR #137 et attendre l'approbation du mainteneur avant toute action distante.
-3. **Verification Command**: `gh pr view 137 --json state,reviewDecision,statusCheckRollup`
+1. **Target File**: `README.md` & `README.fr.md`
+2. **Immediate Action**: Créer la Pull Request sur GitHub sous le compte `personnal-agent` pour fusionner `docs/readme-how-it-works-update` dans `main`.
+3. **Verification Command**: `git status && ./ci.sh`

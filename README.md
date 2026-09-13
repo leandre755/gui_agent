@@ -29,11 +29,11 @@
 
 ### The Philosophy: Why gui-agent?
 
-Autonomous AI agents interacting with modern graphical user interfaces are frequently burdened by fragmented architectures, fragile micro-servers, and exorbitant memory footprints. Traditional automation setups force models to juggle disparate processes for screen capture, input emulation, window management, and optical character recognition. This fragmentation introduces latency, high failure rates on dynamic desktop environments, and excessive resource consumption that quickly overwhelms memory-constrained workstations.
+Autonomous AI agents interacting with modern graphical user interfaces are frequently burdened by fragmented architectures, high latency, and fragile computer vision loops. Traditional automation setups force models to perceive operating systems exclusively through repetitive raster screenshots, incurring prohibitive round-trip times (RTT) of 2 to 5 seconds per motor action. This reductionist approach causes severe spatial misalignments under fractional scaling, loses transient UI components like disappearing toasts or click-away menus, and quickly exhausts context windows with redundant image payloads.
 
-**gui-agent** resolves this architectural friction by providing a unified, monolithic FastMCP server engineered specifically for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments. Consolidating twenty-one high-performance tools into a single resilient stdio connection, **gui-agent** operates with a minimal memory footprint below 50 MB RAM, enabling seamless execution on dual-core CPUs and virtualized environments without requiring external browser runtimes for desktop tools (browser automation is strictly localized to `gui_web_action`) or external cloud vision dependencies.
+**gui-agent** redefines desktop interaction by aligning agent decisions with the actual ontology of modern operating systems: structured processes in RAM, accessibility trees (AT-SPI2 / D-Bus), window compositors (X11 / Wayland), and kernel event subsystems (`uinput`, `evdev`). Built on two foundational pillars—**Progressive Escalation (L3/L2/L1)** and the **CodeAct Local REPL Engine**—the server enables models to actuate targets in RAM within 50 ms via native Rust mediation (`gui-agent-atspi`), fallback to local RapidOCR or calibrated Cartesian grids when needed, and execute entire multi-step action sequences locally in host memory with sub-5ms latency.
 
-Under the hood, **gui-agent** couples millisecond-level screen acquisition with an intelligent Cartesian coordinate grid overlay, allowing large language models to accurately locate visual targets without spatial hallucinations. By combining native OS input dispatchers, window hierarchy introspection, OpenCV template matching, and local OCR parsing with automated fallback pipelines, the system guarantees deterministic execution, zero-leak process lifecycle management, and pixel-precise control across complex desktop workflows.
+Operating through a single, resilient standard input/output (stdio) FastMCP connection, **gui-agent** functions with a lean baseline memory footprint below 50 MB RAM, fully preserving dual-core host responsiveness without external cloud vision dependencies or persistent background daemons. Platform implementations reside in dedicated, sealed root directories (`linux/`, `windows/`, `macos/`) with dynamic XDG Base Directory path resolution, zero hardcoded user paths, and full continuous screen video recording preservation (`gui_start_video_recording`, `gui_stop_video_recording`) for deterministic auditing.
 
 ---
 
@@ -69,28 +69,28 @@ The server exposes 21 monolithic FastMCP tools covering the complete lifecycle o
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> How It Works
 
-**gui-agent** operates as a closed-loop Computer Use bridge between frontier LLM reasoning engines and the host operating system. The execution pipeline ensures zero spatial hallucinations through deterministic coordinate normalization and hybrid fallback mechanisms.
+**gui-agent** operates as a closed-loop Computer Use bridge between frontier LLM reasoning engines and the host operating system, combining semantic RAM actuation, local script execution, and visual-motor feedback.
 
 <p align="center">
-  <img src="https://gist.githubusercontent.com/lender926-lab/050b95747c45950573c28906fcb1fae6/raw/exc-how-it-works-en.svg" alt="gui-agent Architecture Workflow" width="100%" style="border-radius: 10px;" />
+  <img src="https://gist.githubusercontent.com/personnal-agent/f0b933b981a70de123282eb99fd6df44/raw/exc-how-it-works-en.svg" alt="gui-agent Architecture Workflow" width="100%" style="border-radius: 10px;" />
 </p>
 
-### Technical Execution Pipeline
+### Technical Execution Pipeline & Foundational Pillars
 
-1. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `gui_take_screenshot`, the server captures the raw framebuffer through MSS. If XWayland compositing renders a blank frame, it transparently falls back to KDE Spectacle or Scrot. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at customizable intervals (e.g. 100px), enabling LLMs to infer target coordinates with mathematical certainty.
-2. **Standardized JSON-RPC 2.0 stdio Interface**: Built on FastMCP, the server communicates over standard input/output streams without opening vulnerable network ports or spawning complex daemon topologies. All tool signatures are statically typed and validated through Pydantic schemas.
-3. **Dual Coordinate Normalization Engine**: The server accepts coordinates in either absolute physical pixels `(x, y)` or normalized ratios `[0, 1000]` across any display geometry or multi-monitor setup. An automatic converter handles boundary clamping, DPI scaling, and coordinate translation.
-4. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
-5. **Local Vision, OCR & Playwright Automation**: Template matching (`cv2.matchTemplate`) enables robust icon detection even under theme variations. Text discovery combines Tesseract OCR with RapidOCR ONNX fallback. Web automation leverages Playwright to inspect ARIA trees and manipulate DOM nodes directly without visual ambiguity.
+1. **Pillar I : Progressive Escalation & Bidirectional Hybridization**: Rather than enforcing a single interaction mode, the architecture prioritizes cognitive and execution efficiency: Level L3 accesses the OS accessibility tree (AT-SPI2 / D-Bus via Rust daemon `gui-agent-atspi`) directly in RAM for deterministic sub-50ms actuation with zero image tokens; Level L2 runs decoupled local OCR (RapidOCR) on typography without model inference overhead; Level L1 operates as the ultimate hardware safety net using calibrated Cartesian grid screenshots and kernel-level `uinput`/`evdev` input dispatchers; and an interactive PTY shell layer provides seamless handling of privileged commands.
+2. **Pillar II : Temporal Emancipation via CodeAct REPL Engine**: To eradicate multi-turn network round-trip time (RTT) latency, the server provides an isolated local execution environment (`execute_script`). Models project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption.
+3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `gui_take_screenshot`, the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
+4. **Dual Coordinate Normalization Engine**: The server accepts coordinates in either absolute physical pixels `(x, y)` or normalized ratios `[0, 1000]` across any display geometry or multi-monitor setup. An automatic converter handles boundary clamping, DPI scaling, and coordinate translation transparently.
+5. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
+6. **Local Vision, OCR & Playwright Automation**: Template matching (`cv2.matchTemplate`) enables robust icon detection even under theme variations. Text discovery combines Tesseract OCR with RapidOCR ONNX fallback. Web automation leverages Playwright to inspect ARIA trees and manipulate DOM nodes directly without visual ambiguity.
 
-### Multi-Platform Root Architecture
+### Multi-Platform Root Architecture & Dynamic Path Resolution
 
-The codebase organizes platform implementations into dedicated root directories:
-- **`linux/`** : Primary Linux implementation containing the `gui_agent` core engine, native AT-SPI2 / D-Bus accessibility mediator (`linux/crates/atspi_mediator`), dedicated installation scripts (`linux/install.sh`, `linux/uninstall.sh`), and dynamic XDG Base Directory path resolution (`XDG_CACHE_HOME`, `XDG_DATA_HOME`, `XDG_CONFIG_HOME`).
-- **`windows/`** : Reserved directory for Windows UI Automation & Win32 API implementation (Phase 5 #134).
-- **`macos/`** : Reserved directory for macOS NSAccessibility & Quartz Event Taps implementation (Phase 5 #135).
-
-All cache paths (including dynamic Cartesian screenshot buffers and low-overhead MP4 video recordings via `gui_start_video_recording` and `gui_stop_video_recording`) are resolved dynamically without hardcoded user directories.
+The codebase organizes platform implementations into dedicated root directories with zero hardcoded filesystem paths:
+- **`linux/`** : Complete Linux implementation featuring the core server (`server.py`), native Rust AT-SPI2 / D-Bus mediator (`linux/crates/atspi_mediator` compiled to `gui-agent-atspi`), automated install/uninstall scripts (`install.sh`, `uninstall.sh`), dedicated tests and examples, and dynamic XDG Base Directory path resolution (`paths.py`).
+- **`windows/`** : Dedicated Windows directory for UI Automation and Win32 API dispatchers (`install.ps1`, `uninstall.ps1`).
+- **`macos/`** : Dedicated macOS directory for NSAccessibility and Quartz Event Taps implementations.
+All runtime paths—including screenshots (`$XDG_CACHE_HOME/gui-agent/screenshots` or `GUI_AGENT_SCREENSHOTS_DIR`), persistent continuous video captures (`$XDG_CACHE_HOME/gui-agent/videos` or `GUI_AGENT_VIDEOS_DIR`), and data storage (`$XDG_DATA_HOME/gui-agent`)—are resolved dynamically at runtime.
 
 ---
 
@@ -101,32 +101,30 @@ All cache paths (including dynamic Cartesian screenshot buffers and low-overhead
 ### 1. Automated Installation (Recommended)
 
 #### Linux (Bash)
-Run the automated installer to check dependencies, install Astral `uv`, configure the isolated environment, and register the MCP server:
+Run the automated installer to check dependencies, install Astral uv, build the native Rust mediator, and register the MCP server:
 
 ```bash
-# Download and verify a versioned release installer
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh
-chmod +x install.sh && ./install.sh
+# Download and execute the automated installer via curl
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
 
-# Or locally from a cloned repository
+# Or execute locally from a cloned repository
 ./linux/install.sh
 ```
 
 #### Microsoft Windows (PowerShell)
-Launch PowerShell (standard user or administrator) and execute:
+Launch PowerShell (standard user or administrator) and execute the automated setup script:
 
 ```powershell
-# Download and execute a verified release installer
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
+# Download and execute the installation script
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1" -OutFile "install.ps1"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 
-# Or locally from a cloned repository
+# Or execute locally from a cloned repository
 .\windows\install.ps1 -Local
 ```
 
 ### 2. Isolated Deployment via uv tool
-
-Install `gui-agent` directly into an isolated environment with global CLI entrypoints:
+Install gui-agent directly into an isolated environment with global CLI entrypoints:
 
 ```bash
 # Install from PyPI
@@ -140,21 +138,20 @@ uv tool upgrade gui-agent
 ```
 
 ### 3. Linux System Prerequisites
-
-Under Linux, install the native window management, OCR, and media libraries:
+Under Linux, install the native window management, OCR, multimedia, and AT-SPI accessibility libraries:
 
 ```bash
 # Debian / Ubuntu / Linux Mint
 sudo apt-get update && sudo apt-get install -y \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr libgl1
+  xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr libgl1 libatspi-dev
 
 # Fedora / RHEL
 sudo dnf install -y \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract libglvnd-glx
+  xdotool wmctrl spectacle ffmpeg xclip tesseract libglvnd-glx at-spi2-core-devel
 
 # Arch Linux / Manjaro
 sudo pacman -S --needed \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract
+  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core
 ```
 
 ---
@@ -162,7 +159,6 @@ sudo pacman -S --needed \
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Electric%20Plug.png" alt="Plug" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> MCP Client Configuration
 
 ### 1. Claude Code CLI
-
 Register the server with Claude Code CLI in a single command:
 
 ```bash
@@ -174,7 +170,6 @@ claude mcp add gui-agent -- uvx --from gui-agent gui-agent
 ```
 
 ### 2. Antigravity CLI
-
 Add the server definition to your Antigravity global MCP configuration:
 
 - **Linux / macOS**: `~/.gemini/config/mcp_config.json`
@@ -197,7 +192,6 @@ Add the server definition to your Antigravity global MCP configuration:
 *(Note: The alias binary `mcp-gui-server` can also be used as the `command` target).*
 
 ### 3. Cursor & VSCode
-
 Add the following entry to your Cursor `mcp.json` (`~/.cursor/mcp.json` or `.vscode/mcp.json`):
 
 ```json
@@ -376,7 +370,7 @@ Interacts directly with web pages via headless Chromium powered by Playwright.
 #### `gui_start_video_recording`
 Launches an asynchronous screen recording sub-process using FFmpeg with minimal CPU overhead.
 - **Parameters**:
-  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped MP4 in screenshots dir).
+  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped MP4 in videos dir).
   - `fps` (`int`, default `5`): Video capture frame rate (1 to 30 FPS).
   - `monitor_index` (`int`, default `1`): Target monitor index.
   - `duration` (`int | None`, default `None`): Optional automatic duration limit in seconds.
@@ -392,9 +386,11 @@ Cleanly terminates the ongoing FFmpeg recording and validates the generated MP4 
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Control%20Knobs.png" alt="Config" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Environment Variables (Configuration)</b></summary>
 
 | Variable | Description | Default Value |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | `DISPLAY` | Target X11 display server identifier. | `:0` |
-| `GUI_AGENT_SCREENSHOTS_DIR` | Directory where screenshots, crops, and screen recordings are saved. | `~/.local/share/gui-agent/screenshots` |
+| `GUI_AGENT_SCREENSHOTS_DIR` | Directory where screenshots and cropped frames are saved. | `$XDG_CACHE_HOME/gui-agent/screenshots` |
+| `GUI_AGENT_VIDEOS_DIR` | Directory where continuous MP4 screen video recordings are saved. | `$XDG_CACHE_HOME/gui-agent/videos` |
+| `GUI_AGENT_ATSPI_BIN` | Custom filesystem path to the native `gui-agent-atspi` Rust mediator binary. | Auto-discovered |
 
 </details>
 
@@ -407,30 +403,30 @@ To cleanly purge `gui-agent`, delete isolated environments, and remove registere
 ### 1. Linux (Bash)
 
 ```bash
-# Download and verify a versioned release uninstaller
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
+# Download and execute the automated uninstaller
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh
 chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
-# Or local uninstall with full data and screenshot purge
+# Or local uninstall with full data and cache purge
 ./linux/uninstall.sh --purge-data --yes
 ```
 
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Download and execute a verified release uninstaller
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+# Download and execute the automated uninstaller
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
-# Or local uninstall with full data and screenshot purge
+# Or local uninstall with full data and cache purge
 .\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
 #### What the uninstaller cleans:
-- Removes `gui-agent` and `mcp-gui-server` binaries from `~/.local/bin` (or `%USERPROFILE%\.local\bin`).
+- Removes `gui-agent`, `mcp-gui-server`, and `gui-agent-atspi` binaries from standard binary paths (`~/.local/bin` or virtualenv).
 - Unregisters the MCP server from Claude Code CLI configuration.
 - Cleans JSON entries from Antigravity `mcp_config.json`.
-- Purges temporary directories and optionally deletes the screenshot repository (`--purge-data` / `-PurgeData`).
+- Purges temporary runtimes and optionally deletes all screenshots and recordings (`--purge-data` / `-PurgeData`).
 
 ---
 
@@ -449,15 +445,15 @@ cd gui_agent
 uv venv
 source .venv/bin/activate
 
-# Install editable package with development dependencies
+# Install editable package with development dependencies and build native Rust extensions
 uv pip install -e ".[dev]"
 ```
 
 ### 2. Running Test Suites
 
 ```bash
-# Run unit and integration tests
-pytest -v tests/
+# Run unit and integration tests across platform layers
+pytest -v linux/tests/
 ```
 
 ### 3. Quality-Gate 8-Layer Pre-Commit Verification
@@ -470,7 +466,7 @@ ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 ```
 
 | Layer | Validator | Scope & Quality Invariants Enforced |
-| :--- | :--- | :--- |
+| :--- | :--- | :--- | :--- |
 | 1 | `anti-leak` | Blocks secret tokens, private keys, and `.env` credentials from staged files. |
 | 2 | `pip-audit` | Audits Python dependency tree against known CVE vulnerability databases. |
 | 3 | `ruff check` | Enforces zero lint warnings, PEP 8 standards, and modern Python 3.10+ idioms. |

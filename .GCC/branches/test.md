@@ -142,3 +142,19 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Validation Globale CI (Phase 1 durcie)** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 54.98s, 0 avertissement, 0 erreur | **PASS** |
 | **Rejet index u32 hors plage & tests MCP** | `cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml` | Rejet immédiat sur index numérique > u32::MAX + priorité identifiant explicite | 13/13 tests passés (9 lib, 4 main), 0 avertissement | **PASS** |
 
+---
+
+## 🎨 Mise à Jour des README & Nouveaux Diagrammes Excalidraw (Architecture v1.0) (2026-09-13)
+
+| Cible / Scénario | Commande de Test | Résultat Attendu | Résultat Constaté | Statut |
+|---|---|---|---|---|
+| **Conception Excalidraw vectorielle** | Génération `how-it-works-en.excalidraw` & `how-it-works-fr.excalidraw` | Diagrammes conformes au schéma officiel Excalidraw reflétant les 2 Piliers (Escalade L3/L2/L1, REPL CodeAct) | Fichiers JSON Excalidraw valides créés | **PASS** |
+| **Rendu Canvas et Export SVG/PNG** | Automatisation navigateur Chromium sur `excalidraw.com` | Rendu fidèle, police Virgil manuscrite, palette Émeraude | SVG et PNG haute fidélité générés dans `assets/` | **PASS** |
+| **Inspection visuelle multimodale** | `view_file` sur images PNG générées | Conformité avec la référence `media_1789334163981.png` | Structure visuelle validée (niveaux L3/L2/L1, REPL, hôte) | **PASS** |
+| **Hébergement Gist public** | `gh gist create` | Liens SVG publics pérennes sans polluer le dépôt Git | Gist `f0b933b981a70de123282eb99fd6df44` créé et accessible | **PASS** |
+| **Isomorphisme bilingue strict** | `diff <(wc -l README.md \| awk '{print $1}') <(wc -l README.fr.md \| awk '{print $1}')` | Exacte égalité de lignes et de structure vide | 485 lignes dans les deux fichiers, parité parfaite | **PASS** |
+| **Zéro emoji Unicode dans en-têtes** | Script Python de scan de tous les titres `#`, `##`, `###`, `####` | Aucun emoji Unicode (uniquement CDN Fluent 3D `<img>`) | 0 emoji Unicode détecté | **PASS** |
+| **Absence de mentions d'historique** | Script Python de scan de termes bannis ("nouvelle version", "nouvelle maj", etc.) | Reflet pur de l'état actuel de l'architecture | 0 occurrence de mention d'historique | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 41.60s, 0 avertissement, 0 erreur | **PASS** |
+
+
