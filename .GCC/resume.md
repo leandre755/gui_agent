@@ -7,9 +7,9 @@
   - `windows/install.ps1` : `$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }` et garde `$LASTEXITCODE -eq 0` après `claude mcp add` ajoutées et validées unitairement via `test_windows_install_ps1_guards`.
   - `linux/core/repl.py` : Utilisation de `codecs.getincrementaldecoder('utf-8')` dans `_safe_read` pour stdout et stderr, avec découpage modulaire (`_handle_readable_fds`, `_drain_readers`) respectant la complexité cyclomatique Ruff (C901 < 25), et flush de fin de flux `decode(b"", final=True)`.
   - Tests unitaires dédiés : `test_repl_safe_read_incremental_utf8`, `test_repl_execute_script_multibyte_utf8`, `test_windows_install_ps1_guards` créés et validés (3/3 PASS).
-  - CI Locale : `./ci.sh` validé à 100% avec **105/105 tests PASS** (compileall, verify_workflows, ruff check, ruff format, mypy strict sur 36 fichiers, pytest en 36.20s).
+  - CI Locale : `./ci.sh` validé à 100% avec **105/105 tests PASS** (compileall, verify_workflows, ruff check, ruff format, mypy strict sur 36 fichiers, pytest en 38.63s [38631ms]).
   - Compilation Rust : `cargo check` validé en 0.09s (code 0).
-  - Revue CodeRabbit locale : `coderabbit review --agent --uncommitted` validée avec **0 finding** sur `windows/install.ps1`, `linux/core/repl.py`, `linux/tests/test_package.py`.
+  - Revue CodeRabbit locale : `coderabbit review --agent --base-commit 6d6686c` validée avec **0 finding** sur `windows/install.ps1`, `linux/core/repl.py`, `linux/tests/test_package.py`.
   - Commit git : `45ca723` validé par les 8/8 hooks pre-commit de qualité (gitleaks, pip-audit, ruff check, ruff format, mypy, sonar/bugbear, bandit, semgrep).
   - Revue Greptile locale : `greptile review --agent --branch main` sur commit `45ca723` exécutée avec temporisation de 300s via `schedule` -> **Confidence: 5/5**, 0 constat, `The PR appears safe to merge`.
 
@@ -22,20 +22,25 @@
 - **File**: `linux/core/repl.py`
   - **Scope**: Moteur REPL CodeAct local.
   - **Exact Technical Change**:
-    - Import `codecs` et instanciation de décodeurs incrémentaux UTF-8 (`codecs.getincrementaldecoder('utf-8')(errors='replace')`) pour stdout et stderr.
-    - Passage des décodeurs à `_safe_read` avec gestion des fragments multi-octets (retourne `None` si incomplet, gère EOF avec `final=True`).
-    - Extraction de `_handle_readable_fds` et `_drain_readers` pour maintenir la complexité cyclomatique < 25.
+    - Import `codecs` et instanciation de décodeurs incrémentaux UTF-8 (`codecs.getincrementaldecoder('utf-8')(errors='replace')`) pour stdout et stderr (lignes 65-68).
+    - `def _handle_readable_fds(r: list[int], readers: list[int], out_fd: int, out_ch: list[str], err_ch: list[str], decoders: dict[int, codecs.IncrementalDecoder], out_len: int, err_len: int, max_output_chars: int) -> tuple[int, int, bool]:` (lignes 120-146) pour traiter les descripteurs lisibles sans dépasser le seuil de complexité cyclomatique.
+    - `def _drain_readers(readers: list[int], out_fd: int, out_ch: list[str], err_ch: list[str], decoders: dict[int, codecs.IncrementalDecoder]) -> None:` (lignes 149-162) pour purger les descripteurs restants et appeler `dec.decode(b"", final=True)`.
+    - `def _safe_read(fd: int, decoder: codecs.IncrementalDecoder | None = None) -> str | None:` (lignes 184-212) pour consommer jusqu'à 4096 octets, décoder de manière incrémentale, bufferiser les caractères partiels et renvoyer le reliquat au signal EOF.
 - **File**: `linux/tests/test_package.py`
   - **Scope**: Suite de tests Linux.
-  - **Exact Technical Change**: Ajout de 3 tests de non-régression (`test_repl_safe_read_incremental_utf8`, `test_repl_execute_script_multibyte_utf8`, `test_windows_install_ps1_guards`).
+  - **Exact Technical Change**:
+    - `def test_repl_safe_read_incremental_utf8() -> None:` (lignes 934-964) : test de fragmentation multi-octets UTF-8 sous pipe non bloquant.
+    - `def test_repl_execute_script_multibyte_utf8() -> None:` (lignes 967-974) : validation d'exécution nominale de script avec emojis et accents.
+    - `def test_windows_install_ps1_guards() -> None:` (lignes 976-983) : vérification statique des gardes PowerShell dans `windows/install.ps1`.
 - **File**: `.GCC/branches/test.md`, `.GCC/resume.md`
   - **Scope**: Journal d'exécution des tests et état de session GCC.
+  - **Raw Error Logs**: None (0 errors, 0 failures across all verification steps).
 
 ## 🛠️ Static Codebase Health
 - **Verification Command Run**: `./ci.sh && cargo check`
 - **Linter/Compiler Status**:
 ```text
-============================= 105 passed in 36.20s =============================
+============================= 105 passed in 38.63s =============================
 ✔ Validé (38631ms)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
