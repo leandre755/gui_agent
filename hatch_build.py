@@ -15,6 +15,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
@@ -28,6 +29,28 @@ class CustomBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict[str, Any]) -> None:
         """Initialise la compilation Rust et copie le binaire dans linux/bin/."""
         project_root = self.root
+
+        if version == "editable":
+            self.build_config.target_config["dev-mode-dirs"] = ["linux"]
+            shim_content = f'''"""Editable installation shim for gui_agent pointing to linux/."""
+import os
+
+_linux_dir = os.path.abspath(r"{os.path.join(project_root, "linux")}")
+__path__ = [_linux_dir]
+__file__ = os.path.join(_linux_dir, "__init__.py")
+
+if os.path.isfile(__file__):
+    with open(__file__, encoding="utf-8") as _f:
+        exec(compile(_f.read(), __file__, "exec"))
+'''
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".py", delete=False) as shim:
+                shim.write(shim_content)
+                shim.flush()
+                self._shim_file = shim.name
+
+            if "force_include_editable" not in build_data:
+                build_data["force_include_editable"] = {}
+            build_data["force_include_editable"][self._shim_file] = "gui_agent/__init__.py"
         cargo_bin = shutil.which("cargo")
         cargo_manifest = os.path.join(project_root, "Cargo.toml")
 
@@ -80,3 +103,19 @@ class CustomBuildHook(BuildHookInterface):
             if os.path.exists(dest_bin):
                 with contextlib.suppress(OSError):
                     os.remove(dest_bin)
+
+    def finalize(self, version: str, build_data: dict[str, Any], artifact_path: str) -> None:
+        """Nettoie les artefacts temporaires après la construction."""
+        shim = getattr(self, "_shim_file", None)
+        if shim and os.path.exists(shim):
+            with contextlib.suppress(OSError):
+                os.remove(shim)
+            self._shim_file = None
+
+    def clean(self, versions: list[str]) -> None:
+        """Nettoie les fichiers temporaires du hook."""
+        shim = getattr(self, "_shim_file", None)
+        if shim and os.path.exists(shim):
+            with contextlib.suppress(OSError):
+                os.remove(shim)
+            self._shim_file = None

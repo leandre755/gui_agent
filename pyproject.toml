@@ -60,11 +60,10 @@ dev = [
 [project.scripts]
 gui-agent = "gui_agent.server:main"
 mcp-gui-server = "gui_agent.server:main"
-gui-agent-atspi = "gui_agent.layers.accessibility:main_cli"
+gui-agent-atspi-py = "gui_agent.layers.accessibility:main_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["linux"]
-dev-mode-dirs = ["linux"]
 
 [tool.hatch.build.targets.wheel.sources]
 "linux" = "gui_agent"

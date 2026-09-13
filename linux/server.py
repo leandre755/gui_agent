@@ -7,6 +7,7 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -1853,6 +1854,12 @@ def gui_stop_video_recording() -> dict[str, Any]:
 
 def main() -> None:
     """Point d'entrée principal pour démarrer le serveur MCP GUI Agent."""
+    if any(arg in sys.argv[1:] for arg in ("-h", "--help")):
+        print(
+            "Usage: gui-agent [OPTIONS]\n\n"
+            "Serveur FastMCP pour l'automatisation d'interface graphique et l'interaction desktop."
+        )
+        sys.exit(0)
     logger.info("Démarrage du serveur MCP GUI Agent...")
     check_display_env()
     mcp.run()
