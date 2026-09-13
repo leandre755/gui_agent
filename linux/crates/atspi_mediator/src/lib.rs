@@ -537,7 +537,9 @@ pub async fn set_element_value(object_ref_id: &str, value: &str) -> Result<Value
         if ok {
             return Ok(ValueSetInvocation::EditableText);
         }
-        return Err(anyhow!("L'interface AT-SPI EditableText a rejeté le contenu"));
+        return Err(anyhow!(
+            "L'interface AT-SPI EditableText a rejeté le contenu"
+        ));
     }
 
     if value.parse::<f64>().is_err() && proxies.value().await.is_ok() {
@@ -1019,8 +1021,8 @@ mod tests {
             make_action("duplicate_action", "Second variant"),
         ];
         let err = select_action_index(&actions, Some("duplicate_action")).unwrap_err();
-        assert!(err.to_string().contains("Plusieurs actions correspondent exactement"));
+        assert!(err
+            .to_string()
+            .contains("Plusieurs actions correspondent exactement"));
     }
 }
-
-

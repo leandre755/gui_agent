@@ -11,14 +11,19 @@ use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
 
-async fn resolve_ref(object_ref_or_index: &str, cached: Option<&[AccessibilityNode]>) -> Result<String> {
+async fn resolve_ref(
+    object_ref_or_index: &str,
+    cached: Option<&[AccessibilityNode]>,
+) -> Result<String> {
     if let Ok(idx) = object_ref_or_index.parse::<u32>() {
         if let Some(nodes) = cached {
             return nodes
                 .iter()
                 .find(|n| n.index == idx)
                 .map(|n| n.object_ref.clone())
-                .ok_or_else(|| anyhow!("Aucun nœud d'accessibilité trouvé dans le cache pour l'index {idx}"));
+                .ok_or_else(|| {
+                    anyhow!("Aucun nœud d'accessibilité trouvé dans le cache pour l'index {idx}")
+                });
         }
         Err(anyhow!(
             "L'index numérique '{idx}' nécessite un cache de snapshot actif. Veuillez fournir une référence AT-SPI explicite (ex: ':1.42/path')."
@@ -133,45 +138,41 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        "apps" => {
-            match list_accessible_apps(50).await {
-                Ok(apps) => {
-                    let out = serde_json::json!({
-                        "status": "success",
-                        "apps": apps,
-                    });
-                    println!("{}", serde_json::to_string(&out)?);
-                }
-                Err(err) => {
-                    let out = serde_json::json!({
-                        "status": "error",
-                        "error": format!("{err:#}"),
-                    });
-                    eprintln!("{}", serde_json::to_string(&out)?);
-                    std::process::exit(1);
-                }
+        "apps" => match list_accessible_apps(50).await {
+            Ok(apps) => {
+                let out = serde_json::json!({
+                    "status": "success",
+                    "apps": apps,
+                });
+                println!("{}", serde_json::to_string(&out)?);
             }
-        }
-        "doctor" => {
-            match connect().await {
-                Ok(_) => {
-                    let out = serde_json::json!({
-                        "status": "success",
-                        "at_spi_available": true,
-                    });
-                    println!("{}", serde_json::to_string(&out)?);
-                }
-                Err(err) => {
-                    let out = serde_json::json!({
-                        "status": "error",
-                        "at_spi_available": false,
-                        "error": format!("{err:#}"),
-                    });
-                    println!("{}", serde_json::to_string(&out)?);
-                    std::process::exit(1);
-                }
+            Err(err) => {
+                let out = serde_json::json!({
+                    "status": "error",
+                    "error": format!("{err:#}"),
+                });
+                eprintln!("{}", serde_json::to_string(&out)?);
+                std::process::exit(1);
             }
-        }
+        },
+        "doctor" => match connect().await {
+            Ok(_) => {
+                let out = serde_json::json!({
+                    "status": "success",
+                    "at_spi_available": true,
+                });
+                println!("{}", serde_json::to_string(&out)?);
+            }
+            Err(err) => {
+                let out = serde_json::json!({
+                    "status": "error",
+                    "at_spi_available": false,
+                    "error": format!("{err:#}"),
+                });
+                println!("{}", serde_json::to_string(&out)?);
+                std::process::exit(1);
+            }
+        },
         "mcp" => {
             run_mcp_server().await?;
         }
@@ -199,9 +200,9 @@ fn resolve_mcp_target(
     let target_index = arguments.get("element_index").and_then(Value::as_u64);
     let snapshot_token = arguments.get("snapshot_token").and_then(Value::as_str);
 
-    let numeric_idx = target_index.map(|i| i as u32).or_else(|| {
-        target_ident.and_then(|id| id.parse::<u32>().ok())
-    });
+    let numeric_idx = target_index
+        .map(|i| i as u32)
+        .or_else(|| target_ident.and_then(|id| id.parse::<u32>().ok()));
 
     if let Some(idx) = numeric_idx {
         let Some(snap) = cache else {
@@ -303,7 +304,9 @@ async fn run_mcp_server() -> Result<()> {
                         "message": "Parse error"
                     }
                 });
-                stdout.write_all(format!("{}\n", serde_json::to_string(&err_resp)?).as_bytes()).await?;
+                stdout
+                    .write_all(format!("{}\n", serde_json::to_string(&err_resp)?).as_bytes())
+                    .await?;
                 stdout.flush().await?;
                 continue;
             }
@@ -318,7 +321,9 @@ async fn run_mcp_server() -> Result<()> {
                     "message": "Invalid Request"
                 }
             });
-            stdout.write_all(format!("{}\n", serde_json::to_string(&err_resp)?).as_bytes()).await?;
+            stdout
+                .write_all(format!("{}\n", serde_json::to_string(&err_resp)?).as_bytes())
+                .await?;
             stdout.flush().await?;
             continue;
         }
@@ -347,7 +352,9 @@ async fn run_mcp_server() -> Result<()> {
                         }
                     }
                 });
-                stdout.write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes()).await?;
+                stdout
+                    .write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes())
+                    .await?;
                 stdout.flush().await?;
             }
             "tools/list" => {
@@ -423,7 +430,9 @@ async fn run_mcp_server() -> Result<()> {
                         ]
                     }
                 });
-                stdout.write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes()).await?;
+                stdout
+                    .write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes())
+                    .await?;
                 stdout.flush().await?;
             }
             "tools/call" => {
@@ -436,7 +445,10 @@ async fn run_mcp_server() -> Result<()> {
                         let app_name = arguments.get("app_name").and_then(Value::as_str);
                         match snapshot_tree(app_name, None, 1000, 32).await {
                             Ok(nodes) => {
-                                let token = format!("snap-{}", snapshot_seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst));
+                                let token = format!(
+                                    "snap-{}",
+                                    snapshot_seq.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                                );
                                 let mut cache = cached_snapshot.lock().await;
                                 *cache = Some(SnapshotState {
                                     token: token.clone(),
@@ -470,27 +482,25 @@ async fn run_mcp_server() -> Result<()> {
                         drop(cache);
 
                         match target_res {
-                            Ok(resolved) => {
-                                match perform_action(&resolved, action_name).await {
-                                    Ok(inv) => (
-                                        serde_json::json!({
-                                            "status": "success",
-                                            "ok": inv.ok,
-                                            "action_index": inv.action_index,
-                                            "action_name": inv.action_name
-                                        }),
-                                        !inv.ok,
-                                    ),
-                                    Err(err) => (
-                                        serde_json::json!({
-                                            "status": "error",
-                                            "error": format!("{err:#}"),
-                                            "ok": false
-                                        }),
-                                        true,
-                                    ),
-                                }
-                            }
+                            Ok(resolved) => match perform_action(&resolved, action_name).await {
+                                Ok(inv) => (
+                                    serde_json::json!({
+                                        "status": "success",
+                                        "ok": inv.ok,
+                                        "action_index": inv.action_index,
+                                        "action_name": inv.action_name
+                                    }),
+                                    !inv.ok,
+                                ),
+                                Err(err) => (
+                                    serde_json::json!({
+                                        "status": "error",
+                                        "error": format!("{err:#}"),
+                                        "ok": false
+                                    }),
+                                    true,
+                                ),
+                            },
                             Err(err_tuple) => err_tuple,
                         }
                     }
@@ -501,26 +511,24 @@ async fn run_mcp_server() -> Result<()> {
                         drop(cache);
 
                         match target_res {
-                            Ok(resolved) => {
-                                match set_element_value(&resolved, val).await {
-                                    Ok(inv) => (
-                                        serde_json::json!({
-                                            "status": "success",
-                                            "ok": true,
-                                            "result": format!("{inv:?}")
-                                        }),
-                                        false,
-                                    ),
-                                    Err(err) => (
-                                        serde_json::json!({
-                                            "status": "error",
-                                            "error": format!("{err:#}"),
-                                            "ok": false
-                                        }),
-                                        true,
-                                    ),
-                                }
-                            }
+                            Ok(resolved) => match set_element_value(&resolved, val).await {
+                                Ok(inv) => (
+                                    serde_json::json!({
+                                        "status": "success",
+                                        "ok": true,
+                                        "result": format!("{inv:?}")
+                                    }),
+                                    false,
+                                ),
+                                Err(err) => (
+                                    serde_json::json!({
+                                        "status": "error",
+                                        "error": format!("{err:#}"),
+                                        "ok": false
+                                    }),
+                                    true,
+                                ),
+                            },
                             Err(err_tuple) => err_tuple,
                         }
                     }
@@ -548,7 +556,9 @@ async fn run_mcp_server() -> Result<()> {
                         ]
                     }
                 });
-                stdout.write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes()).await?;
+                stdout
+                    .write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes())
+                    .await?;
                 stdout.flush().await?;
             }
             _ => {
@@ -561,7 +571,9 @@ async fn run_mcp_server() -> Result<()> {
                             "message": format!("Method not found: {method}")
                         }
                     });
-                    stdout.write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes()).await?;
+                    stdout
+                        .write_all(format!("{}\n", serde_json::to_string(&resp)?).as_bytes())
+                        .await?;
                     stdout.flush().await?;
                 }
             }
