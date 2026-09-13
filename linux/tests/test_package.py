@@ -169,8 +169,12 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     unrelated_video.write_text("user video project", encoding="utf-8")
     unrelated_recording = custom_dir / "recording_interview.mp4"
     unrelated_recording.write_text("user recording interview", encoding="utf-8")
+    unrelated_recording_num_prefix = custom_dir / "recording_1_interview.mp4"
+    unrelated_recording_num_prefix.write_text("user recording 1 interview", encoding="utf-8")
     unrelated_screenshot = custom_dir / "screenshot_final.png"
     unrelated_screenshot.write_text("user final screenshot", encoding="utf-8")
+    unrelated_screenshot_num_prefix = custom_dir / "screenshot_1_final.png"
+    unrelated_screenshot_num_prefix.write_text("user screenshot 1 final", encoding="utf-8")
 
     # Répertoire externe contenant 'gui-agent' dans son chemin (ex. un repo de dev)
     dev_repo = tmp_path / "gui-agent-projects" / "my-repo"
@@ -204,7 +208,9 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert video_notes.exists()
     assert unrelated_video.exists()
     assert unrelated_recording.exists()
+    assert unrelated_recording_num_prefix.exists()
     assert unrelated_screenshot.exists()
+    assert unrelated_screenshot_num_prefix.exists()
 
     # 2. Mode Purge réel : les captures doivent être supprimées, les fichiers tiers préservés
     res_real = subprocess.run(
@@ -225,7 +231,9 @@ def test_uninstall_script_purges_screenshots_securely(tmp_path):
     assert video_notes.exists(), "video-notes.txt doit être préservé !"
     assert unrelated_video.exists(), "video_projet.mp4 doit être préservé !"
     assert unrelated_recording.exists(), "recording_interview.mp4 doit être préservé !"
+    assert unrelated_recording_num_prefix.exists(), "recording_1_interview.mp4 doit être préservé !"
     assert unrelated_screenshot.exists(), "screenshot_final.png doit être préservé !"
+    assert unrelated_screenshot_num_prefix.exists(), "screenshot_1_final.png doit être préservé !"
     assert custom_dir.exists(), "Le dossier personnalisé contenant des fichiers tiers ne doit pas être supprimé !"
 
     # 3. Mode purge sur répertoire externe contenant 'gui-agent' dans son chemin :

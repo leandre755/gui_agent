@@ -264,40 +264,22 @@ for candidate in "${TARGET_DIRS[@]}"; do
                 rm -rf -- "$CANONICAL_DIR"
                 log_success "Répertoire de captures supprimé : $CANONICAL_DIR"
             else
-                # Emplacement personnalisé : purge ciblée des captures et artefacts GUI Agent sans détruire les répertoires ni les fichiers tiers non liés
-                find "$CANONICAL_DIR" -maxdepth 1 -type f \( \
-                    -name "screenshot_[0-9]*.png" -o \
-                    -name "screenshot_[0-9]*.jpg" -o \
-                    -name "screenshot_[0-9]*.jpeg" -o \
-                    -name "screenshot_[0-9]*.webp" -o \
-                    -name "screenshot_[0-9]* (*).png" -o \
-                    -name "screenshot_[0-9]* (*).jpg" -o \
-                    -name "screenshot_[0-9]* (*).jpeg" -o \
-                    -name "screenshot_[0-9]* (*).webp" -o \
-                    -name "raw_screenshot_[0-9]*.png" -o \
-                    -name "raw_screenshot_[0-9]*.jpg" -o \
-                    -name "raw_screenshot_[0-9]*.jpeg" -o \
-                    -name "raw_screenshot_[0-9]*.webp" -o \
-                    -name "raw_screenshot_[0-9]* (*).png" -o \
-                    -name "raw_screenshot_[0-9]* (*).jpg" -o \
-                    -name "raw_screenshot_[0-9]* (*).jpeg" -o \
-                    -name "raw_screenshot_[0-9]* (*).webp" -o \
-                    -name "web_screenshot_[0-9]*.png" -o \
-                    -name "web_screenshot_[0-9]*.jpg" -o \
-                    -name "web_screenshot_[0-9]*.jpeg" -o \
-                    -name "web_screenshot_[0-9]*.webp" -o \
-                    -name "web_screenshot_[0-9]* (*).png" -o \
-                    -name "web_screenshot_[0-9]* (*).jpg" -o \
-                    -name "web_screenshot_[0-9]* (*).jpeg" -o \
-                    -name "web_screenshot_[0-9]* (*).webp" -o \
-                    -name "recording_[0-9]*.mp4" -o \
-                    -name "recording_[0-9]* (*).mp4" -o \
-                    -name "recording_[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*.mp4" -o \
-                    -name "recording_[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]* (*).mp4" -o \
-                    -name "recording_[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].mp4" -o \
-                    -name "recording_[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F] (*).mp4" -o \
-                    -name "_mcp_screen_tmp_*.png" \
-                \) -delete 2>/dev/null || true
+                # Emplacement personnalisé : purge ciblée avec validation stricte des noms d'artefacts applicatifs authentiques
+                while IFS= read -r -d '' filepath; do
+                    fname="$(basename "$filepath")"
+                    is_artifact=false
+                    if [[ "$fname" =~ ^(screenshot|raw_screenshot|web_screenshot)_[0-9]+(_[0-9]+)?(\ \([0-9]+\))?\.(png|jpg|jpeg|webp)$ ]]; then
+                        is_artifact=true
+                    elif [[ "$fname" =~ ^recording_([0-9]+(_[0-9]+)?|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32})(\ \([0-9]+\))?\.mp4$ ]]; then
+                        is_artifact=true
+                    elif [[ "$fname" =~ ^_mcp_screen_tmp_[0-9a-zA-Z_]+\.png$ ]]; then
+                        is_artifact=true
+                    fi
+
+                    if [[ "$is_artifact" == "true" ]]; then
+                        rm -f -- "$filepath" 2>/dev/null || true
+                    fi
+                done < <(find "$CANONICAL_DIR" -maxdepth 1 -type f -print0 2>/dev/null)
                 rmdir "$CANONICAL_DIR" 2>/dev/null || true
                 log_success "Captures purgées dans l'emplacement personnalisé : $CANONICAL_DIR"
             fi

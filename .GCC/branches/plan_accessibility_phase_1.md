@@ -26,7 +26,7 @@ Action on 0: True
 ```
 
 ### Step 3: Tests Unitaires & Intégration de la Couche Accessibilité
-- [x] **Action**: Ajout de 18 tests unitaires dans `linux/tests/test_accessibility.py` et 8 tests unitaires Rust dans `linux/crates/atspi_mediator/src/lib.rs` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), gestion stricte de `snapshot_id`, sélection déterministe d'action (`select_action_index`), rejet fail-closed des index périmés, et intégration façade `mcp_core`.
+- [x] **Action**: Ajout de 18 tests unitaires dans `linux/tests/test_accessibility.py` et 9 tests unitaires Rust dans `linux/crates/atspi_mediator/src/lib.rs` couvrant : détection du binaire, extraction nominale et filtrée, gestion des timeouts et erreurs subprocess, mocks d'état et de handlers, protocole MCP JSON-RPC, résolution par cache de nœuds (`_last_node_cache`), gestion stricte de `snapshot_id`, sélection déterministe d'action (`select_action_index`), rejet fail-closed des index périmés, rejet des noms dupliqués et des actions non liées, et intégration façade `mcp_core`.
 - [x] **Verify**: `./venv/bin/pytest linux/tests/test_accessibility.py -v && cargo test --manifest-path linux/crates/atspi_mediator/Cargo.toml`
 - **Verification Proof**:
 ```text
@@ -59,17 +59,18 @@ tests/test_accessibility.py::test_perform_action_and_set_value_with_missing_cach
 
 ============================== 18 passed in 7.75s ==============================
 
-running 8 tests
+running 9 tests
+test tests::test_select_action_index_duplicate_exact_names_rejected ... ok
 test tests::test_select_action_index_ambiguous_rejected ... ok
 test tests::test_select_action_index_empty_actions ... ok
 test tests::test_select_action_index_exact_match ... ok
 test tests::test_select_action_index_numeric_index ... ok
-test tests::test_split_object_ref_id_valid ... ok
-test tests::test_select_action_index_generic_resolves_primary ... ok
 test tests::test_select_action_index_single_action ... ok
+test tests::test_select_action_index_single_unrelated_action_rejected_for_click ... ok
 test tests::test_split_object_ref_id_invalid ... ok
+test tests::test_split_object_ref_id_valid ... ok
 
-test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
 ### Step 4: Validation Complète de la Suite CI
@@ -157,8 +158,12 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | Typage Statique Strict (Mypy)              | PASS     | 631ms      |
 | Suite de Tests Pytest                      | PASS     | 39766ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-### Step 8: Restriction stricte des motifs de purge personnalisés aux formats authentiques de l'application (Greptile 5/5)
-- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour éliminer tout motif trop large (`[0-9a-zA-Z_-]*`, `video_*.mp4`) dans les emplacements personnalisés. Les motifs sont désormais restreints strictement aux formats réellement générés par l'application : timestamps numériques (`screenshot_[0-9]*`, `raw_screenshot_[0-9]*`, `web_screenshot_[0-9]*`, `recording_[0-9]*`) et identifiants UUID stricts (`recording_<uuid>.mp4`). Préservation vérifiée de 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`). Enrichissement des tests dans `linux/tests/test_package.py`.
+### Step 8: Restriction stricte des motifs de purge personnalisés aux formats authentiques de l'application (Greptile 5/5 & CodeRabbit)
+- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour remplacer les commandes `find -name` avec globs génériques par une boucle de validation stricte par expressions régulières directes (`[[ "$fname" =~ ... ]]`). Les fichiers ciblés dans les emplacements personnalisés sont strictement validés :
+  1. Captures : `^(screenshot|raw_screenshot|web_screenshot)_[0-9]+(_[0-9]+)?(\ \([0-9]+\))?\.(png|jpg|jpeg|webp)$`
+  2. Enregistrements : `^recording_([0-9]+(_[0-9]+)?|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{32})(\ \([0-9]+\))?\.mp4$`
+  3. Fichiers MCP temporaires : `^_mcp_screen_tmp_[0-9a-zA-Z_]+\.png$`
+  Préservation garantie de 100% des fichiers médias tiers, y compris ceux ayant des préfixes numériques comme `recording_1_interview.mp4`, `screenshot_1_final.png`, `video_projet.mp4` ou les UUID tronqués. Enrichissement des assertions dans `linux/tests/test_package.py`.
 - [x] **Verify**: `./ci.sh && cargo test --all-features`
 - **Verification Proof**:
 ```text
