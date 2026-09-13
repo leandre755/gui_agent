@@ -201,8 +201,12 @@ def _get_atspi_bus_address() -> str | None:
                 timeout=2.0,
                 check=False,
             )
-            if res.returncode == 0 and 's "' in res.stdout:
-                addr = res.stdout.split('s "', 1)[1].split('"', 1)[0].strip()
+            if res.returncode == 0 and res.stdout.strip():
+                addr = res.stdout.strip()
+                if addr.startswith("s "):
+                    addr = addr[2:].strip()
+                if addr.startswith('"') and addr.endswith('"') and len(addr) >= 2:
+                    addr = addr[1:-1].strip()
                 if addr:
                     return addr
         except Exception as exc:
@@ -229,7 +233,9 @@ def _get_atspi_bus_address() -> str | None:
             if res.returncode == 0 and res.stdout.strip():
                 addr = res.stdout.strip()
                 if addr.startswith("string "):
-                    addr = addr.split("string ", 1)[1].strip()
+                    addr = addr[7:].strip()
+                if addr.startswith('"') and addr.endswith('"') and len(addr) >= 2:
+                    addr = addr[1:-1].strip()
                 if addr:
                     return addr
         except Exception as exc:
@@ -1126,8 +1132,6 @@ def perform_action(
         args: dict[str, Any] = {
             "action": action,
             "element_identifier": resolved_ref,
-            "element_index": int(element_id),
-            "snapshot_token": snapshot_id,
         }
     else:
         args = {
@@ -1200,8 +1204,6 @@ def set_value(
 
         args: dict[str, Any] = {
             "element_identifier": resolved_ref,
-            "element_index": int(element_id),
-            "snapshot_token": snapshot_id,
             "value": text,
         }
     else:

@@ -209,8 +209,8 @@ def test_perform_action_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> No
     accessibility._last_node_cache["42"] = ":1.42/node/42"
     res_num = perform_action("42", "press", snapshot_id="snap_mcp")
     assert res_num is True
-    assert any('"element_index": 42' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/node/42"' in line for line in written_lines)
+    assert not any('"element_index"' in line for line in written_lines)
 
     # Appel sélecteur textuel direct (element_identifier)
     written_lines.clear()
@@ -297,8 +297,8 @@ def test_set_value_mcp_mock_protocol(monkeypatch: pytest.MonkeyPatch) -> None:
     res = set_value("100", "nouveau_texte", snapshot_id="snap_val")
     assert res is True
     assert any('"value": "nouveau_texte"' in line for line in written_lines)
-    assert any('"element_index": 100' in line for line in written_lines)
     assert any('"element_identifier": ":1.100/input/100"' in line for line in written_lines)
+    assert not any('"element_index"' in line for line in written_lines)
 
 
 def test_perform_action_and_set_value_with_node_cache(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -365,14 +365,15 @@ def test_perform_action_and_set_value_with_node_cache(monkeypatch: pytest.Monkey
     # Vérifier perform_action avec résolution
     ok_act = perform_action("7", "press", snapshot_id="snap_7")
     assert ok_act is True
-    assert any('"element_index": 7' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/org/a11y/atspi/accessible/7"' in line for line in written_lines)
+    assert not any('"element_index"' in line for line in written_lines)
 
     # Vérifier set_value avec résolution
     written_lines.clear()
     ok_val = set_value("7", "valeur_test", snapshot_id="snap_7")
     assert ok_val is True
-    assert any('"element_index": 7' in line for line in written_lines)
+    assert any('"element_identifier": ":1.42/org/a11y/atspi/accessible/7"' in line for line in written_lines)
+    assert not any('"element_index"' in line for line in written_lines)
     assert any('"element_identifier": ":1.42/org/a11y/atspi/accessible/7"' in line for line in written_lines)
 
 
@@ -665,12 +666,12 @@ def test_perform_action_and_set_value_numeric_int_type(monkeypatch: pytest.Monke
     # Passer l'entier 42 au lieu de la chaîne "42"
     act_ok = perform_action(42, "activate", snapshot_id="snap_int")
     assert act_ok is True
-    assert any('"element_index": 42' in line for line in written_lines)
+    assert any('"element_identifier": ":1.42/btn/42"' in line for line in written_lines)
 
     written_lines.clear()
     val_ok = set_value(42, "nouveau", snapshot_id="snap_int")
     assert val_ok is True
-    assert any('"element_index": 42' in line for line in written_lines)
+    assert any('"element_identifier": ":1.42/btn/42"' in line for line in written_lines)
 
 
 def test_dbus_call_action_or_value_dest_and_path_validation(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -831,18 +832,27 @@ def test_call_mcp_action_or_value_fallback_on_popen_error(monkeypatch: pytest.Mo
 
 
 def test_get_atspi_bus_address_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Vérifie la résolution de l'adresse AT-SPI via variable d'environnement puis busctl."""
+    """Vérifie la résolution de l'adresse AT-SPI via variable d'environnement, busctl (cité/non-cité) et dbus-send."""
     # 1. Via variable d'environnement explicite
     monkeypatch.setenv("AT_SPI_BUS_ADDRESS", "unix:path=/custom/atspi")
     assert accessibility._get_atspi_bus_address() == "unix:path=/custom/atspi"
 
-    # 2. Sans variable, via busctl
+    # 2. Sans variable, via busctl avec guillemets
     monkeypatch.delenv("AT_SPI_BUS_ADDRESS", raising=False)
     mock_run = MagicMock()
     mock_run.returncode = 0
     mock_run.stdout = 's "unix:path=/run/user/1000/at-spi/bus_0"\n'
     monkeypatch.setattr(subprocess, "run", lambda *a, **kw: mock_run)
     assert accessibility._get_atspi_bus_address() == "unix:path=/run/user/1000/at-spi/bus_0"
+
+    # 3. Sans variable, via busctl SANS guillemets (format brut retourné par busctl)
+    mock_run.stdout = "s unix:path=/run/user/1000/at-spi/bus_0\n"
+    assert accessibility._get_atspi_bus_address() == "unix:path=/run/user/1000/at-spi/bus_0"
+
+    # 4. Repli dbus-send si busctl est absent
+    monkeypatch.setattr("shutil.which", lambda name: "/bin/dbus-send" if name == "dbus-send" else None)
+    mock_run.stdout = "string unix:path=/tmp/at-spi-dbus\n"
+    assert accessibility._get_atspi_bus_address() == "unix:path=/tmp/at-spi-dbus"
 
 
 def test_mcp_stale_index_rejection_with_token() -> None:
@@ -882,3 +892,41 @@ def test_mcp_stale_index_rejection_with_token() -> None:
     resp_3 = next((line_item for line_item in lines if line_item.get("id") == 3), None)
     assert resp_3 is not None
     assert resp_3["result"]["isError"] is True
+
+
+def test_mcp_direct_identifier_without_snapshot() -> None:
+    """Vérifie qu'un identifiant d'élément explicite résolu (ex: :1.42/ref) est transmis directement sans exiger de snapshot actif."""
+    bin_path = str(Path(__file__).resolve().parent.parent / "bin" / "gui-agent-atspi")
+    if not os.path.isfile(bin_path) or not os.access(bin_path, os.X_OK):
+        pytest.skip("gui-agent-atspi binaire non présent")
+
+    proc = subprocess.Popen(
+        [bin_path, "mcp"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    init_req = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+    # Appel direct avec element_identifier résolu : ne doit PAS renvoyer "Aucun snapshot actif"
+    action_direct = {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+            "name": "perform_action",
+            "arguments": {
+                "action": "click",
+                "element_identifier": ":1.42/org/a11y/atspi/accessible/root",
+            },
+        },
+    }
+    payload = "\n".join([json.dumps(init_req), json.dumps(action_direct)]) + "\n"
+    out, _ = proc.communicate(input=payload, timeout=5.0)
+    lines = [json.loads(line_str) for line_str in out.strip().splitlines() if line_str.strip()]
+
+    resp_2 = next((line_item for line_item in lines if line_item.get("id") == 2), None)
+    assert resp_2 is not None
+    # L'erreur (le cas échéant sur un bus headless absent) ne doit PAS être "Aucun snapshot actif"
+    content_text = resp_2["result"]["content"][0]["text"]
+    assert "Aucun snapshot actif" not in content_text

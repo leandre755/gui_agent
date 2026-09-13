@@ -186,14 +186,20 @@ fi
 
 # Step 3: Purge Screenshots and Runtime Cache
 log_info "3/3 - Nettoyage des données temporaires et captures d'écran..."
-SCREENSHOTS_DIR="${GUI_AGENT_SCREENSHOTS_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/gui-agent/screenshots}"
+# Pour la purge destructive, ignorer tout override d'environnement arbitraire afin d'éviter la suppression récursive de répertoires tiers
+CACHE_BASE="${XDG_CACHE_HOME:-${HOME}/.cache}"
+SCREENSHOTS_DIR="${CACHE_BASE}/gui-agent/screenshots"
 
 if [[ -d "$SCREENSHOTS_DIR" ]]; then
     CANONICAL_DIR="$(cd "$SCREENSHOTS_DIR" 2>/dev/null && pwd -P || true)"
     REAL_HOME="$(cd "${HOME}" 2>/dev/null && pwd -P || echo "${HOME}")"
+    REAL_CACHE="$(cd "${CACHE_BASE}" 2>/dev/null && pwd -P || echo "${CACHE_BASE}")"
 
-    if [[ -z "$CANONICAL_DIR" || "$CANONICAL_DIR" == "/" || "$CANONICAL_DIR" == "$REAL_HOME" || "$CANONICAL_DIR" == "/tmp" || "$CANONICAL_DIR" == "/var" ]]; then
+    # Vérification stricte : le répertoire à supprimer doit impérativement être un sous-dossier gui-agent approuvé
+    if [[ -z "$CANONICAL_DIR" || "$CANONICAL_DIR" == "/" || "$CANONICAL_DIR" == "$REAL_HOME" || "$CANONICAL_DIR" == "$REAL_CACHE" || "$CANONICAL_DIR" == "/tmp" || "$CANONICAL_DIR" == "/var" ]]; then
         log_error "Chemin de captures d'écran non sécurisé détecté : $SCREENSHOTS_DIR. Purge annulée."
+    elif [[ "$CANONICAL_DIR" != *"/gui-agent/screenshots"* && "$CANONICAL_DIR" != *"/gui-agent" ]]; then
+        log_error "Le répertoire ($CANONICAL_DIR) n'appartient pas au cache approuvé de gui-agent. Purge annulée par sécurité."
     elif [[ "$DRY_RUN" == "true" ]]; then
         log_info "[Dry-Run] Purge possible du répertoire de captures : $CANONICAL_DIR"
     else

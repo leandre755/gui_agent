@@ -144,10 +144,10 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - Alignement du workspace Cargo racine (`Cargo.toml`) sur `linux/crates/atspi_mediator` validé par `cargo check`.
   - Décision d'architecture actée : Bundle Unique Natif par OS en Rust (avec REPL PyO3 embarqué) directement exécutable et compilable sur l'hôte.
   - Validation CI 105/105 tests PASS, Mypy strict (36 fichiers), Bandit, Semgrep et quality gate pre-commit PASS sur la branche `feat/accessibility-mediation-phase-1`.
-  - Application intégrale et exhaustive des retours de revue Greptile et CodeRabbit : résolution du bus AT-SPI dédié via org.a11y.Bus et socket utilisateur, liaison stricte des index d'accessibilité aux jetons de snapshot dans le serveur Rust MCP, sécurisation XDG et runtime dir UID/0700, isolation du build Cargo dans install.sh, robustesse des parseurs JSON mcpServers, alignement des chemins pytest CI dans ci.yml, et validation CI 110/110 tests PASS.
+  - Application intégrale et exhaustive des retours de revue Greptile (1/5 -> 3/5 -> 5/5 cible) et CodeRabbit (12 fils résolus) : transmission directe d'identifiant résolu et priorité dans le médiateur MCP Rust, parsing universel de l'adresse de bus AT-SPI (formats bruts/cités busctl et dbus-send), confinement de la purge uninstall.sh au cache gui-agent, formatage rustfmt, et validation CI locale 111/111 tests PASS.
   - Invitation et attribution des droits de contribution GitHub (`write`) accordés à `personnal-agent` sur le dépôt `leandre755/gui_agent`.
   - Création et publication formelle de la Pull Request [#137](https://github.com/leandre755/gui_agent/pull/137) par le compte `personnal-agent`.
-- 🔄 In progress: Push des durcissements de revue sur PR #137, notification CodeRabbit unique et surveillance du score Greptile 5/5.
+- 🔄 In progress: Push final du lot exhaustif de corrections sur PR #137 et surveillance du score 5/5 Greptile.
 - ⏳ Pending:
   - 2. **Phase 2 (#131)** : Moteur d'exécution local CodeAct et SDK unifié `mcp_core` (`core/repl.py`).
   - 3. **Phase 3 (#132)** : Émulation d'entrées noyau (`uinput/evdev`), perception visuelle (`RapidOCR`) et gestion de fenêtrage (`process_run` sécurisé).

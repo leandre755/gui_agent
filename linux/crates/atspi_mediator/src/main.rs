@@ -200,9 +200,17 @@ fn resolve_mcp_target(
     let target_index = arguments.get("element_index").and_then(Value::as_u64);
     let snapshot_token = arguments.get("snapshot_token").and_then(Value::as_str);
 
+    // 1. Si un identifiant explicite non-numérique est fourni (ex: ":1.42/path"), il a priorité absolue
+    if let Some(ident) = target_ident {
+        let trimmed = ident.trim();
+        if !trimmed.is_empty() && trimmed.parse::<u32>().is_err() {
+            return Ok(trimmed.to_string());
+        }
+    }
+
     let numeric_idx = target_index
         .map(|i| i as u32)
-        .or_else(|| target_ident.and_then(|id| id.parse::<u32>().ok()));
+        .or_else(|| target_ident.and_then(|id| id.trim().parse::<u32>().ok()));
 
     if let Some(idx) = numeric_idx {
         let Some(snap) = cache else {

@@ -108,18 +108,31 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ```text
 ============================= 110 passed in 33.40s =============================
 ✔ Validé (35302ms)
+```
+
+### Step 6: Résolution finale des 3 constats bloquants Greptile (P1)
+- [x] **Action**: Traitement chirurgical et exhaustif :
+  1. Transmission directe de `element_identifier` sans `element_index` depuis Python et priorité aux identifiants non-numériques dans Rust `resolve_mcp_target` (suppression de l'erreur "Aucun snapshot actif" sur les processus MCP fraîchement démarrés).
+  2. Parsing universel de `_get_atspi_bus_address` acceptant les sorties `busctl` et `dbus-send` avec ou sans guillemets (`s unix:path=...` ou `s "unix:path=..."`).
+  3. Confinement strict de `--purge-data` dans `linux/uninstall.sh` au cache approuvé de gui-agent, ignorant les variables d'environnement arbitraires externes.
+  4. Nouveaux tests de validation comportementale : 111 tests unitaires et d'intégration validés.
+- [x] **Verify**: `./ci.sh && cargo test --all-features && cargo fmt --check`
+- **Verification Proof**:
+```text
+============================= 111 passed in 38.12s =============================
+✔ Validé (40012ms)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS     | 480ms      |
-| Validation Workflows GitHub Actions        | PASS     | 99ms       |
+| Compilation Bytecode Python (compileall)   | PASS     | 234ms      |
+| Validation Workflows GitHub Actions        | PASS     | 93ms       |
 | Linter de Code (Ruff Check)                | PASS     | 22ms       |
 | Formatage de Code (Ruff Format)            | PASS     | 21ms       |
-| Typage Statique Strict (Mypy)              | PASS     | 427ms      |
-| Suite de Tests Pytest                      | PASS     | 35302ms    |
+| Typage Statique Strict (Mypy)              | PASS     | 554ms      |
+| Suite de Tests Pytest                      | PASS     | 40012ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
