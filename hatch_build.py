@@ -125,6 +125,11 @@ if os.path.isfile(__file__):
             build_data["tag"] = f"py3-none-{plat}"
         else:
             # Aucun binaire natif embarqué : garantir une wheel pure Python cohérente
+            if sys.platform.startswith("linux") and not cargo_bin:
+                logger.warning(
+                    "AVERTISSEMENT: 'cargo' introuvable dans le PATH. La compilation du médiateur Rust "
+                    "(gui-agent-atspi) est ignorée. Une wheel pure Python sera générée."
+                )
             if os.path.exists(dest_bin):
                 with contextlib.suppress(OSError):
                     os.remove(dest_bin)

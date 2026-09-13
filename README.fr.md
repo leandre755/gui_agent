@@ -77,8 +77,8 @@ Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cy
 
 ### Pipeline d'Exécution Technique & Piliers Fondateurs
 
-1. **Pilier 1 : Escalade Progressive & Hybridation Bidirectionnelle** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le démon Rust `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via grille cartésienne calibrée et signaux noyau `uinput`/`evdev` ; et un shell PTY interactif gère les commandes privilégiées.
-2. **Pilier 2 : Émancipation Temporelle par Moteur REPL CodeAct** : Pour éradiquer la latence réseau des allers-retours (RTT) successifs, le serveur intègre un environnement d'exécution local isolé (`execute_script`). Les modèles projettent leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résolvent en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM.
+1. **Pilier 1 : Escalade Progressive & Actionnement par Paliers** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution à travers des paliers étagés : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le médiateur Rust compilé `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR/Tesseract) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via grille cartésienne calibrée et dispatchers d'entrée natifs (l'intégration noyau directe `uinput`/`evdev` étant inscrite sur la feuille de route) ; et un shell PTY interactif gère les commandes privilégiées.
+2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_script` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
 3. **Acquisition d'Écran Ultra-Rapide & Incrustation de Grille Cartésienne** : Lorsqu'un agent demande l'état visuel via `gui_take_screenshot`, le serveur capture le framebuffer brut via MSS avec bascule automatique sur KDE Spectacle ou Scrot sous XWayland. Le moteur superpose une grille cartésienne millimétrique à contraste adaptatif à intervalles configurables (ex. 100px), permettant aux modèles de déduire les coordonnées cibles avec certitude mathématique.
 4. **Moteur Double de Normalisation des Coordonnées** : Le serveur accepte les coordonnées en pixels physiques absolus `(x, y)` ou en ratios normalisés `[0, 1000]` sur toute géométrie d'affichage ou configuration multi-écrans. Un convertisseur automatique gère le bornage aux limites, la mise à l'échelle DPI et la translation spatiale de manière transparente.
 5. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics et glissers sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
@@ -88,8 +88,8 @@ Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cy
 
 Le projet structure les implémentations par système d'exploitation dans des répertoires dédiés à la racine sans aucun chemin en dur :
 - **`linux/`** : Implémentation Linux complète intégrant le serveur (`server.py`), le médiateur natif Rust AT-SPI2 / D-Bus (`linux/crates/atspi_mediator` compilé en `gui-agent-atspi`), les scripts d'installation/désinstallation (`install.sh`, `uninstall.sh`), les tests et exemples, et la résolution dynamique des chemins XDG (`paths.py`).
-- **`windows/`** : Répertoire Windows dédié pour l'automatisation UI Automation et les répartiteurs d'API Win32 (`install.ps1`, `uninstall.ps1`).
-- **`macos/`** : Répertoire macOS dédié pour les implémentations NSAccessibility et Quartz Event Taps.
+- **`windows/`** : Répertoire Windows dédié (`install.ps1`, `uninstall.ps1`, backend natif UI Automation en cours de développement).
+- **`macos/`** : Répertoire macOS dédié réservé pour les futures implémentations NSAccessibility et Quartz Event Taps.
 Tous les chemins d'exécution — incluant les captures d'écran (`$XDG_CACHE_HOME/gui-agent/screenshots` ou `GUI_AGENT_SCREENSHOTS_DIR`), les vidéos continues (`$XDG_CACHE_HOME/gui-agent/videos` ou `GUI_AGENT_VIDEOS_DIR`) et les données (`$XDG_DATA_HOME/gui-agent`) — sont résolus dynamiquement à l'exécution.
 
 ---
@@ -105,7 +105,7 @@ Exécutez le script d'installation automatisé pour vérifier les dépendances, 
 
 ```bash
 # Téléchargement et exécution de l'installateur automatisé via curl
-curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/install.sh | bash
 
 # Ou exécuter localement depuis un dépôt cloné
 ./linux/install.sh
@@ -116,7 +116,7 @@ Lancez PowerShell (utilisateur standard ou administrateur) et exécutez le scrip
 
 ```powershell
 # Téléchargement et exécution du script d'installation
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/install.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/install.ps1" -OutFile "install.ps1"
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 # Ou exécuter localement depuis un dépôt cloné
@@ -138,20 +138,20 @@ uv tool upgrade gui-agent
 ```
 
 ### 3. Prérequis Système Linux
-Sous Linux, installez les bibliothèques natives de fenêtrage, d'OCR, multimédias et d'accessibilité AT-SPI :
+Sous Linux, installez les bibliothèques natives de gestion de fenêtres, OCR, multimédia, accessibilité AT-SPI et Rust :
 
 ```bash
 # Debian / Ubuntu / Linux Mint
 sudo apt-get update && sudo apt-get install -y \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr libgl1 libatspi-dev
+  xdotool wmctrl spectacle ffmpeg xclip tesseract-ocr libgl1 libatspi-dev cargo rustc
 
 # Fedora / RHEL
 sudo dnf install -y \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract libglvnd-glx at-spi2-core-devel
+  xdotool wmctrl spectacle ffmpeg xclip tesseract libglvnd-glx at-spi2-core-devel cargo rust
 
 # Arch Linux / Manjaro
 sudo pacman -S --needed \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core
+  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core cargo rust
 ```
 
 ---
@@ -386,7 +386,7 @@ Arrête proprement l'enregistrement FFmpeg en cours et valide le conteneur du fi
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Control%20Knobs.png" alt="Config" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Variables d'Environnement (Configuration)</b></summary>
 
 | Variable | Description | Valeur par Défaut |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | `DISPLAY` | Identifiant du serveur d'affichage X11 cible. | `:0` |
 | `GUI_AGENT_SCREENSHOTS_DIR` | Répertoire où sont enregistrées les captures et découpes d'écran. | `$XDG_CACHE_HOME/gui-agent/screenshots` |
 | `GUI_AGENT_VIDEOS_DIR` | Répertoire où sont sauvegardés les enregistrements vidéo MP4 continus. | `$XDG_CACHE_HOME/gui-agent/videos` |
@@ -404,7 +404,7 @@ Pour purger proprement `gui-agent`, supprimer les environnements isolés et reti
 
 ```bash
 # Téléchargement et exécution du désinstallateur automatisé
-curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/main/linux/uninstall.sh
+curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/linux/uninstall.sh
 chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 # Ou désinstallation locale avec purge complète des données et caches
@@ -415,7 +415,7 @@ chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
 ```powershell
 # Téléchargement et exécution du désinstallateur automatisé
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/main/windows/uninstall.ps1" -OutFile "uninstall.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/v0.1.0/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
 # Ou désinstallation locale avec purge complète des données et caches
@@ -445,7 +445,7 @@ cd gui_agent
 uv venv
 source .venv/bin/activate
 
-# Installer le paquet en mode éditable avec dépendances de développement et compiler les extensions Rust
+# Installer le paquet en mode éditable avec dépendances de développement et compiler les extensions Rust (requiert Cargo)
 uv pip install -e ".[dev]"
 ```
 
@@ -466,7 +466,7 @@ ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 ```
 
 | Couche | Validateur | Périmètre & Invariants de Qualité Appliqués |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- |
 | 1 | `anti-leak` | Bloque les jetons secrets, clés privées et identifiants `.env` dans les fichiers indexés. |
 | 2 | `pip-audit` | Audite l'arbre des dépendances Python contre les bases de vulnérabilités CVE connues. |
 | 3 | `ruff check` | Impose zéro avertissement de lint, le respect de PEP 8 et les idiomes Python 3.10+ modernes. |

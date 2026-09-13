@@ -157,4 +157,13 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **Absence de mentions d'historique** | Script Python de scan de termes bannis ("nouvelle version", "nouvelle maj", etc.) | Reflet pur de l'état actuel de l'architecture | 0 occurrence de mention d'historique | **PASS** |
 | **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 41.60s, 0 avertissement, 0 erreur | **PASS** |
 
+### 🛡️ Traitement Exhaustif des Retours Greptile sur PR #138 (2026-09-13)
+
+| Constat Greptile | Fichiers / Lignes | Correctif Appliqué | Vérification | Statut |
+|---|---|---|---|---|
+| **P1 - Fonctionnalités annoncées indisponibles** | `README.md:80-81`, `README.fr.md:80-81` | Piliers 1 & 2 précisés avec rigueur : L3 AT-SPI2 Rust actif, L2 RapidOCR/Tesseract actif, L1 screenshots actif avec uinput/evdev en feuille de route, REPL execute_script en Phase 2 | Lecture textuelle et conformité avec les 21 outils actuels | **PASS** |
+| **P1 - Backends multiplateformes absents** | `README.md:91-92`, `README.fr.md:91-92` | Qualification explicite de `windows/` et `macos/` comme répertoires avec backends natifs en cours de développement / réservés | Absence d'ambiguïté sur la disponibilité immédiate | **PASS** |
+| **P2 - Installation non reproductible** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418` | Restauration du tag immuable `v0.1.0` pour toutes les commandes curl/PowerShell d'installation et de désinstallation | Alignement parfait avec `INSTALL.md` | **PASS** |
+| **P2 - Prérequis Cargo manquant** | `README.md:146,150,154,448`, `README.fr.md:146,150,154,448`, `hatch_build.py:128-132` | Ajout de `cargo` et `rustc` dans les prérequis Linux, mention `(requires Cargo)` lors du pip install éditable, et avertissement explicite dans `hatch_build.py` si cargo est absent sous Linux | Script Python et build hook testés | **PASS** |
+| **P2 - Séparateurs de tableaux en trop** | `README.md:389,469`, `README.fr.md:389,469` | Réduction des séparateurs de 4 colonnes à 3 colonnes pour alignement strict avec les en-têtes et données | `check_tables` Python : 100% propre (3 cols) | **PASS** |
 
