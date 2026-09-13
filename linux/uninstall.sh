@@ -266,34 +266,36 @@ for candidate in "${TARGET_DIRS[@]}"; do
             else
                 # Emplacement personnalisé : purge ciblée des captures et artefacts GUI Agent sans détruire les répertoires ni les fichiers tiers non liés
                 find "$CANONICAL_DIR" -maxdepth 1 -type f \( \
-                    -name "screenshot_[0-9a-zA-Z_-]*.png" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]*.jpg" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]*.jpeg" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]*.webp" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]* (*).png" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]* (*).jpg" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]* (*).jpeg" -o \
-                    -name "screenshot_[0-9a-zA-Z_-]* (*).webp" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]*.png" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]*.jpg" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]*.jpeg" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]*.webp" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]* (*).png" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]* (*).jpg" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]* (*).jpeg" -o \
-                    -name "raw_screenshot_[0-9a-zA-Z_-]* (*).webp" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]*.png" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]*.jpg" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]*.jpeg" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]*.webp" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]* (*).png" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]* (*).jpg" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]* (*).jpeg" -o \
-                    -name "web_screenshot_[0-9a-zA-Z_-]* (*).webp" -o \
-                    -name "video_[0-9a-zA-Z_-]*.mp4" -o \
-                    -name "video_[0-9a-zA-Z_-]* (*).mp4" -o \
-                    -name "recording_[0-9a-zA-Z_-]*.mp4" -o \
-                    -name "recording_[0-9a-zA-Z_-]* (*).mp4" -o \
+                    -name "screenshot_[0-9]*.png" -o \
+                    -name "screenshot_[0-9]*.jpg" -o \
+                    -name "screenshot_[0-9]*.jpeg" -o \
+                    -name "screenshot_[0-9]*.webp" -o \
+                    -name "screenshot_[0-9]* (*).png" -o \
+                    -name "screenshot_[0-9]* (*).jpg" -o \
+                    -name "screenshot_[0-9]* (*).jpeg" -o \
+                    -name "screenshot_[0-9]* (*).webp" -o \
+                    -name "raw_screenshot_[0-9]*.png" -o \
+                    -name "raw_screenshot_[0-9]*.jpg" -o \
+                    -name "raw_screenshot_[0-9]*.jpeg" -o \
+                    -name "raw_screenshot_[0-9]*.webp" -o \
+                    -name "raw_screenshot_[0-9]* (*).png" -o \
+                    -name "raw_screenshot_[0-9]* (*).jpg" -o \
+                    -name "raw_screenshot_[0-9]* (*).jpeg" -o \
+                    -name "raw_screenshot_[0-9]* (*).webp" -o \
+                    -name "web_screenshot_[0-9]*.png" -o \
+                    -name "web_screenshot_[0-9]*.jpg" -o \
+                    -name "web_screenshot_[0-9]*.jpeg" -o \
+                    -name "web_screenshot_[0-9]*.webp" -o \
+                    -name "web_screenshot_[0-9]* (*).png" -o \
+                    -name "web_screenshot_[0-9]* (*).jpg" -o \
+                    -name "web_screenshot_[0-9]* (*).jpeg" -o \
+                    -name "web_screenshot_[0-9]* (*).webp" -o \
+                    -name "recording_[0-9]*.mp4" -o \
+                    -name "recording_[0-9]* (*).mp4" -o \
+                    -name "recording_[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*.mp4" -o \
+                    -name "recording_[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]*-[0-9a-fA-F]* (*).mp4" -o \
+                    -name "recording_[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].mp4" -o \
+                    -name "recording_[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F] (*).mp4" -o \
                     -name "_mcp_screen_tmp_*.png" \
                 \) -delete 2>/dev/null || true
                 rmdir "$CANONICAL_DIR" 2>/dev/null || true

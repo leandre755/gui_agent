@@ -157,6 +157,26 @@ test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 | Typage Statique Strict (Mypy)              | PASS     | 631ms      |
 | Suite de Tests Pytest                      | PASS     | 39766ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Step 8: Restriction stricte des motifs de purge personnalisés aux formats authentiques de l'application (Greptile 5/5)
+- [x] **Action**: Mise à jour de `linux/uninstall.sh` pour éliminer tout motif trop large (`[0-9a-zA-Z_-]*`, `video_*.mp4`) dans les emplacements personnalisés. Les motifs sont désormais restreints strictement aux formats réellement générés par l'application : timestamps numériques (`screenshot_[0-9]*`, `raw_screenshot_[0-9]*`, `web_screenshot_[0-9]*`, `recording_[0-9]*`) et identifiants UUID stricts (`recording_<uuid>.mp4`). Préservation vérifiée de 100% des fichiers médias tiers plausibles (`video_projet.mp4`, `recording_interview.mp4`, `screenshot_final.png`). Enrichissement des tests dans `linux/tests/test_package.py`.
+- [x] **Verify**: `./ci.sh && cargo test --all-features`
+- **Verification Proof**:
+```text
+============================= 112 passed in 37.56s =============================
+✔ Validé (39509ms)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Étape de Validation                       | Statut     | Durée     |
+|--------------------------------------------|------------|------------|
+| Compilation Bytecode Python (compileall)   | PASS     | 326ms      |
+| Validation Workflows GitHub Actions        | PASS     | 79ms       |
+| Linter de Code (Ruff Check)                | PASS     | 37ms       |
+| Formatage de Code (Ruff Format)            | PASS     | 20ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 765ms      |
+| Suite de Tests Pytest                      | PASS     | 39509ms    |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
