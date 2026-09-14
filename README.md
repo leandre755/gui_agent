@@ -39,6 +39,7 @@ Operating through a single, resilient standard input/output (stdio) FastMCP conn
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Bullseye.png" alt="Bullseye" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Core Capabilities
 
+
 The table below outlines the **Target Architecture v1.0** (15 unified primitives) specifying the target contract across the modular roadmap, alongside the active MCP tools currently exposed by the Linux runtime under their operational `gui_*` and AT-SPI2 namespaces.
 
 | Tool Name | Domain | Description | Status |
@@ -59,7 +60,6 @@ The table below outlines the **Target Architecture v1.0** (15 unified primitives
 | `gui_start_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Starts background low-overhead screen video recording via FFmpeg (`x11grab` / H.264 ultrafast). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 | `gui_stop_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Cleanly halts the active FFmpeg recording, flushes the MP4 container, and prevents descriptor leaks. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 
-
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> How It Works
@@ -73,7 +73,7 @@ The table below outlines the **Target Architecture v1.0** (15 unified primitives
 ### Technical Execution Pipeline & Foundational Pillars
 
 1. **Pillar I : Progressive Escalation & Layered Actuation**: Rather than enforcing a single interaction mode, the architecture prioritizes cognitive and execution efficiency across layered stages: Level L3 accesses the OS accessibility tree (AT-SPI2 / D-Bus via the compiled Rust mediator `gui-agent-atspi`) directly in RAM for deterministic sub-50ms actuation with zero image tokens; Level L2 runs decoupled local OCR (RapidOCR/Tesseract) on typography without model inference overhead; Level L1 operates as the ultimate hardware safety net using calibrated Cartesian grid screenshots with native input dispatchers (with direct kernel `uinput`/`evdev` drivers scheduled on the roadmap); and an interactive PTY shell layer provides seamless handling of privileged commands.
-2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_script` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
+2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_action_batch` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
 3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `gui_take_screenshot`, the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
 4. **Dual Coordinate Normalization Engine**: The server accepts coordinates in either absolute physical pixels `(x, y)` or normalized ratios `[0, 1000]` across any display geometry or multi-monitor setup. An automatic converter handles boundary clamping, DPI scaling, and coordinate translation transparently.
 5. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
@@ -199,6 +199,14 @@ Add the following entry to your Cursor `mcp.json` (`~/.cursor/mcp.json` or `.vsc
   }
 }
 ```
+
+---
+
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Toolset & CLI Reference
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Target" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Target Architecture v1.0 Primitives (13 tools)</b></summary>
+
 #### `execute_action_batch`
 Executes multi-step Python or Bash action blocks directly in host memory with preloaded `mcp_core` SDK (Open Interpreter paradigm), eliminating network RTT.
 - **Parameters**:
@@ -206,11 +214,6 @@ Executes multi-step Python or Bash action blocks directly in host memory with pr
   - `code` (`str`): Multi-step script containing conditional logic, loops, and rapid polling routines.
   - `timeout` (`float`, default `30.0`): Execution deadline in seconds before terminating the runner process.
 - **Returns**: `dict` containing execution `status`, captured `stdout`, `stderr`, and execution `elapsed_seconds`.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> System & PTY Shell Controls (3 tools)</b></summary>
 
 #### `process_run`
 Executes shell commands in a pseudo-terminal (PTY) session, allowing credential injection to bypass security modals.
@@ -230,11 +233,6 @@ Switches desktop focus directly at the display compositor level using unique Win
 - **Parameters**:
   - `window_id` (`str` | `int`): Target compositor Window ID to raise and focus.
 - **Returns**: `dict` containing operation `status` and confirmed active window identifier.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="L3" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L3 — Semantic RAM & AT-SPI2 (3 tools)</b></summary>
 
 #### `get_app_state`
 Inspects the accessibility tree via native Rust mediation (`gui-agent-atspi`) directly in RAM with zero image tokens.
@@ -256,22 +254,12 @@ Mutates text or numerical values directly into component memory variables withou
   - `value` (`str`): Text or numerical value to assign directly into component memory.
 - **Returns**: `dict` containing mutation `status`, target identifier, and assigned value confirmation.
 
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L2 — Local Vision & OCR (1 tool)</b></summary>
-
 #### `find_text`
 Discovers on-screen text coordinates via decoupled local OCR engines (RapidOCR / Tesseract; active alias: `gui_find_text`).
 - **Parameters**:
   - `text` (`str`): Target text string to identify across the desktop screen.
   - `confidence` (`float`, default `0.85`): Minimum detection confidence score (0.0 to 1.0).
 - **Returns**: `dict` containing detected text centroid `{"x": int, "y": int}`, bounding box, and match `confidence`.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L1 — Hardware & Input Dispatch (5 tools)</b></summary>
 
 #### `screen_capture`
 Captures the raw display framebuffer with an optional calibrated Cartesian coordinate grid overlay (active alias: `gui_take_screenshot`).
@@ -282,7 +270,7 @@ Captures the raw display framebuffer with an optional calibrated Cartesian coord
 - **Returns**: `dict` containing resolved `screenshot_path`, image dimensions, format, and grid status.
 
 #### `mouse_click_at`
-Injects hardware mouse click events directly via low-level input subsystems at exact target coordinates (active alias: `gui_mouse_click`).
+Injects physical mouse click events directly via low-level input subsystems at exact target coordinates (active alias: `gui_mouse_click`).
 - **Parameters**:
   - `x` (`int` | `float`): Absolute X pixel coordinate.
   - `y` (`int` | `float`): Absolute Y pixel coordinate.
@@ -317,13 +305,6 @@ Sends hardware-level keyboard keypresses, system hotkeys, and chord sequences di
 - **Returns**: `dict` confirming keystroke injection status and dispatched chord combination.
 
 </details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Continuous Video Recording & Audit (2 tools)</b></summary>
-
----
-
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Toolset & CLI Reference
 
 <details>
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Display & Cursor Tools (10 tools)</b></summary>

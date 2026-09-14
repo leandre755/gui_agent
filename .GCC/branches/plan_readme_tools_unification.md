@@ -54,15 +54,18 @@ All validation checks passed successfully!
 
 ### Step 4: Création de la PR et Résolution des Retours Greptile
 - [x] **Action**: Commiter, pousser sur `docs/unify-tools-specification`, créer la PR #139 sous le compte `personnal-agent`, et réceptionner le rapport Greptile initial (Score 3/5, 3 constats identifiés).
-- [x] **Action Corrective**: Traiter exhaustivement les 3 constats Greptile localement :
-  1. *Finding 1 (P1)* : Qualification de la table des 15 outils comme Architecture Cible v1.0 avec badges `Target v1.0` / `Cible v1.0`, mention des alias runtime actifs `gui_*`, et ajout de la documentation exhaustive des 11 utilitaires runtime actifs (`gui_clipboard_*`, `gui_window_*`, `gui_find_template`, `gui_web_action`).
-  2. *Finding 2 (P2)* : Matrice Section 5 de `mcp_final_specification.md` complétée avec les 12 cas limites réels (T-01 à T-03, S-01 à S-03, V-01 à V-03, O-01 à O-03).
-  3. *Finding 3 (P1)* : Remplacement de `python-evdev` par `evdev` et ajout de l'installation de `gui-agent` dans Section 6.
+- [x] **Action Corrective**: Traiter exhaustivement les constats Greptile successifs :
+  1. *Findings initiaux PR #139 (commit e5acb1f)* : Qualification de la table en Architecture Cible v1.0, matrice 12/12 cas réels dans `mcp_final_specification.md`, et correction de l'installation `evdev`.
+  2. *Constats structurels Greptile (commit 5193e7d)* :
+     - Remplacement de `execute_script` par le nom canonique `execute_action_batch` dans la prose du Pilier II (L81).
+     - Rétablissement du bloc `<details>` et `<summary>` pour `Target Architecture v1.0 Primitives (13 tools)` sous `## Toolset & CLI Reference`.
+     - Fermeture stricte de toutes les balises `<details>`, positionnement de `## Toolset & CLI Reference` au premier plan (hors de tout volet pliable), et préservation des 5 blocs d'outils opérationnels.
+     - Budget diff de gouvernance maintenu à 598 lignes (< 1000 lignes) et parité bilingue stricte à 582 lignes.
 - [x] **Verify**: `./ci.sh` (112/112 tests PASS) et `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` (8/8 couches validées).
 - **Verification Proof**:
 ```text
-======================== 112 passed in 74.10s (0:01:14) ========================
-✔ Validé (76781ms)
+============================= 112 passed in 58.41s =============================
+✔ Validé (71198ms)
 [Quality-Gate] Pipeline validé avec succès (Secrets, CVE, Lint, Typage, Qualité, SAST). Commit autorisé.
 ```
 - [ ] **Action**: Pousser le commit de correction sur `docs/unify-tools-specification`, observer la temporisation de 8 minutes (480s) et qualifier l'obtention du score Greptile 5/5.

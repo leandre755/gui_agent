@@ -39,6 +39,7 @@ Fonctionnant via une unique connexion FastMCP résiliente sur l'entrée/sortie s
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Bullseye.png" alt="Bullseye" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Fonctionnalités Principales
 
+
 Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** (15 primitives unifiées) définissant le contrat cible à travers la feuille de route modulaire, aux côtés des outils MCP actuellement actifs exposés par le runtime Linux sous leurs espaces de noms opérationnels `gui_*` et AT-SPI2.
 
 | Nom de l'Outil | Domaine | Description | Statut |
@@ -59,7 +60,6 @@ Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** 
 | `gui_start_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Démarre un enregistrement vidéo d'écran en arrière-plan à faible empreinte via FFmpeg (`x11grab` / H.264). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
 | `gui_stop_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Interrompt proprement l'enregistrement FFmpeg actif, vide le conteneur MP4 et prévient les fuites de descripteurs. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
 
-
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Architecture & Flux de Fonctionnement
@@ -73,7 +73,7 @@ Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** 
 ### Pipeline d'Exécution Technique & Piliers Fondateurs
 
 1. **Pilier 1 : Escalade Progressive & Actionnement par Paliers** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution à travers des paliers étagés : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le médiateur Rust compilé `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR/Tesseract) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via grille cartésienne calibrée et dispatchers d'entrée natifs (l'intégration noyau directe `uinput`/`evdev` étant inscrite sur la feuille de route) ; et un shell PTY interactif gère les commandes privilégiées.
-2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_script` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
+2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_action_batch` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
 3. **Acquisition d'Écran Ultra-Rapide & Incrustation de Grille Cartésienne** : Lorsqu'un agent demande l'état visuel via `gui_take_screenshot`, le serveur capture le framebuffer brut via MSS avec bascule automatique sur KDE Spectacle ou Scrot sous XWayland. Le moteur superpose une grille cartésienne millimétrique à contraste adaptatif à intervalles configurables (ex. 100px), permettant aux modèles de déduire les coordonnées cibles avec certitude mathématique.
 4. **Moteur Double de Normalisation des Coordonnées** : Le serveur accepte les coordonnées en pixels physiques absolus `(x, y)` ou en ratios normalisés `[0, 1000]` sur toute géométrie d'affichage ou configuration multi-écrans. Un convertisseur automatique gère le bornage aux limites, la mise à l'échelle DPI et la translation spatiale de manière transparente.
 5. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics et glissers sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
@@ -199,6 +199,14 @@ Ajoutez l'entrée suivante dans votre fichier `mcp.json` de Cursor (`~/.cursor/m
   }
 }
 ```
+
+---
+
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Référence du Toolset & CLI
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Cible" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Primitives d'Architecture Cible v1.0 (13 outils)</b></summary>
+
 #### `execute_action_batch`
 Exécute des blocs d'actions Python ou Bash directement en mémoire hôte avec le SDK `mcp_core` préchargé (paradigme Open Interpreter), éliminant le RTT réseau.
 - **Paramètres** :
@@ -206,11 +214,6 @@ Exécute des blocs d'actions Python ou Bash directement en mémoire hôte avec l
   - `code` (`str`) : Script multi-étapes contenant la logique conditionnelle, les boucles et scrutations rapides.
   - `timeout` (`float`, valeur par défaut `30.0`) : Échéance d'exécution en secondes avant terminaison du processus.
 - **Retourne** : `dict` contenant le `status` d'exécution, les sorties `stdout`, `stderr` et le temps `elapsed_seconds`.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Contrôles Système & Shell PTY (3 outils)</b></summary>
 
 #### `process_run`
 Exécute des commandes shell dans une session pseudo-terminal (PTY), permettant l'injection de mots de passe pour franchir les modales.
@@ -230,11 +233,6 @@ Bascule le focus directement au niveau du compositeur d'affichage via Window ID 
 - **Paramètres** :
   - `window_id` (`str` | `int`) : Identifiant Window ID du compositeur cible à activer et placer au premier plan.
 - **Retourne** : `dict` contenant le `status` de l'opération et l'identifiant de fenêtre actif confirmé.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="L3" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Palier L3 — RAM Sémantique & AT-SPI2 (3 outils)</b></summary>
 
 #### `get_app_state`
 Inspecte l'arbre d'accessibilité via le médiateur natif Rust (`gui-agent-atspi`) directement en RAM sans jeton d'image.
@@ -256,22 +254,12 @@ Mute des valeurs textuelles ou numériques directement dans les variables mémoi
   - `value` (`str`) : Valeur textuelle ou numérique à affecter directement en mémoire applicative.
 - **Retourne** : `dict` contenant le statut `status`, l'identifiant cible et la confirmation de la valeur assignée.
 
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Palier L2 — Vision Locale & OCR (1 outil)</b></summary>
-
 #### `find_text`
 Découvre les coordonnées du texte à l'écran via les moteurs OCR locaux (RapidOCR / Tesseract ; alias actif : `gui_find_text`).
 - **Paramètres** :
   - `text` (`str`) : Chaîne de texte cible à identifier à l'écran.
   - `confidence` (`float`, valeur par défaut `0.85`) : Score de confiance minimal (0.0 à 1.0).
 - **Retourne** : `dict` contenant le centroïde `{"x": int, "y": int}`, le cadre englobant et la `confidence`.
-
-</details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Palier L1 — Matériel & Répartition des Entrées (5 outils)</b></summary>
 
 #### `screen_capture`
 Capture le framebuffer brut de l'écran avec incrustation optionnelle d'une grille cartésienne calibrée (alias actif : `gui_take_screenshot`).
@@ -286,8 +274,8 @@ Injecte des clics de souris matériels via les sous-systèmes d'entrée bas nive
 - **Paramètres** :
   - `x` (`int` | `float`) : Coordonnée horizontale absolue en pixels X.
   - `y` (`int` | `float`) : Coordonnée verticale absolue en pixels Y.
-  - `button` (`str`, valeur par défaut `"left"`) : Bouton de souris (`"left"`, `"right"`, `"middle"`).
-  - `double` (`bool`, valeur par défaut `False`) : Déclenche une séquence de double-clic consécutif.
+  - `button` (`str`, default `"left"`) : Bouton de souris (`"left"`, `"right"`, `"middle"`).
+  - `double` (`bool`, default `False`) : Déclenche une séquence de double-clic consécutif.
 - **Retourne** : `dict` confirmant le statut d'exécution du clic, les coordonnées cibles et le bouton émis.
 
 #### `mouse_drag_smooth`
@@ -305,25 +293,18 @@ Simule des mouvements de molette matériels pour forcer le rendu dynamique des l
 - **Paramètres** :
   - `x` (`int` | `float`) : Position horizontale d'injection de l'événement de défilement.
   - `y` (`int` | `float`) : Position verticale d'injection de l'événement de défilement.
-  - `direction` (`str`, valeur par défaut `"down"`) : Axe directionnel de défilement (`"up"`, `"down"`, `"left"`, `"right"`).
-  - `amount` (`int`, valeur par défaut `5`) : Nombre d'unités de pas de défilement à diffuser.
+  - `direction` (`str`, default `"down"`) : Axe directionnel de défilement (`"up"`, `"down"`, `"left"`, `"right"`).
+  - `amount` (`int`, default `5`) : Nombre d'unités de pas de défilement à diffuser.
 - **Retourne** : `dict` confirmant la diffusion du défilement, la cible de coordonnées et le nombre de pas.
 
 #### `key_tap`
 Émet des frappes matérielles, raccourcis et accords de touches directement vers la fenêtre active (alias actifs : `gui_keyboard_press`, `gui_keyboard_type`).
 - **Paramètres** :
   - `key` (`str`) : Identifiant de touche (ex. `"Return"`, `"Escape"`, `"Tab"`, `"space"`).
-  - `modifiers` (`list[str] | str | None`, valeur par défaut `None`) : Modificateurs (ex. `["ctrl"]`, `["alt"]`, `"super"`).
+  - `modifiers` (`list[str] | str | None`, default `None`) : Modificateurs (ex. `["ctrl"]`, `["alt"]`, `"super"`).
 - **Retourne** : `dict` confirmant le statut d'injection de la frappe et la combinaison d'accords émise.
 
 </details>
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Enregistrement Vidéo Continu & Audit (2 outils)</b></summary>
-
----
-
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Référence du Toolset & CLI
 
 <details>
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Outils d'Affichage & Curseur (10 outils)</b></summary>
