@@ -4,7 +4,7 @@
 
 <h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" height="42" style="vertical-align: middle; margin-right: 10px;" />gui-agent</h1>
 
-<p align="center"><b>Serveur FastMCP Modulaire Découplé pour le Contrôle Graphique (Computer Use) sous Linux et Windows</b></p>
+<p align="center"><b>Serveur FastMCP Monolithique pour le Contrôle Graphique (Computer Use) sous Linux et Windows</b></p>
 
 <p align="center">🌐 <b><a href="README.md">English</a></b> | <b><a href="README.fr.md">Français</a></b></p>
 
@@ -59,6 +59,7 @@ Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** 
 | `gui_start_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Démarre un enregistrement vidéo d'écran en arrière-plan à faible empreinte via FFmpeg (`x11grab` / H.264). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
 | `gui_stop_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Interrompt proprement l'enregistrement FFmpeg actif, vide le conteneur MP4 et prévient les fuites de descripteurs. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
 
+
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Architecture & Flux de Fonctionnement
@@ -71,9 +72,9 @@ Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** 
 
 ### Pipeline d'Exécution Technique & Piliers Fondateurs
 
-1. **Pilier 1 : Escalade Progressive & Action par Couches** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le médiateur compilé Rust `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR/Tesseract) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via captures cartésiennes et répartiteurs natifs (pilotes noyau `uinput`/`evdev` prévus sur la feuille de route) ; et un shell PTY interactif gère les commandes privilégiées.
-2. **Pilier 2 : Architecture d'Exécution à Haute Efficience** : Pour éradiquer la latence réseau des allers-retours (RTT) successifs, l'architecture prévoit un environnement d'exécution local isolé (`execute_action_batch` via `core/repl.py`). Les modèles projetteront leur logique sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (prévu en Phase 2).
-3. **Acquisition d'Écran Rapide & Incrustation de Grille Cartésienne** : Lorsqu'un agent demande l'état visuel via `screen_capture` (ou l'alias `gui_take_screenshot`), le serveur capture le framebuffer brut via MSS avec bascule automatique sur KDE Spectacle ou Scrot sous XWayland. Le moteur superpose une grille cartésienne millimétrique à contraste adaptatif à intervalles configurables (ex. 100px), permettant aux modèles de déduire les coordonnées cibles avec certitude mathématique.
+1. **Pilier 1 : Escalade Progressive & Actionnement par Paliers** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution à travers des paliers étagés : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le médiateur Rust compilé `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR/Tesseract) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via grille cartésienne calibrée et dispatchers d'entrée natifs (l'intégration noyau directe `uinput`/`evdev` étant inscrite sur la feuille de route) ; et un shell PTY interactif gère les commandes privilégiées.
+2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_script` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
+3. **Acquisition d'Écran Ultra-Rapide & Incrustation de Grille Cartésienne** : Lorsqu'un agent demande l'état visuel via `gui_take_screenshot`, le serveur capture le framebuffer brut via MSS avec bascule automatique sur KDE Spectacle ou Scrot sous XWayland. Le moteur superpose une grille cartésienne millimétrique à contraste adaptatif à intervalles configurables (ex. 100px), permettant aux modèles de déduire les coordonnées cibles avec certitude mathématique.
 4. **Moteur Double de Normalisation des Coordonnées** : Le serveur accepte les coordonnées en pixels physiques absolus `(x, y)` ou en ratios normalisés `[0, 1000]` sur toute géométrie d'affichage ou configuration multi-écrans. Un convertisseur automatique gère le bornage aux limites, la mise à l'échelle DPI et la translation spatiale de manière transparente.
 5. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics et glissers sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
 6. **Vision Locale, OCR & Automatisation Playwright** : La correspondance de motifs (`cv2.matchTemplate`) permet une détection robuste des icônes malgré les variations de thèmes. La détection de texte combine Tesseract OCR avec le repli ONNX RapidOCR. L'automatisation web s'appuie sur Playwright pour inspecter les arbres ARIA et manipuler directement les nœuds DOM sans ambiguïté visuelle.
@@ -132,7 +133,7 @@ uv tool upgrade gui-agent
 ```
 
 ### 3. Prérequis Système Linux
-Sous Linux, installez les bibliothèques natives de fenêtrage, d'OCR, multimédias, la chaîne de compilation Rust et les en-têtes AT-SPI :
+Sous Linux, installez les bibliothèques natives de gestion de fenêtres, OCR, multimédia, accessibilité AT-SPI et Rust :
 
 ```bash
 # Debian / Ubuntu / Linux Mint
@@ -145,7 +146,7 @@ sudo dnf install -y \
 
 # Arch Linux / Manjaro
 sudo pacman -S --needed \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core rust
+  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core cargo rust
 ```
 
 ---
@@ -183,6 +184,8 @@ Ajoutez la définition du serveur à votre configuration MCP globale Antigravity
 }
 ```
 
+*(Remarque : L'exécutable alias `mcp-gui-server` peut également être utilisé comme cible `command`).*
+
 ### 3. Cursor & VSCode
 Ajoutez l'entrée suivante dans votre fichier `mcp.json` de Cursor (`~/.cursor/mcp.json` ou `.vscode/mcp.json`) :
 
@@ -196,14 +199,6 @@ Ajoutez l'entrée suivante dans votre fichier `mcp.json` de Cursor (`~/.cursor/m
   }
 }
 ```
-
----
-
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Référence du Toolset & CLI
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="REPL" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Core REPL & Moteur d'Exécution Local (1 outil)</b></summary>
-
 #### `execute_action_batch`
 Exécute des blocs d'actions Python ou Bash directement en mémoire hôte avec le SDK `mcp_core` préchargé (paradigme Open Interpreter), éliminant le RTT réseau.
 - **Paramètres** :
@@ -326,98 +321,180 @@ Simule des mouvements de molette matériels pour forcer le rendu dynamique des l
 <details>
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Enregistrement Vidéo Continu & Audit (2 outils)</b></summary>
 
-#### `gui_start_video_recording`
-Lance un sous-processus d'enregistrement vidéo asynchrone via FFmpeg à faible surcharge CPU pour l'audit.
-- **Paramètres** :
-  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier MP4 (par défaut dans le cache dynamique).
-  - `fps` (`int`, valeur par défaut `5`) : Cadence d'acquisition vidéo en images par seconde (1 à 30 FPS).
-  - `monitor_index` (`int`, valeur par défaut `1`) : Index du moniteur d'affichage cible à enregistrer.
-  - `duration` (`int | None`, valeur par défaut `None`) : Durée limite automatique optionnelle de l'enregistrement en secondes.
-- **Retourne** : `dict` confirmant le lancement du processus en arrière-plan, le PID assigné et le chemin de sortie.
+---
 
-#### `gui_stop_video_recording`
-Interrompt proprement l'enregistrement FFmpeg, vide le conteneur MP4 et retourne les métadonnées de vérification.
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Référence du Toolset & CLI
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Outils d'Affichage & Curseur (10 outils)</b></summary>
+
+#### `gui_get_screen_info`
+Récupère les paramètres d'affichage, les topologies d'écrans, la résolution active et les variables de session.
 - **Paramètres** : Aucun.
-- **Retourne** : `dict` contenant le chemin `output_path`, la confirmation d'existence `file_exists` et `file_size_bytes`.
+- **Retourne** : `dict` contenant `resolution`, `width`, `height`, la liste `monitors`, `display_env` et `failsafe_enabled`.
+
+#### `gui_take_screenshot`
+Capture des images plein écran ou rognées avec incrustation optionnelle d'une grille cartésienne.
+- **Paramètres** :
+  - `monitor_index` (`int`, valeur par défaut `1`) : Index du moniteur cible (`0` pour le canevas virtuel).
+  - `crop_box` (`list[int] | None`, valeur par défaut `None`) : Sous-région `[x, y, width, height]`.
+  - `apply_grid` (`bool`, valeur par défaut `True`) : Incruste la grille de coordonnées cartésiennes.
+  - `grid_interval` (`int`, valeur par défaut `100`) : Intervalle en pixels entre les lignes de grille (minimum 20).
+  - `format` (`str`, valeur par défaut `"png"`) : Format de l'image de sortie (`"png"` ou `"jpeg"`).
+  - `quality` (`int`, valeur par défaut `80`) : Qualité de compression (1-100) pour la sortie JPEG.
+  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination. Les chemins relatifs sont résolus en chemins absolus et les dossiers parents manquants sont créés. Les chemins vides et les répertoires existants sont rejetés. Si le chemin n'a pas d'extension, l'extension correspondant à `format` est automatiquement ajoutée. Une extension incompatible est rejetée. Si le fichier existe déjà, une réservation atomique et l'ajout de suffixes incrémentaux tels que `(1)` et `(2)` protègent le fichier existant contre l'écrasement. `screenshot_path` contient le chemin absolu effectivement utilisé. Par défaut : image horodatée dans le dossier des captures.
+  - `include_base64` (`bool`, valeur par défaut `False`) : Renvoie la représentation textuelle encodée en Base64.
+- **Retourne** : `dict` contenant `screenshot_path` (chemin absolu résolu), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message` et `base64_data` (présent lorsque `include_base64` est activé).
+
+#### `gui_mouse_move`
+Déplace de manière fluide le curseur de la souris vers les coordonnées cibles.
+- **Paramètres** :
+  - `x` (`float`) : Position X cible.
+  - `y` (`float`) : Position Y cible.
+  - `duration` (`float`, valeur par défaut `0.2`) : Durée d'interpolation du mouvement en secondes.
+  - `normalized` (`bool`, valeur par défaut `False`) : Définir à `True` lors de l'utilisation de coordonnées `[0, 1000]`.
+  - `monitor_index` (`int`, valeur par défaut `1`) : Moniteur de référence pour les calculs de coordonnées.
+
+#### `gui_mouse_click`
+Exécute des clics simples, doubles ou multiples à des coordonnées spécifiques.
+- **Paramètres** :
+  - `x` (`float`) : Position X cible.
+  - `y` (`float`) : Position Y cible.
+  - `button` (`str`, valeur par défaut `"left"`) : Bouton de souris (`"left"`, `"right"`, `"middle"`).
+  - `clicks` (`int`, valeur par défaut `1`) : Nombre de clics à exécuter.
+  - `normalized` (`bool`, valeur par défaut `False`) : Définir à `True` pour les coordonnées `[0, 1000]`.
+  - `monitor_index` (`int`, valeur par défaut `1`) : Moniteur de référence.
+
+#### `gui_mouse_drag`
+Exécute un mouvement de glisser-déposer fluide entre deux positions spatiales.
+- **Paramètres** :
+  - `x1` (`float`) : Position X de départ.
+  - `y1` (`float`) : Position Y de départ.
+  - `x2` (`float`) : Position X d'arrivée.
+  - `y2` (`float`) : Position Y d'arrivée.
+  - `duration` (`float`, valeur par défaut `0.5`) : Durée de l'animation de glissement en secondes.
+  - `normalized` (`bool`, valeur par défaut `False`) : Définir à `True` pour les coordonnées `[0, 1000]`.
+  - `monitor_index` (`int`, valeur par défaut `1`) : Moniteur de référence.
+
+#### `gui_mouse_scroll`
+Simule le défilement de la molette de souris le long des axes verticaux ou horizontaux.
+- **Paramètres** :
+  - `clicks` (`int`) : Nombre de crans de défilement (entier positif).
+  - `direction` (`str`, valeur par défaut `"down"`) : Direction (`"up"`, `"down"`, `"left"`, `"right"`).
+
+#### `gui_keyboard_type`
+Saisit du texte séquentiellement avec des variations temporelles réalistes de frappe humaine.
+- **Paramètres** :
+  - `text` (`str`) : Contenu textuel à saisir.
+  - `delay` (`float`, valeur par défaut `0.06`) : Délai de base entre les frappes de touches en secondes.
+
+#### `gui_keyboard_press`
+Simule des pressions de touches individuelles ou des combinaisons de raccourcis complexes.
+- **Paramètres** :
+  - `key` (`str`) : Identifiant de touche ou accord (ex. `"Return"`, `"Escape"`, `"ctrl+c"`, `"alt+tab"`, `"super"`).
+
+#### `gui_clipboard_get`
+Lit le contenu textuel actuel du presse-papiers système.
+- **Paramètres** : Aucun.
+- **Retourne** : `dict` contenant le `text` du presse-papiers, la longueur `length` et la méthode `method` d'extraction.
+
+#### `gui_clipboard_set`
+Écrit du contenu textuel dans le presse-papiers du système d'exploitation.
+- **Paramètres** :
+  - `text` (`str`) : Contenu textuel à stocker dans le presse-papiers.
 
 </details>
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Wrench.png" alt="Wrench" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Utilitaires Runtime Actifs & Outils Opérationnels (11 outils)</b></summary>
-
-#### `gui_get_screen_info`
-Récupère la résolution d'écran, les moniteurs détectés, les coordonnées d'affichage et l'état failsafe.
-- **Paramètres** : Aucun.
-- **Retourne** : `dict` contenant `resolution`, `width`, `height`, la liste `monitors`, `display_env` et `failsafe_enabled`.
-
-#### `gui_clipboard_get`
-Lit le texte du presse-papiers OS avec bascule multi-backend automatisée (`pyperclip`, `xclip`, `xsel`).
-- **Paramètres** : Aucun.
-- **Retourne** : `dict` contenant le texte `text` du presse-papiers et la longueur de chaîne.
-
-#### `gui_clipboard_set`
-Écrit du texte arbitraire dans le presse-papiers système avec synchronisation multi-backend.
-- **Paramètres** :
-  - `text` (`str`) : Chaîne cible à copier dans le presse-papiers.
-- **Retourne** : `dict` confirmant la mise à jour du presse-papiers et le nombre de caractères écrits.
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Contrôle des Fenêtres & Processus (5 outils)</b></summary>
 
 #### `gui_window_list`
-Inspecte la hiérarchie des fenêtres actives, renvoyant IDs de fenêtre, PIDs, titres et classes WM.
+Énumère toutes les fenêtres actives du bureau avec leurs métadonnées.
 - **Paramètres** : Aucun.
-- **Retourne** : `list[dict]` contenant les objets de fenêtre avec IDs, PIDs, titres et géométrie de bureau.
+- **Retourne** : `dict` avec tableau `windows` contenant l'`id`, `title`, `pid` et `wm_class` de chaque fenêtre.
 
 #### `gui_window_focus`
-Active et place une fenêtre d'application cible au premier plan du bureau via son identifiant.
+Active et place la fenêtre spécifiée au premier plan.
 - **Paramètres** :
-  - `window_id` (`str`) : Identifiant de la fenêtre cible à activer.
-- **Retourne** : `dict` confirmant le statut d'activation au premier plan et l'identifiant de fenêtre activé.
+  - `window_id` (`int`) : Identifiant numérique de fenêtre obtenu via `gui_window_list`.
 
 #### `gui_window_resize_move`
-Déplace et redimensionne une fenêtre cible avec des paramètres de coordonnées et dimensions exacts.
+Repositionne et redimensionne une fenêtre d'application en une seule opération atomique.
 - **Paramètres** :
-  - `window_id` (`str`) : Identifiant de la fenêtre cible à manipuler.
-  - `x` (`int | None`, valeur par défaut `None`) : Nouvelle position horizontale de la fenêtre.
-  - `y` (`int | None`, valeur par défaut `None`) : Nouvelle position verticale de la fenêtre.
-  - `width` (`int | None`, valeur par défaut `None`) : Nouvelle largeur de la fenêtre en pixels.
-  - `height` (`int | None`, valeur par défaut `None`) : Nouvelle hauteur de la fenêtre en pixels.
-- **Retourne** : `dict` confirmant la nouvelle position et la géométrie de la fenêtre.
+  - `window_id` (`int`) : Identifiant numérique de la fenêtre cible.
+  - `x` (`int`) : Nouvelle coordonnée X du coin supérieur gauche.
+  - `y` (`int`) : Nouvelle coordonnée Y du coin supérieur gauche.
+  - `width` (`int`) : Nouvelle largeur de la fenêtre en pixels.
+  - `height` (`int`) : Nouvelle hauteur de la fenêtre en pixels.
 
 #### `gui_window_close`
-Ferme proprement une fenêtre d'application ouverte via les protocoles natifs du gestionnaire de fenêtres.
+Envoie une requête de fermeture ordonnée à une fenêtre cible.
 - **Paramètres** :
-  - `window_id` (`str`) : Identifiant de la fenêtre cible à fermer.
-- **Retourne** : `dict` confirmant la demande de fermeture et l'identifiant de la fenêtre fermée.
+  - `window_id` (`int`) : Identifiant numérique de la fenêtre cible.
 
 #### `gui_app_launch`
-Lance des applications système sous forme de processus asynchrones en arrière-plan ou synchrones.
+Lance un processus ou exécutable du système d'exploitation.
 - **Paramètres** :
-  - `command` (`str`) : Commande exécutable de l'application ou chaîne de lancement du bureau.
-  - `wait` (`bool`, valeur par défaut `False`) : Attend la fin de l'exécution (`True`) ou retourne immédiatement (`False`).
-- **Retourne** : `dict` confirmant le lancement du processus, le PID assigné et le statut d'exécution.
+  - `command` (`str`) : Ligne de commande shell ou chemin de l'exécutable à lancer.
+  - `background` (`bool`, valeur par défaut `True`) : Exécuter de manière détachée en tâche de fond (`True`) ou synchrone (`False`).
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Vision & Automatisation OCR (3 outils)</b></summary>
 
 #### `gui_find_template`
-Recherche des sous-images sur l'écran par corrélation croisée normalisée via OpenCV.
+Effectue une recherche de motif normalisée via OpenCV pour localiser des éléments graphiques.
 - **Paramètres** :
-  - `template_path` (`str`) : Chemin vers l'image de référence du modèle sur le système de fichiers.
-  - `threshold` (`float`, valeur par défaut `0.8`) : Seuil minimal de corrélation (0.0 à 1.0).
-- **Retourne** : `dict` contenant le centroïde `{"x": int, "y": int}`, le rectangle englobant et le score.
+  - `template_path` (`str`) : Chemin vers le fichier de l'image modèle de référence.
+  - `threshold` (`float`, valeur par défaut `0.8`) : Seuil de confiance (entre 0.01 et 1.0).
+  - `monitor_index` (`int`, valeur par défaut `1`) : Index du moniteur à inspecter.
+- **Retourne** : `dict` contenant les coordonnées du centre détecté `(x, y)` et le score `confidence`.
+
+#### `gui_find_text`
+Extrait les boîtes englobantes de texte par OCR (Tesseract / RapidOCR) et calcule les coordonnées centroïdes.
+- **Paramètres** :
+  - `text` (`str`) : Chaîne de caractères cible à découvrir.
+  - `confidence` (`float`, valeur par défaut `0.6`) : Score minimal de confiance OCR (0.0 à 1.0).
+  - `monitor_index` (`int`, valeur par défaut `1`) : Index du moniteur où effectuer la recherche.
+- **Retourne** : `dict` contenant `text_found`, le centroïde `(x, y)`, `confidence` et la boîte englobante `[x, y, w, h]`.
 
 #### `gui_click_text`
-Effectue une recherche OCR complète et clique immédiatement au centre du cadre englobant le texte.
+Exécute une recherche OCR et envoie un clic de souris directement au centre du texte découvert.
 - **Paramètres** :
-  - `text` (`str`) : Chaîne cible à rechercher et actionner sur l'affichage.
-  - `confidence` (`float`, valeur par défaut `0.6`) : Seuil minimal de confiance de détection OCR.
+  - `text` (`str`) : Chaîne de texte cible à localiser et cliquer.
   - `button` (`str`, valeur par défaut `"left"`) : Bouton de souris à actionner (`"left"`, `"right"`, `"middle"`).
-- **Retourne** : `dict` confirmant la détection OCR et les coordonnées de clic diffusées.
+  - `clicks` (`int`, valeur par défaut `1`) : Nombre de clics à effectuer.
+  - `monitor_index` (`int`, valeur par défaut `1`) : Moniteur cible.
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Web & Enregistrement Multimédia (3 outils)</b></summary>
 
 #### `gui_web_action`
-Exécute des interactions web déterministes (`aria_tree`, `click`, `type`, `screenshot`) via Playwright.
+Interagit directement avec les pages web via Chromium headless propulsé par Playwright.
 - **Paramètres** :
-  - `action` (`str`) : Action de navigateur cible (`"launch"`, `"navigate"`, `"click"`, `"type"`, `"screenshot"`, `"aria_tree"`).
-  - `selector` (`str | None`, valeur par défaut `None`) : Sélecteur CSS ou XPath pour l'élément cible.
-  - `value` (`str | None`, valeur par défaut `None`) : Chaîne de valeur à saisir dans l'élément DOM sélectionné.
-  - `url` (`str | None`, valeur par défaut `None`) : URL de la page web cible à charger.
-- **Retourne** : `dict` contenant le statut d'exécution DOM, les données extraites ou l'état de navigation.
+  - `url` (`str`) : Adresse web ou URL de fichier local vers laquelle naviguer.
+  - `action` (`str`, valeur par défaut `"aria_tree"`) : Action à exécuter (`"aria_tree"`, `"click"`, `"type"`, `"screenshot"`).
+  - `selector` (`str | None`, valeur par défaut `None`) : Sélecteur CSS ou XPath pour les actions `click` et `type`.
+  - `text` (`str | None`, valeur par défaut `None`) : Données textuelles à saisir lorsque `action="type"`.
+  - `viewport_width` (`int`, valeur par défaut `1280`) : Largeur de fenêtre du navigateur.
+  - `viewport_height` (`int`, valeur par défaut `720`) : Hauteur de fenêtre du navigateur.
+  - `timeout_ms` (`int`, valeur par défaut `30000`) : Délai maximal de navigation et de localisation en millisecondes.
+
+#### `gui_start_video_recording`
+Lance un sous-processus asynchrone d'enregistrement d'écran via FFmpeg avec une surcharge CPU minimale.
+- **Paramètres** :
+  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin du fichier de destination (défaut : MP4 horodaté dans le dossier des vidéos).
+  - `fps` (`int`, valeur par défaut `5`) : Cadence de capture vidéo (1 à 30 IPS).
+  - `monitor_index` (`int`, valeur par défaut `1`) : Index du moniteur cible.
+  - `duration` (`int | None`, valeur par défaut `None`) : Limite optionnelle de durée automatique en secondes.
+
+#### `gui_stop_video_recording`
+Arrête proprement l'enregistrement FFmpeg en cours et valide le conteneur du fichier MP4 généré.
+- **Paramètres** : Aucun.
+- **Retourne** : `dict` contenant `output_path`, `file_exists` et `file_size_bytes`.
 
 </details>
 
@@ -427,21 +504,22 @@ Exécute des interactions web déterministes (`aria_tree`, `click`, `type`, `scr
 | Variable | Description | Valeur par Défaut |
 | :--- | :--- | :--- |
 | `DISPLAY` | Identifiant du serveur d'affichage X11 cible. | `:0` |
-| `GUI_AGENT_SCREENSHOTS_DIR` | Répertoire où sont enregistrées les captures d'écran et découpes. | `$XDG_CACHE_HOME/gui-agent/screenshots` |
-| `GUI_AGENT_VIDEOS_DIR` | Répertoire où sont enregistrées les vidéos continues au format MP4. | `$XDG_CACHE_HOME/gui-agent/videos` |
-| `GUI_AGENT_ATSPI_BIN` | Chemin personnalisé vers le binaire du médiateur natif Rust `gui-agent-atspi`. | Découverte automatique |
+| `GUI_AGENT_SCREENSHOTS_DIR` | Répertoire où sont enregistrées les captures et découpes d'écran. | `$XDG_CACHE_HOME/gui-agent/screenshots` |
+| `GUI_AGENT_VIDEOS_DIR` | Répertoire où sont sauvegardés les enregistrements vidéo MP4 continus. | `$XDG_CACHE_HOME/gui-agent/videos` |
+| `GUI_AGENT_ATSPI_BIN` | Chemin d'accès personnalisé vers le binaire natif Rust `gui-agent-atspi`. | Découverte automatique |
+
 </details>
 
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Wastebasket.png" alt="Trash" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Désinstallation Propre
 
-Pour purger proprement `gui-agent`, supprimer les environnements isolés et désenregistrer les configurations MCP :
+Pour purger proprement `gui-agent`, supprimer les environnements isolés et retirer les configurations MCP enregistrées :
 
 ### 1. Linux (Bash)
 
 ```bash
-# Téléchargement et exécution du script de désinstallation automatisé
+# Téléchargement et exécution du désinstallateur automatisé
 curl -fsSLO https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/linux/uninstall.sh
 chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 
@@ -452,7 +530,7 @@ chmod +x uninstall.sh && ./uninstall.sh --purge-data --yes
 ### 2. Microsoft Windows (PowerShell)
 
 ```powershell
-# Téléchargement et exécution du script de désinstallation
+# Téléchargement et exécution du désinstallateur automatisé
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/leandre755/gui_agent/7a49514/windows/uninstall.ps1" -OutFile "uninstall.ps1"
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 
@@ -460,17 +538,17 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -PurgeData -Yes
 .\windows\uninstall.ps1 -PurgeData -Yes
 ```
 
-#### Ce que le script de désinstallation nettoie :
-- Supprime les binaires `gui-agent`, `mcp-gui-server` et `gui-agent-atspi` des répertoires standards (`~/.local/bin` ou virtualenv).
-- Désenregistre le serveur MCP de la configuration Claude Code CLI.
-- Nettoie les entrées JSON de la configuration Antigravity `mcp_config.json`.
-- Purge les environnements temporaires et supprime optionnellement toutes les captures et vidéos (`--purge-data` / `-PurgeData`).
+#### Éléments nettoyés par le désinstallateur :
+- Supprime les binaires `gui-agent`, `mcp-gui-server` et `gui-agent-atspi` des chemins standards (`~/.local/bin` ou virtualenv).
+- Désenregistre le serveur MCP de la configuration du CLI Claude Code.
+- Nettoie les entrées JSON du fichier `mcp_config.json` d'Antigravity.
+- Purge les dossiers d'exécution et supprime optionnellement captures et enregistrements (`--purge-data` / `-PurgeData`).
 
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Shield.png" alt="Shield" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Développement & Quality-Gate
 
-Le projet applique des normes rigoureuses d'ingénierie logicielle, vérifiées par un pipeline pre-commit à 8 couches et une couverture de test intégrale.
+Le projet applique des normes d'ingénierie logicielle strictes, vérifiées par un pipeline de 8 couches de hooks pre-commit (Quality-Gate) et une couverture de tests complète.
 
 ### 1. Configuration de l'Environnement Local
 
@@ -479,27 +557,27 @@ Le projet applique des normes rigoureuses d'ingénierie logicielle, vérifiées 
 git clone https://github.com/leandre755/gui_agent.git
 cd gui_agent
 
-# Initialiser l'environnement virtuel avec Astral uv
+# Initialiser l'environnement virtuel avec Astral UV
 uv venv
 source .venv/bin/activate
 
-# Installer le paquet en mode éditable avec dépendances de développement et compiler les extensions Rust (nécessite Cargo)
+# Installer le paquet en mode éditable avec dépendances de développement et compiler les extensions Rust (requiert Cargo)
 uv pip install -e ".[dev]"
 ```
 
-### 2. Exécution des Tests
+### 2. Exécution des Suites de Tests
 
 ```bash
-# Exécuter les tests unitaires et d'intégration
+# Exécuter les tests unitaires et d'intégration à travers les couches de plateforme
 pytest -v linux/tests/
 ```
 
-### 3. Vérification Quality-Gate Pre-Commit à 8 Couches
+### 3. Vérification Pre-Commit Quality-Gate en 8 Couches
 
-Chaque commit est validé à travers 8 couches statiques strictes pour éliminer toute dette technique et faille de sécurité :
+Chaque commit est filtré par 8 couches strictes de validation statique pour éliminer la dette technique et les vulnérabilités de sécurité :
 
 ```bash
-# Exécuter le hook de validation quality-gate à 8 couches localement
+# Exécuter le hook de validation Quality-Gate en 8 couches localement
 ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 ```
 
@@ -507,12 +585,12 @@ ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit
 | :--- | :--- | :--- |
 | 1 | `anti-leak` | Bloque les jetons secrets, clés privées et identifiants `.env` dans les fichiers indexés. |
 | 2 | `pip-audit` | Audite l'arbre des dépendances Python contre les bases de vulnérabilités CVE connues. |
-| 3 | `ruff check` | Impose zéro avertissement de linter, respect de PEP 8 et idiomes modernes Python 3.10+. |
-| 4 | `ruff format` | Vérifie le formatage déterministe et uniforme sur l'ensemble des sources Python. |
-| 5 | `mypy` | Contrôle strict des types statiques avec zéro définition non typée autorisée. |
+| 3 | `ruff check` | Impose zéro avertissement de lint, le respect de PEP 8 et les idiomes Python 3.10+ modernes. |
+| 4 | `ruff format` | Vérifie le formatage déterministe et uniforme du code sur toutes les sources Python. |
+| 5 | `mypy` | Vérification statique stricte des types sans aucune définition non typée autorisée. |
 | 6 | `sonar/smells` | Contrôle la complexité cognitive (McCabe C90 <= 25), les risques de bugs et simplifications. |
-| 7 | `bandit` | Analyse statique de sécurité AST prévenant les invocations de sous-processus non sécurisées. |
-| 8 | `semgrep` | Scanner de sécurité SAST détectant les injections de code et risques de frontière système. |
+| 7 | `bandit` | Analyse statique AST de sécurité prévenant les appels de sous-processus et motifs non sécurisés. |
+| 8 | `semgrep` | Scanner de sécurité SAST détectant les risques d'injection de code et d'isolation système. |
 
 ---
 

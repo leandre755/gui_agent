@@ -4,7 +4,7 @@
 
 <h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" height="42" style="vertical-align: middle; margin-right: 10px;" />gui-agent</h1>
 
-<p align="center"><b>Decoupled Modular FastMCP Server for Linux & Windows Desktop Computer Use</b></p>
+<p align="center"><b>Monolithic FastMCP Server for Linux & Windows Desktop Computer Use</b></p>
 
 <p align="center">🌐 <b><a href="README.md">English</a></b> | <b><a href="README.fr.md">Français</a></b></p>
 
@@ -59,6 +59,7 @@ The table below outlines the **Target Architecture v1.0** (15 unified primitives
 | `gui_start_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Starts background low-overhead screen video recording via FFmpeg (`x11grab` / H.264 ultrafast). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 | `gui_stop_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Cleanly halts the active FFmpeg recording, flushes the MP4 container, and prevents descriptor leaks. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 
+
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gear" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> How It Works
@@ -72,8 +73,8 @@ The table below outlines the **Target Architecture v1.0** (15 unified primitives
 ### Technical Execution Pipeline & Foundational Pillars
 
 1. **Pillar I : Progressive Escalation & Layered Actuation**: Rather than enforcing a single interaction mode, the architecture prioritizes cognitive and execution efficiency across layered stages: Level L3 accesses the OS accessibility tree (AT-SPI2 / D-Bus via the compiled Rust mediator `gui-agent-atspi`) directly in RAM for deterministic sub-50ms actuation with zero image tokens; Level L2 runs decoupled local OCR (RapidOCR/Tesseract) on typography without model inference overhead; Level L1 operates as the ultimate hardware safety net using calibrated Cartesian grid screenshots with native input dispatchers (with direct kernel `uinput`/`evdev` drivers scheduled on the roadmap); and an interactive PTY shell layer provides seamless handling of privileged commands.
-2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_action_batch` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
-3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `screen_capture` (or legacy `gui_take_screenshot`), the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
+2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_script` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
+3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `gui_take_screenshot`, the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
 4. **Dual Coordinate Normalization Engine**: The server accepts coordinates in either absolute physical pixels `(x, y)` or normalized ratios `[0, 1000]` across any display geometry or multi-monitor setup. An automatic converter handles boundary clamping, DPI scaling, and coordinate translation transparently.
 5. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
 6. **Local Vision, OCR & Playwright Automation**: Template matching (`cv2.matchTemplate`) enables robust icon detection even under theme variations. Text discovery combines Tesseract OCR with RapidOCR ONNX fallback. Web automation leverages Playwright to inspect ARIA trees and manipulate DOM nodes directly without visual ambiguity.
@@ -132,7 +133,7 @@ uv tool upgrade gui-agent
 ```
 
 ### 3. Linux System Prerequisites
-Under Linux, install native window management, OCR, multimedia, Rust compilation toolchain, and AT-SPI development libraries:
+Under Linux, install the native window management, OCR, multimedia, AT-SPI accessibility, and Rust build libraries:
 
 ```bash
 # Debian / Ubuntu / Linux Mint
@@ -145,7 +146,7 @@ sudo dnf install -y \
 
 # Arch Linux / Manjaro
 sudo pacman -S --needed \
-  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core rust
+  xdotool wmctrl spectacle ffmpeg xclip tesseract at-spi2-core cargo rust
 ```
 
 ---
@@ -183,6 +184,8 @@ Add the server definition to your Antigravity global MCP configuration:
 }
 ```
 
+*(Note: The alias binary `mcp-gui-server` can also be used as the `command` target).*
+
 ### 3. Cursor & VSCode
 Add the following entry to your Cursor `mcp.json` (`~/.cursor/mcp.json` or `.vscode/mcp.json`):
 
@@ -196,14 +199,6 @@ Add the following entry to your Cursor `mcp.json` (`~/.cursor/mcp.json` or `.vsc
   }
 }
 ```
-
----
-
-## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Toolset & CLI Reference
-
-<details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="REPL" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Core REPL & Local Execution Engine (1 tool)</b></summary>
-
 #### `execute_action_batch`
 Executes multi-step Python or Bash action blocks directly in host memory with preloaded `mcp_core` SDK (Open Interpreter paradigm), eliminating network RTT.
 - **Parameters**:
@@ -326,98 +321,180 @@ Sends hardware-level keyboard keypresses, system hotkeys, and chord sequences di
 <details>
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Continuous Video Recording & Audit (2 tools)</b></summary>
 
-#### `gui_start_video_recording`
-Launches an asynchronous screen recording sub-process using FFmpeg with minimal CPU overhead for behavioral audit.
-- **Parameters**:
-  - `output_path` (`str | None`, default `None`): Destination MP4 file path (defaults to dynamic cache videos dir).
-  - `fps` (`int`, default `5`): Video capture frame rate (1 to 30 FPS).
-  - `monitor_index` (`int`, default `1`): Target monitor index to record.
-  - `duration` (`int | None`, default `None`): Optional automatic recording duration limit in seconds.
-- **Returns**: `dict` confirming background process launch, assigned PID, and active output path.
+---
 
-#### `gui_stop_video_recording`
-Cleanly halts active FFmpeg recording, flushes the MP4 container, and returns file verification metadata.
+## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Toolset & CLI Reference
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Display & Cursor Tools (10 tools)</b></summary>
+
+#### `gui_get_screen_info`
+Retrieves display parameters, monitor topologies, active resolution, and session variables.
 - **Parameters**: None.
-- **Returns**: `dict` containing output video `output_path`, existence confirmation `file_exists`, and `file_size_bytes`.
+- **Returns**: `dict` containing `resolution`, `width`, `height`, `monitors` list, `display_env`, and `failsafe_enabled`.
+
+#### `gui_take_screenshot`
+Captures full-screen or cropped images with an optional Cartesian coordinate grid overlay.
+- **Parameters**:
+  - `monitor_index` (`int`, default `1`): Target monitor index (`0` for virtual canvas).
+  - `crop_box` (`list[int] | None`, default `None`): Sub-region `[x, y, width, height]`.
+  - `apply_grid` (`bool`, default `True`): Overlays the Cartesian coordinate grid.
+  - `grid_interval` (`int`, default `100`): Interval in pixels between grid lines (minimum 20).
+  - `format` (`str`, default `"png"`): Output image format (`"png"` or `"jpeg"`).
+  - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
+  - `output_path` (`str | None`, default `None`): Destination file path. Relative paths are resolved to absolute paths and missing parent directories are created. Empty paths and existing directories are rejected. If the path lacks an extension, the extension corresponding to `format` is automatically appended. Incompatible extensions are rejected. If the target file already exists, atomic reservation with incremental suffixes such as `(1)` and `(2)` protects existing files from overwrite. `screenshot_path` returns the actual resolved absolute path used. If omitted, defaults to a timestamped image in the screenshots directory.
+  - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
+- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message`, and `base64_data` (present when `include_base64` is enabled).
+
+#### `gui_mouse_move`
+Smoothly translates the mouse cursor to target coordinates.
+- **Parameters**:
+  - `x` (`float`): Target X position.
+  - `y` (`float`): Target Y position.
+  - `duration` (`float`, default `0.2`): Movement interpolation duration in seconds.
+  - `normalized` (`bool`, default `False`): Set to `True` when using `[0, 1000]` coordinates.
+  - `monitor_index` (`int`, default `1`): Reference monitor for coordinate calculations.
+
+#### `gui_mouse_click`
+Executes single, double, or multi-clicks at specific coordinates.
+- **Parameters**:
+  - `x` (`float`): Target X position.
+  - `y` (`float`): Target Y position.
+  - `button` (`str`, default `"left"`): Mouse button (`"left"`, `"right"`, `"middle"`).
+  - `clicks` (`int`, default `1`): Number of clicks to perform.
+  - `normalized` (`bool`, default `False`): Set to `True` for `[0, 1000]` coordinates.
+  - `monitor_index` (`int`, default `1`): Reference monitor.
+
+#### `gui_mouse_drag`
+Performs a smooth click-and-drag gesture between two spatial locations.
+- **Parameters**:
+  - `x1` (`float`): Starting X position.
+  - `y1` (`float`): Starting Y position.
+  - `x2` (`float`): Ending X position.
+  - `y2` (`float`): Ending Y position.
+  - `duration` (`float`, default `0.5`): Drag animation duration in seconds.
+  - `normalized` (`bool`, default `False`): Set to `True` for `[0, 1000]` coordinates.
+  - `monitor_index` (`int`, default `1`): Reference monitor.
+
+#### `gui_mouse_scroll`
+Simulates mouse wheel scrolling along vertical or horizontal axes.
+- **Parameters**:
+  - `clicks` (`int`): Number of scroll ticks (positive integer).
+  - `direction` (`str`, default `"down"`): Direction (`"up"`, `"down"`, `"left"`, `"right"`).
+
+#### `gui_keyboard_type`
+Types text sequentially with natural human-like timing variations.
+- **Parameters**:
+  - `text` (`str`): String content to type.
+  - `delay` (`float`, default `0.06`): Base delay between keystrokes in seconds.
+
+#### `gui_keyboard_press`
+Simulates individual key presses or complex modifier combinations.
+- **Parameters**:
+  - `key` (`str`): Key identifier or chord (e.g., `"Return"`, `"Escape"`, `"ctrl+c"`, `"alt+tab"`, `"super"`).
+
+#### `gui_clipboard_get`
+Reads current textual content from the system clipboard.
+- **Parameters**: None.
+- **Returns**: `dict` containing clipboard `text`, character `length`, and retrieval `method`.
+
+#### `gui_clipboard_set`
+Writes string content into the OS clipboard.
+- **Parameters**:
+  - `text` (`str`): Text content to store in the clipboard.
 
 </details>
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Wrench.png" alt="Wrench" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Active Runtime Utilities & Operational Tools (11 tools)</b></summary>
-
-#### `gui_get_screen_info`
-Retrieves screen resolution, detected monitors, display coordinates, and failsafe state.
-- **Parameters**: None.
-- **Returns**: `dict` containing `resolution`, `width`, `height`, `monitors` list, `display_env`, and `failsafe_enabled`.
-
-#### `gui_clipboard_get`
-Reads text from the OS clipboard with automated multi-backend fallback (`pyperclip`, `xclip`, `xsel`).
-- **Parameters**: None.
-- **Returns**: `dict` containing clipboard `text` content and string length.
-
-#### `gui_clipboard_set`
-Writes arbitrary text into the system clipboard with multi-backend synchronization.
-- **Parameters**:
-  - `text` (`str`): Target string to copy into the clipboard.
-- **Returns**: `dict` confirming clipboard update and written character count.
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Window & Process Control (5 tools)</b></summary>
 
 #### `gui_window_list`
-Inspects active window hierarchy, returning window IDs, process PIDs, titles, and WM classes.
+Enumerates all active desktop windows with metadata.
 - **Parameters**: None.
-- **Returns**: `list[dict]` containing active window objects with IDs, PIDs, titles, and desktop geometry.
+- **Returns**: `dict` with `windows` array containing window `id`, `title`, `pid`, and `wm_class`.
 
 #### `gui_window_focus`
-Activates and raises a target application window to desktop foreground by ID.
+Activates and brings a specified window to the front.
 - **Parameters**:
-  - `window_id` (`str`): Target window identifier to focus.
-- **Returns**: `dict` confirming foreground activation status and focused window ID.
+  - `window_id` (`int`): Numeric window ID obtained from `gui_window_list`.
 
 #### `gui_window_resize_move`
-Relocates and resizes a target window with pixel-exact coordinate and dimension parameters.
+Reposition and resize an application window in a single atomic operation.
 - **Parameters**:
-  - `window_id` (`str`): Target window identifier to manipulate.
-  - `x` (`int | None`, default `None`): New horizontal window position.
-  - `y` (`int | None`, default `None`): New vertical window position.
-  - `width` (`int | None`, default `None`): New window width in pixels.
-  - `height` (`int | None`, default `None`): New window height in pixels.
-- **Returns**: `dict` confirming updated window position and geometry.
+  - `window_id` (`int`): Target numeric window ID.
+  - `x` (`int`): New top-left X coordinate.
+  - `y` (`int`): New top-left Y coordinate.
+  - `width` (`int`): New window width in pixels.
+  - `height` (`int`): New window height in pixels.
 
 #### `gui_window_close`
-Gracefully terminates an open application window via native window manager protocols.
+Sends an orderly close request to a target window.
 - **Parameters**:
-  - `window_id` (`str`): Target window identifier to terminate.
-- **Returns**: `dict` confirming termination dispatch and closed window ID.
+  - `window_id` (`int`): Target numeric window ID.
 
 #### `gui_app_launch`
-Spawns system applications either as asynchronous background processes or synchronous commands.
+Spawns an operating system process or binary.
 - **Parameters**:
-  - `command` (`str`): Application executable command or desktop launch string.
-  - `wait` (`bool`, default `False`): Waits for execution termination (`True`) or returns immediately (`False`).
-- **Returns**: `dict` confirming process dispatch, assigned PID, and execution status.
+  - `command` (`str`): Shell command line or binary path to launch.
+  - `background` (`bool`, default `True`): Run asynchronously detached (`True`) or wait synchronously (`False`).
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Vision & OCR Automation (3 tools)</b></summary>
 
 #### `gui_find_template`
-Searches for visual sub-images across the screen using OpenCV normalized cross-correlation matching.
+Performs normalized template matching via OpenCV to locate graphical elements.
 - **Parameters**:
-  - `template_path` (`str`): Filesystem path to the template reference image.
-  - `threshold` (`float`, default `0.8`): Minimum correlation matching threshold (0.0 to 1.0).
-- **Returns**: `dict` containing matched centroid `{"x": int, "y": int}`, bounding box, and match score.
+  - `template_path` (`str`): File path to the reference template image.
+  - `threshold` (`float`, default `0.8`): Confidence threshold (between 0.01 and 1.0).
+  - `monitor_index` (`int`, default `1`): Monitor index to inspect.
+- **Returns**: `dict` containing match center coordinates `(x, y)` and matching `confidence`.
+
+#### `gui_find_text`
+Extracts text bounding boxes via OCR (Tesseract / RapidOCR) and calculates centroid coordinates.
+- **Parameters**:
+  - `text` (`str`): Target string to discover.
+  - `confidence` (`float`, default `0.6`): Minimum OCR confidence score (0.0 to 1.0).
+  - `monitor_index` (`int`, default `1`): Monitor index to search.
+- **Returns**: `dict` containing `text_found`, centroid `(x, y)`, `confidence`, and bounding box `[x, y, w, h]`.
 
 #### `gui_click_text`
-Performs an end-to-end OCR search and immediately clicks the center of the matching text bounding box.
+Executes an OCR search and dispatches a mouse click directly to the centroid of the discovered text.
 - **Parameters**:
-  - `text` (`str`): Target string to search and actuate across the display.
-  - `confidence` (`float`, default `0.6`): Minimum OCR detection confidence threshold.
-  - `button` (`str`, default `"left"`): Mouse button to actuate on target (`"left"`, `"right"`, `"middle"`).
-- **Returns**: `dict` confirming OCR discovery and click dispatch coordinates.
+  - `text` (`str`): Target text string to locate and click.
+  - `button` (`str`, default `"left"`): Mouse button to click (`"left"`, `"right"`, `"middle"`).
+  - `clicks` (`int`, default `1`): Number of clicks to perform.
+  - `monitor_index` (`int`, default `1`): Target monitor.
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Web & Multimedia Recording (3 tools)</b></summary>
 
 #### `gui_web_action`
-Executes deterministic browser interactions (`aria_tree`, `click`, `type`, `screenshot`) via Playwright.
+Interacts directly with web pages via headless Chromium powered by Playwright.
 - **Parameters**:
-  - `action` (`str`): Target browser action (`"launch"`, `"navigate"`, `"click"`, `"type"`, `"screenshot"`, `"aria_tree"`).
-  - `selector` (`str | None`, default `None`): CSS or XPath selector for targeted element interaction.
-  - `value` (`str | None`, default `None`): Input string value to type into the selected DOM element.
-  - `url` (`str | None`, default `None`): Target webpage URL to navigate.
-- **Returns**: `dict` containing DOM execution status, extracted data, or navigation state.
+  - `url` (`str`): Web address or local file URL to navigate to.
+  - `action` (`str`, default `"aria_tree"`): Action to perform (`"aria_tree"`, `"click"`, `"type"`, `"screenshot"`).
+  - `selector` (`str | None`, default `None`): CSS or XPath selector for `click` and `type` actions.
+  - `text` (`str | None`, default `None`): Text payload to input when `action="type"`.
+  - `viewport_width` (`int`, default `1280`): Browser viewport width.
+  - `viewport_height` (`int`, default `720`): Browser viewport height.
+  - `timeout_ms` (`int`, default `30000`): Navigation and locator timeout in milliseconds.
+
+#### `gui_start_video_recording`
+Launches an asynchronous screen recording sub-process using FFmpeg with minimal CPU overhead.
+- **Parameters**:
+  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped MP4 in videos dir).
+  - `fps` (`int`, default `5`): Video capture frame rate (1 to 30 FPS).
+  - `monitor_index` (`int`, default `1`): Target monitor index.
+  - `duration` (`int | None`, default `None`): Optional automatic duration limit in seconds.
+
+#### `gui_stop_video_recording`
+Cleanly terminates the ongoing FFmpeg recording and validates the generated MP4 file container.
+- **Parameters**: None.
+- **Returns**: `dict` containing `output_path`, `file_exists`, and `file_size_bytes`.
 
 </details>
 
@@ -430,6 +507,7 @@ Executes deterministic browser interactions (`aria_tree`, `click`, `type`, `scre
 | `GUI_AGENT_SCREENSHOTS_DIR` | Directory where screenshots and cropped frames are saved. | `$XDG_CACHE_HOME/gui-agent/screenshots` |
 | `GUI_AGENT_VIDEOS_DIR` | Directory where continuous MP4 screen video recordings are saved. | `$XDG_CACHE_HOME/gui-agent/videos` |
 | `GUI_AGENT_ATSPI_BIN` | Custom filesystem path to the native `gui-agent-atspi` Rust mediator binary. | Auto-discovered |
+
 </details>
 
 ---
