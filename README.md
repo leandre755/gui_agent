@@ -4,7 +4,7 @@
 
 <h1 align="center"><img src="https://files.catbox.moe/xei715.png" alt="gui-agent Logo" height="42" style="vertical-align: middle; margin-right: 10px;" />gui-agent</h1>
 
-<p align="center"><b>Monolithic FastMCP Server for Linux & Windows Desktop Computer Use</b></p>
+<p align="center"><b>Unified FastMCP Server for Linux & Windows Desktop Computer Use</b></p>
 
 <p align="center">🌐 <b><a href="README.md">English</a></b> | <b><a href="README.fr.md">Français</a></b></p>
 
@@ -39,29 +39,23 @@ Operating through a single, resilient standard input/output (stdio) FastMCP conn
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Bullseye.png" alt="Bullseye" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Core Capabilities
 
-The server exposes 21 monolithic FastMCP tools covering the complete lifecycle of operating system Computer Use. All tools operate through a single standard input/output (stdio) JSON-RPC 2.0 communication channel.
+The server exposes 15 unified FastMCP tools structured across operational layers, covering the complete lifecycle of operating system Computer Use. All tools operate through a single standard input/output (stdio) JSON-RPC 2.0 communication channel.
 
 | Tool Name | Domain | Description | Status |
 | :--- | :--- | :--- | :--- |
-| `gui_get_screen_info` | <img src="https://img.shields.io/badge/Screen-10B981?style=flat-square" alt="Screen" /> | Retrieves screen resolution, detected monitors, display coordinates, and failsafe state. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_take_screenshot` | <img src="https://img.shields.io/badge/Screen-10B981?style=flat-square" alt="Screen" /> | Captures full or cropped desktop displays with dynamic Cartesian coordinate grid overlays. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_mouse_move` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Smoothly displaces the mouse cursor to absolute `(x, y)` or normalized `[0, 1000]` coordinates. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_mouse_click` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Dispatches single, double, or triple mouse clicks (`left`, `right`, `middle`) at target coordinates. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_mouse_drag` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Performs smooth mouse drag-and-drop operations from `(x1, y1)` to `(x2, y2)` with configurable duration. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_mouse_scroll` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Simulates directional scroll wheel actions (`up`, `down`, `left`, `right`) with adjustable step count. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_keyboard_type` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Types text strings character-by-character with realistic micro-jitter delays to prevent anti-bot blocks. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_keyboard_press` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Sends specialized keycodes and complex hotkey chords (`ctrl+c`, `super`, `alt+tab`, `Return`). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_clipboard_get` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Reads text from the OS clipboard with automated multi-backend fallback (`pyperclip`, `xclip`, `xsel`). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_clipboard_set` | <img src="https://img.shields.io/badge/Input-10B981?style=flat-square" alt="Input" /> | Writes arbitrary text into the system clipboard with multi-backend synchronization. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_window_list` | <img src="https://img.shields.io/badge/Window-10B981?style=flat-square" alt="Window" /> | Inspects active window hierarchy, returning window IDs, process PIDs, titles, and WM classes. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_window_focus` | <img src="https://img.shields.io/badge/Window-10B981?style=flat-square" alt="Window" /> | Activates and raises a target application window to the desktop foreground by ID. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_window_resize_move` | <img src="https://img.shields.io/badge/Window-10B981?style=flat-square" alt="Window" /> | Relocates and resizes a target window with pixel-exact coordinate and dimension parameters. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_window_close` | <img src="https://img.shields.io/badge/Window-10B981?style=flat-square" alt="Window" /> | Gracefully terminates an open application window via native window manager protocols. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_app_launch` | <img src="https://img.shields.io/badge/Window-10B981?style=flat-square" alt="Window" /> | Spawns system applications either as asynchronous background processes or synchronous commands. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_find_template` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Searches for visual sub-images across the screen using OpenCV normalized cross-correlation matching. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_find_text` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Identifies and locates on-screen text coordinates via OCR engines (Tesseract / RapidOCR). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_click_text` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Performs an end-to-end OCR search and immediately clicks the center of the matching text bounding box. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
-| `gui_web_action` | <img src="https://img.shields.io/badge/Web-34D399?style=flat-square" alt="Web" /> | Executes deterministic browser interactions (`aria_tree`, `click`, `type`, `screenshot`) via Playwright. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `execute_action_batch` | <img src="https://img.shields.io/badge/Core%20REPL-10B981?style=flat-square" alt="Core REPL" /> | Executes local Python/Bash scripts with preloaded `mcp_core` (Open Interpreter model), running multi-action batches without RTT. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `process_run` | <img src="https://img.shields.io/badge/System%20PTY-10B981?style=flat-square" alt="System PTY" /> | Spawns interactive shell commands via PTY to inject credentials and bypass Polkit/sudo security dialogs. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `process_list` | <img src="https://img.shields.io/badge/System%20PTY-10B981?style=flat-square" alt="System PTY" /> | Inspects the `/proc` filesystem in read-only mode to probe active processes without altering desktop state. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `activate_window` | <img src="https://img.shields.io/badge/System%20PTY-10B981?style=flat-square" alt="System PTY" /> | Switches focus at the display compositor level using unique Window IDs, resolving multi-window PID ambiguity. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `get_app_state` | <img src="https://img.shields.io/badge/Layer%20L3-10B981?style=flat-square" alt="Layer L3" /> | Inspects the AT-SPI2 accessibility tree via native Rust mediation (`gui-agent-atspi`) directly in RAM. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `perform_action` | <img src="https://img.shields.io/badge/Layer%20L3-10B981?style=flat-square" alt="Layer L3" /> | Triggers semantic actions directly in RAM via D-Bus IPC in sub-50ms without physical pointer movements. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `set_value` | <img src="https://img.shields.io/badge/Layer%20L3-10B981?style=flat-square" alt="Layer L3" /> | Mutates text or numerical values directly into component memory variables without physical keystrokes. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `find_text` | <img src="https://img.shields.io/badge/Layer%20L2-34D399?style=flat-square" alt="Layer L2" /> | Discovers on-screen text coordinates via local OCR (RapidOCR/Tesseract) without sending image payloads. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `screen_capture` | <img src="https://img.shields.io/badge/Layer%20L1-34D399?style=flat-square" alt="Layer L1" /> | Captures raw framebuffer with calibrated Cartesian grid overlays for opaque surfaces (WebGL/Canvas). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `mouse_click_at` | <img src="https://img.shields.io/badge/Layer%20L1-34D399?style=flat-square" alt="Layer L1" /> | Injects physical mouse click events (`left`, `right`, `middle`, double) at target `(x, y)` coordinates. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `mouse_drag_smooth` | <img src="https://img.shields.io/badge/Layer%20L1-34D399?style=flat-square" alt="Layer L1" /> | Dispatches continuous kinematic mouse trajectory interpolation to overcome UI drag-breakaway thresholds. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `mouse_scroll` | <img src="https://img.shields.io/badge/Layer%20L1-34D399?style=flat-square" alt="Layer L1" /> | Executes hardware wheel scrolls (`up`, `down`, `left`, `right`) to materialize virtualized DOM elements. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
+| `key_tap` | <img src="https://img.shields.io/badge/Layer%20L1-34D399?style=flat-square" alt="Layer L1" /> | Injects standard keystrokes, navigation hotkeys, and chord combinations (`Ctrl+L`, `Super+D`, `Return`). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 | `gui_start_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Starts background low-overhead screen video recording via FFmpeg (`x11grab` / H.264 ultrafast). | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 | `gui_stop_video_recording` | <img src="https://img.shields.io/badge/Media-F0883E?style=flat-square" alt="Media" /> | Cleanly halts the active FFmpeg recording, flushes the MP4 container, and prevents descriptor leaks. | <img src="https://img.shields.io/badge/Active-3FB950?style=flat-square" alt="Active" /> |
 
@@ -78,8 +72,8 @@ The server exposes 21 monolithic FastMCP tools covering the complete lifecycle o
 ### Technical Execution Pipeline & Foundational Pillars
 
 1. **Pillar I : Progressive Escalation & Layered Actuation**: Rather than enforcing a single interaction mode, the architecture prioritizes cognitive and execution efficiency across layered stages: Level L3 accesses the OS accessibility tree (AT-SPI2 / D-Bus via the compiled Rust mediator `gui-agent-atspi`) directly in RAM for deterministic sub-50ms actuation with zero image tokens; Level L2 runs decoupled local OCR (RapidOCR/Tesseract) on typography without model inference overhead; Level L1 operates as the ultimate hardware safety net using calibrated Cartesian grid screenshots with native input dispatchers (with direct kernel `uinput`/`evdev` drivers scheduled on the roadmap); and an interactive PTY shell layer provides seamless handling of privileged commands.
-2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_script` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
-3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `gui_take_screenshot`, the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
+2. **Pillar II : High-Efficiency Execution Architecture**: Paving the way to eliminate multi-turn network round-trip time (RTT) latency, the project architecture designs an isolated local execution environment (`execute_action_batch` via `core/repl.py`). Models will project multi-step inspection and action logic directly as Python code executed in host memory via the unified `mcp_core` SDK. Complex condition checking, kinematic drag calculations, and dynamic polling resolve in a single cognitive round-trip with sub-5ms execution speed and less than 15 MB RAM consumption (slated for Phase 2 roadmap).
+3. **Sub-second Screen Ingestion & Cartesian Grid Overlay**: When an agent requests visual state via `screen_capture` (or legacy `gui_take_screenshot`), the server captures the raw framebuffer through MSS, with automatic fallback to KDE Spectacle or Scrot on XWayland surfaces. The engine overlays a millimeter Cartesian coordinate grid with adaptive contrast-buffered labels at configurable intervals (e.g., 100px), allowing models to infer target coordinates with mathematical certainty.
 4. **Dual Coordinate Normalization Engine**: The server accepts coordinates in either absolute physical pixels `(x, y)` or normalized ratios `[0, 1000]` across any display geometry or multi-monitor setup. An automatic converter handles boundary clamping, DPI scaling, and coordinate translation transparently.
 5. **Native OS Input & Window Dispatcher**: Keystrokes, hotkeys, mouse clicks, and drag operations are routed through low-latency native drivers (`xdotool` and `python-xlib` under Linux, Win32 API under Windows). Humanized delays and micro-jitter emulate natural user interaction. Window management commands (`wmctrl` / `xprop`) inspect and manipulate window states without window manager locks.
 6. **Local Vision, OCR & Playwright Automation**: Template matching (`cv2.matchTemplate`) enables robust icon detection even under theme variations. Text discovery combines Tesseract OCR with RapidOCR ONNX fallback. Web automation leverages Playwright to inspect ARIA trees and manipulate DOM nodes directly without visual ambiguity.
@@ -210,175 +204,143 @@ Add the following entry to your Cursor `mcp.json` (`~/.cursor/mcp.json` or `.vsc
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Toolset & CLI Reference
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Display & Cursor Tools (10 tools)</b></summary>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="REPL" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Core REPL & Local Execution Engine (1 tool)</b></summary>
 
-#### `gui_get_screen_info`
-Retrieves display parameters, monitor topologies, active resolution, and session variables.
-- **Parameters**: None.
-- **Returns**: `dict` containing `resolution`, `width`, `height`, `monitors` list, `display_env`, and `failsafe_enabled`.
-
-#### `gui_take_screenshot`
-Captures full-screen or cropped images with an optional Cartesian coordinate grid overlay.
+#### `execute_action_batch`
+Executes multi-step Python or Bash action blocks directly in host memory with preloaded `mcp_core` SDK (Open Interpreter paradigm), eliminating network RTT.
 - **Parameters**:
-  - `monitor_index` (`int`, default `1`): Target monitor index (`0` for virtual canvas).
-  - `crop_box` (`list[int] | None`, default `None`): Sub-region `[x, y, width, height]`.
-  - `apply_grid` (`bool`, default `True`): Overlays the Cartesian coordinate grid.
-  - `grid_interval` (`int`, default `100`): Interval in pixels between grid lines (minimum 20).
-  - `format` (`str`, default `"png"`): Output image format (`"png"` or `"jpeg"`).
-  - `quality` (`int`, default `80`): Compression quality (1-100) for JPEG output.
-  - `output_path` (`str | None`, default `None`): Destination file path. Relative paths are resolved to absolute paths and missing parent directories are created. Empty paths and existing directories are rejected. If the path lacks an extension, the extension corresponding to `format` is automatically appended. Incompatible extensions are rejected. If the target file already exists, atomic reservation with incremental suffixes such as `(1)` and `(2)` protects existing files from overwrite. `screenshot_path` returns the actual resolved absolute path used. If omitted, defaults to a timestamped image in the screenshots directory.
-  - `include_base64` (`bool`, default `False`): Returns Base64-encoded string representation.
-- **Returns**: `dict` containing `screenshot_path` (resolved absolute path), `raw_screenshot_path`, `format`, `resolution`, `cropped`, `grid_applied`, `grid_interval`, `renamed_due_to_conflict`, `message`, and `base64_data` (present when `include_base64` is enabled).
-
-#### `gui_mouse_move`
-Smoothly translates the mouse cursor to target coordinates.
-- **Parameters**:
-  - `x` (`float`): Target X position.
-  - `y` (`float`): Target Y position.
-  - `duration` (`float`, default `0.2`): Movement interpolation duration in seconds.
-  - `normalized` (`bool`, default `False`): Set to `True` when using `[0, 1000]` coordinates.
-  - `monitor_index` (`int`, default `1`): Reference monitor for coordinate calculations.
-
-#### `gui_mouse_click`
-Executes single, double, or multi-clicks at specific coordinates.
-- **Parameters**:
-  - `x` (`float`): Target X position.
-  - `y` (`float`): Target Y position.
-  - `button` (`str`, default `"left"`): Mouse button (`"left"`, `"right"`, `"middle"`).
-  - `clicks` (`int`, default `1`): Number of clicks to perform.
-  - `normalized` (`bool`, default `False`): Set to `True` for `[0, 1000]` coordinates.
-  - `monitor_index` (`int`, default `1`): Reference monitor.
-
-#### `gui_mouse_drag`
-Performs a smooth click-and-drag gesture between two spatial locations.
-- **Parameters**:
-  - `x1` (`float`): Starting X position.
-  - `y1` (`float`): Starting Y position.
-  - `x2` (`float`): Ending X position.
-  - `y2` (`float`): Ending Y position.
-  - `duration` (`float`, default `0.5`): Drag animation duration in seconds.
-  - `normalized` (`bool`, default `False`): Set to `True` for `[0, 1000]` coordinates.
-  - `monitor_index` (`int`, default `1`): Reference monitor.
-
-#### `gui_mouse_scroll`
-Simulates mouse wheel scrolling along vertical or horizontal axes.
-- **Parameters**:
-  - `clicks` (`int`): Number of scroll ticks (positive integer).
-  - `direction` (`str`, default `"down"`): Direction (`"up"`, `"down"`, `"left"`, `"right"`).
-
-#### `gui_keyboard_type`
-Types text sequentially with natural human-like timing variations.
-- **Parameters**:
-  - `text` (`str`): String content to type.
-  - `delay` (`float`, default `0.06`): Base delay between keystrokes in seconds.
-
-#### `gui_keyboard_press`
-Simulates individual key presses or complex modifier combinations.
-- **Parameters**:
-  - `key` (`str`): Key identifier or chord (e.g., `"Return"`, `"Escape"`, `"ctrl+c"`, `"alt+tab"`, `"super"`).
-
-#### `gui_clipboard_get`
-Reads current textual content from the system clipboard.
-- **Parameters**: None.
-- **Returns**: `dict` containing clipboard `text`, character `length`, and retrieval `method`.
-
-#### `gui_clipboard_set`
-Writes string content into the OS clipboard.
-- **Parameters**:
-  - `text` (`str`): Text content to store in the clipboard.
+  - `language` (`str`, default `"python"`): Execution runtime environment (`"python"` or `"bash"`).
+  - `code` (`str`): Multi-step script containing conditional logic, loops, and rapid polling routines.
+  - `timeout` (`float`, default `30.0`): Execution deadline in seconds before terminating the runner process.
+- **Returns**: `dict` containing execution `status`, captured `stdout`, `stderr`, and execution `elapsed_seconds`.
 
 </details>
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Window & Process Control (5 tools)</b></summary>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Window.png" alt="Window" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> System & PTY Shell Controls (3 tools)</b></summary>
 
-#### `gui_window_list`
-Enumerates all active desktop windows with metadata.
+#### `process_run`
+Executes shell commands in a pseudo-terminal (PTY) session, allowing credential injection to bypass security modals.
+- **Parameters**:
+  - `command` (`str` | `list[str]`): Command line string or argument list to execute.
+  - `background` (`bool`, default `False`): Spawns detached in background (`True`) or waits synchronously (`False`).
+  - `sudo_password` (`str | None`, default `None`): Password injected into PTY `stdin` for Polkit/sudo escalation.
+- **Returns**: `dict` containing execution `status`, exit code `returncode`, `stdout`, and `stderr`.
+
+#### `process_list`
+Inspects the `/proc` filesystem in read-only mode to probe active desktop processes and hierarchy without mutation.
 - **Parameters**: None.
-- **Returns**: `dict` with `windows` array containing window `id`, `title`, `pid`, and `wm_class`.
+- **Returns**: `list[dict]` containing active system process entries with `pid`, `name`, and status metadata.
 
-#### `gui_window_focus`
-Activates and brings a specified window to the front.
+#### `activate_window`
+Switches desktop focus directly at the display compositor level using unique Window IDs, avoiding PID collision.
 - **Parameters**:
-  - `window_id` (`int`): Numeric window ID obtained from `gui_window_list`.
-
-#### `gui_window_resize_move`
-Reposition and resize an application window in a single atomic operation.
-- **Parameters**:
-  - `window_id` (`int`): Target numeric window ID.
-  - `x` (`int`): New top-left X coordinate.
-  - `y` (`int`): New top-left Y coordinate.
-  - `width` (`int`): New window width in pixels.
-  - `height` (`int`): New window height in pixels.
-
-#### `gui_window_close`
-Sends an orderly close request to a target window.
-- **Parameters**:
-  - `window_id` (`int`): Target numeric window ID.
-
-#### `gui_app_launch`
-Spawns an operating system process or binary.
-- **Parameters**:
-  - `command` (`str`): Shell command line or binary path to launch.
-  - `background` (`bool`, default `True`): Run asynchronously detached (`True`) or wait synchronously (`False`).
+  - `window_id` (`str` | `int`): Target compositor Window ID to raise and focus.
+- **Returns**: `dict` containing operation `status` and confirmed active window identifier.
 
 </details>
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Vision & OCR Automation (3 tools)</b></summary>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="L3" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L3 — Semantic RAM & AT-SPI2 (3 tools)</b></summary>
 
-#### `gui_find_template`
-Performs normalized template matching via OpenCV to locate graphical elements.
+#### `get_app_state`
+Inspects the accessibility tree via native Rust mediation (`gui-agent-atspi`) directly in RAM with zero image tokens.
 - **Parameters**:
-  - `template_path` (`str`): File path to the reference template image.
-  - `threshold` (`float`, default `0.8`): Confidence threshold (between 0.01 and 1.0).
-  - `monitor_index` (`int`, default `1`): Monitor index to inspect.
-- **Returns**: `dict` containing match center coordinates `(x, y)` and matching `confidence`.
+  - `include_screenshot` (`bool`, default `False`): Attaches an optional visual framebuffer capture.
+- **Returns**: `dict` containing structured tree nodes, numeric `element_index`, bounds, states, and `snapshot_id`.
 
-#### `gui_find_text`
-Extracts text bounding boxes via OCR (Tesseract / RapidOCR) and calculates centroid coordinates.
+#### `perform_action`
+Invokes semantic actions directly in target application memory via D-Bus IPC in sub-50ms without pointer motion.
 - **Parameters**:
-  - `text` (`str`): Target string to discover.
-  - `confidence` (`float`, default `0.6`): Minimum OCR confidence score (0.0 to 1.0).
-  - `monitor_index` (`int`, default `1`): Monitor index to search.
-- **Returns**: `dict` containing `text_found`, centroid `(x, y)`, `confidence`, and bounding box `[x, y, w, h]`.
+  - `element_id` (`str` | `int`): Node identifier or cache index from the active `snapshot_id`.
+  - `action` (`str`, default `"activate"`): Semantic action name (`"activate"`, `"click"`, `"press"`).
+- **Returns**: `dict` containing execution `status`, target identifier, and action verification response.
 
-#### `gui_click_text`
-Executes an OCR search and dispatches a mouse click directly to the centroid of the discovered text.
+#### `set_value`
+Mutates text or numerical values directly into component memory variables without emitting physical keystrokes.
 - **Parameters**:
-  - `text` (`str`): Target text string to locate and click.
-  - `button` (`str`, default `"left"`): Mouse button to click (`"left"`, `"right"`, `"middle"`).
-  - `clicks` (`int`, default `1`): Number of clicks to perform.
-  - `monitor_index` (`int`, default `1`): Target monitor.
+  - `element_id` (`str` | `int`): Target editable field or widget identifier.
+  - `value` (`str`): Text or numerical value to assign directly into component memory.
+- **Returns**: `dict` containing mutation `status`, target identifier, and assigned value confirmation.
 
 </details>
 
 <details>
-<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Web & Multimedia Recording (3 tools)</b></summary>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Left.png" alt="Search" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L2 — Local Vision & OCR (1 tool)</b></summary>
 
-#### `gui_web_action`
-Interacts directly with web pages via headless Chromium powered by Playwright.
+#### `find_text`
+Discovers on-screen text coordinates via decoupled local OCR engines (RapidOCR / Tesseract) without model RTT.
 - **Parameters**:
-  - `url` (`str`): Web address or local file URL to navigate to.
-  - `action` (`str`, default `"aria_tree"`): Action to perform (`"aria_tree"`, `"click"`, `"type"`, `"screenshot"`).
-  - `selector` (`str | None`, default `None`): CSS or XPath selector for `click` and `type` actions.
-  - `text` (`str | None`, default `None`): Text payload to input when `action="type"`.
-  - `viewport_width` (`int`, default `1280`): Browser viewport width.
-  - `viewport_height` (`int`, default `720`): Browser viewport height.
-  - `timeout_ms` (`int`, default `30000`): Navigation and locator timeout in milliseconds.
+  - `text` (`str`): Target text string to identify across the desktop screen.
+  - `confidence` (`float`, default `0.85`): Minimum detection confidence score (0.0 to 1.0).
+- **Returns**: `dict` containing detected text centroid `{"x": int, "y": int}`, bounding box, and match `confidence`.
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Layer L1 — Hardware & Input Dispatch (5 tools)</b></summary>
+
+#### `screen_capture`
+Captures the raw display framebuffer with an optional calibrated Cartesian coordinate grid overlay.
+- **Parameters**:
+  - `show_grid` (`bool`, default `True`): Overlays a Cartesian coordinate grid with adaptive contrast labels.
+  - `grid_step` (`int`, default `100`): Pixel distance between coordinate grid lines (minimum 20px).
+  - `output_path` (`str | None`, default `None`): Output destination path with atomic reservation protection.
+- **Returns**: `dict` containing resolved `screenshot_path`, image dimensions, format, and grid status.
+
+#### `mouse_click_at`
+Injects hardware mouse click events directly via low-level input subsystems at exact target coordinates.
+- **Parameters**:
+  - `x` (`int` | `float`): Absolute X pixel coordinate.
+  - `y` (`int` | `float`): Absolute Y pixel coordinate.
+  - `button` (`str`, default `"left"`): Mouse button identifier (`"left"`, `"right"`, `"middle"`).
+  - `double` (`bool`, default `False`): Dispatches a consecutive double-click sequence when enabled.
+- **Returns**: `dict` confirming click execution status, target coordinates, and dispatched button.
+
+#### `mouse_drag_smooth`
+Dispatches an interpolated continuous mouse trajectory to overcome GUI drag-and-drop breakaway thresholds.
+- **Parameters**:
+  - `from_x` (`int` | `float`): Starting horizontal X coordinate.
+  - `from_y` (`int` | `float`): Starting vertical Y coordinate.
+  - `to_x` (`int` | `float`): Terminating horizontal X coordinate.
+  - `to_y` (`int` | `float`): Terminating vertical Y coordinate.
+  - `duration` (`float`, default `0.5`): Total animation interpolation duration in seconds.
+- **Returns**: `dict` confirming kinematic drag completion across the spatial trajectory.
+
+#### `mouse_scroll`
+Simulates hardware mouse wheel movements to force dynamic rendering of virtualized lists and infinite scroll.
+- **Parameters**:
+  - `x` (`int` | `float`): Horizontal position where the scroll event is injected.
+  - `y` (`int` | `float`): Vertical position where the scroll event is injected.
+  - `direction` (`str`, default `"down"`): Scroll direction axis (`"up"`, `"down"`, `"left"`, `"right"`).
+  - `amount` (`int`, default `5`): Step count of scroll ticks to dispatch.
+- **Returns**: `dict` confirming scroll action dispatch, coordinate target, and step count.
+
+#### `key_tap`
+Sends hardware-level keyboard keypresses, system hotkeys, and chord sequences directly to the focused window.
+- **Parameters**:
+  - `key` (`str`): Key identifier (e.g., `"Return"`, `"Escape"`, `"Tab"`, `"space"`).
+  - `modifiers` (`list[str] | str | None`, default `None`): Key modifiers (e.g., `["ctrl"]`, `["alt"]`, `"super"`).
+- **Returns**: `dict` confirming keystroke injection status and dispatched chord combination.
+
+</details>
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Movie%20Camera.png" alt="Camera" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Continuous Video Recording & Audit (2 tools)</b></summary>
 
 #### `gui_start_video_recording`
-Launches an asynchronous screen recording sub-process using FFmpeg with minimal CPU overhead.
+Launches an asynchronous screen recording sub-process using FFmpeg with minimal CPU overhead for behavioral audit.
 - **Parameters**:
-  - `output_path` (`str | None`, default `None`): Destination file path (defaults to timestamped MP4 in videos dir).
+  - `output_path` (`str | None`, default `None`): Destination MP4 file path (defaults to dynamic cache videos dir).
   - `fps` (`int`, default `5`): Video capture frame rate (1 to 30 FPS).
-  - `monitor_index` (`int`, default `1`): Target monitor index.
-  - `duration` (`int | None`, default `None`): Optional automatic duration limit in seconds.
+  - `monitor_index` (`int`, default `1`): Target monitor index to record.
+  - `duration` (`int | None`, default `None`): Optional automatic recording duration limit in seconds.
+- **Returns**: `dict` confirming background process launch, assigned PID, and active output path.
 
 #### `gui_stop_video_recording`
-Cleanly terminates the ongoing FFmpeg recording and validates the generated MP4 file container.
+Cleanly halts the active FFmpeg recording, flushes the MP4 container, and returns file verification metadata.
 - **Parameters**: None.
-- **Returns**: `dict` containing `output_path`, `file_exists`, and `file_size_bytes`.
+- **Returns**: `dict` containing output video `output_path`, existence confirmation `file_exists`, and `file_size_bytes`.
 
 </details>
 
