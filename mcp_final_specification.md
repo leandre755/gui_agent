@@ -111,17 +111,23 @@ for _ in range(10):
 | :--- | :--- | :--- |
 | **T-01** | Menu survol volatil (*FocusOut*) | `perform_action` (L3) exécute l'événement en mémoire sans déplacer le pointeur. |
 | **T-02** | Notification Toast (TTL 3s) | Le script REPL intercepte le nœud D-Bus en 50 ms via une boucle locale. |
+| **T-03** | Glisser-déposer continu d'onglets | `mouse_drag_smooth` injecte un flux interpolé franchissant le seuil d'arrachement. |
 | **S-01** | Canvas GPU WebGL (Figma) | Bascule automatique en L1 (`screen_capture` avec grille cartésienne). |
 | **S-02** | Liste virtualisée dynamique | Boucle localisée exécutant `mouse_scroll` jusqu'à l'instanciation du composant. |
+| **S-03** | Dialogue modal bloquant | `perform_action` en mémoire RAM sans bloquer la boucle d'événements de l'interface. |
+| **V-01** | Pictogramme pur sans texte | Détection visuelle et clic direct via grille cartésienne `screen_capture`. |
+| **V-02** | Scaling fractionnel (décalage 25%) | Normalisation des coordonnées physiques réelles garantissant l'alignement noyau. |
+| **V-03** | Rendu typographique complexe | Reconnaissance OCR locale haute précision via `find_text` (RapidOCR). |
 | **O-01** | Modale Sudo Wayland / Polkit | Contournement via PTY (`process_run`) en injectant le mot de passe sur `stdin`. |
 | **O-02** | Sélecteur de fichier Sandboxé | `key_tap("ctrl+l")` force l'affichage du chemin GTK, puis `set_value` l'injecte. |
+| **O-03** | Multiples fenêtres d'un même PID | `activate_window` utilise le Window ID unique du compositeur plutôt que le PID. |
 
 ---
 
 ## 6. Guide de Déploiement Linux
 
 ```bash
-# Dependances système (D-Bus, uinput, OCR, Weasyprint)
+# Dépendances système (D-Bus, uinput, OCR)
 sudo apt-get update && sudo apt-get install -y \
     python3-dbus at-spi2-core libatspi-dev \
     xdotool wmctrl python3-tk tesseract-ocr
@@ -129,6 +135,9 @@ sudo apt-get update && sudo apt-get install -y \
 # Permissions uinput
 sudo usermod -aG input $USER
 
-# Modules Python MCP
-pip install mcp python-evdev rapidocr-onnxruntime
+# Installation de gui-agent et des dépendances d'exécution
+uv tool install "git+https://github.com/leandre755/gui_agent.git"
+# Ou installation locale via pip :
+pip install "mcp>=1.2.0,<3.0.0" evdev rapidocr-onnxruntime
+pip install -e .
 ```

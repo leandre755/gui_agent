@@ -52,14 +52,21 @@ All validation checks passed successfully!
 🎉 Toutes les étapes CI sont validées avec succès !
 ```
 
-### Step 4: Création de la PR et Suivi Greptile
-- [ ] **Action**: Commiter, pousser sur `docs/unify-tools-specification`, créer la PR sous le compte `personnal-agent`, observer la temporisation de 8 minutes (480s) et qualifier le score Greptile 5/5.
-- [ ] **Verify**: `gh pr view --json statusCheckRollup,reviews` et lecture intégrale des retours.
+### Step 4: Création de la PR et Résolution des Retours Greptile
+- [x] **Action**: Commiter, pousser sur `docs/unify-tools-specification`, créer la PR #139 sous le compte `personnal-agent`, et réceptionner le rapport Greptile initial (Score 3/5, 3 constats identifiés).
+- [x] **Action Corrective**: Traiter exhaustivement les 3 constats Greptile localement :
+  1. *Finding 1 (P1)* : Qualification de la table des 15 outils comme Architecture Cible v1.0 avec badges `Target v1.0` / `Cible v1.0`, mention des alias runtime actifs `gui_*`, et ajout de la documentation exhaustive des 11 utilitaires runtime actifs (`gui_clipboard_*`, `gui_window_*`, `gui_find_template`, `gui_web_action`).
+  2. *Finding 2 (P2)* : Matrice Section 5 de `mcp_final_specification.md` complétée avec les 12 cas limites réels (T-01 à T-03, S-01 à S-03, V-01 à V-03, O-01 à O-03).
+  3. *Finding 3 (P1)* : Remplacement de `python-evdev` par `evdev` et ajout de l'installation de `gui-agent` dans Section 6.
+- [x] **Verify**: `./ci.sh` (112/112 tests PASS) et `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` (8/8 couches validées).
 - **Verification Proof**:
 ```text
-(En attente d'exécution)
+======================== 112 passed in 74.10s (0:01:14) ========================
+✔ Validé (76781ms)
+[Quality-Gate] Pipeline validé avec succès (Secrets, CVE, Lint, Typage, Qualité, SAST). Commit autorisé.
 ```
+- [ ] **Action**: Pousser le commit de correction sur `docs/unify-tools-specification`, observer la temporisation de 8 minutes (480s) et qualifier l'obtention du score Greptile 5/5.
 
 ## ⚠️ Mitigations & Edge Cases
 - **Risk**: Greptile pourrait relever une incohérence entre les 15 outils documentés et l'exposition actuelle de 21 outils dans `linux/server.py`.
-- **Mitigation**: Clarifier explicitement dans le texte d'introduction que le tableau décrit la spécification unifiée de l'architecture v1.0 avec son statut par couche (les primitives L3, L2, L1 screenshots et Vidéo étant actives, et l'implémentation complète des signatures cibles étant ordonnancée dans la feuille de route modulaire avec rétrocompatibilité des alias existants).
+- **Mitigation**: Clarifier explicitement dans le texte d'introduction que le tableau décrit la spécification unifiée de l'architecture cible v1.0 avec badges explicites (`Target v1.0` / `Cible v1.0` vs `Active` / `Actif`), documenter les alias d'exécution runtime actifs (`gui_*`), et fournir la documentation complète des 11 utilitaires opérationnels actuels pour qu'aucun outil exposé ne disparaisse.
