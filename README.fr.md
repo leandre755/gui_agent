@@ -39,31 +39,26 @@ Fonctionnant via une unique connexion FastMCP résiliente sur l'entrée/sortie s
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Bullseye.png" alt="Bullseye" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Fonctionnalités Principales
 
-Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cycle de vie du contrôle graphique (Computer Use) du système d'exploitation. Tous les outils fonctionnent via un unique canal de communication standard d'entrée/sortie (stdio) JSON-RPC 2.0.
 
-| Nom de l'Outil | Domaine | Description | État |
+Le tableau ci-dessous présente la **Spécification d'Architecture Cible v1.0** (15 primitives unifiées) définissant le contrat cible à travers la feuille de route modulaire, aux côtés des outils MCP actuellement actifs exposés par le runtime Linux sous leurs espaces de noms opérationnels `gui_*` et AT-SPI2.
+
+| Nom de l'Outil | Domaine | Description | Statut |
 | :--- | :--- | :--- | :--- |
-| `gui_get_screen_info` | <img src="https://img.shields.io/badge/%C3%89cran-10B981?style=flat-square" alt="Écran" /> | Récupère la résolution d'écran, les moniteurs détectés, les coordonnées d'affichage et l'état failsafe. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_take_screenshot` | <img src="https://img.shields.io/badge/%C3%89cran-10B981?style=flat-square" alt="Écran" /> | Capture l'affichage du bureau complet ou rogné avec incrustation d'une grille cartésienne dynamique. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_mouse_move` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Déplace de manière fluide le curseur vers des coordonnées absolues `(x, y)` ou normalisées `[0, 1000]`. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_mouse_click` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Envoie des clics de souris simples, doubles ou triples (`left`, `right`, `middle`) aux coordonnées cibles. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_mouse_drag` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Exécute des opérations de glisser-déposer fluides de `(x1, y1)` vers `(x2, y2)` avec durée paramétrable. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_mouse_scroll` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Simule des actions de molette directionnelles (`up`, `down`, `left`, `right`) avec pas ajustable. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_keyboard_type` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Saisit du texte caractère par caractère avec micro-délais réalistes pour prévenir les blocages anti-bot. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_keyboard_press` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Émet des codes de touches spécialisés et combinaisons de raccourcis complexes (`ctrl+c`, `super`, `alt+tab`, `Return`). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_clipboard_get` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Lit le texte du presse-papiers OS avec bascule multi-backend automatisée (`pyperclip`, `xclip`, `xsel`). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_clipboard_set` | <img src="https://img.shields.io/badge/Entr%C3%A9e-10B981?style=flat-square" alt="Entrée" /> | Écrit du texte arbitraire dans le presse-papiers système avec synchronisation multi-backend. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_window_list` | <img src="https://img.shields.io/badge/Fen%C3%AAtre-10B981?style=flat-square" alt="Fenêtre" /> | Inspecte la hiérarchie des fenêtres actives, renvoyant IDs de fenêtre, PIDs, titres et classes WM. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_window_focus` | <img src="https://img.shields.io/badge/Fen%C3%AAtre-10B981?style=flat-square" alt="Fenêtre" /> | Active et place une fenêtre d'application cible au premier plan du bureau via son identifiant. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_window_resize_move` | <img src="https://img.shields.io/badge/Fen%C3%AAtre-10B981?style=flat-square" alt="Fenêtre" /> | Déplace et redimensionne une fenêtre cible avec des paramètres de coordonnées et dimensions exacts. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_window_close` | <img src="https://img.shields.io/badge/Fen%C3%AAtre-10B981?style=flat-square" alt="Fenêtre" /> | Ferme proprement une fenêtre d'application ouverte via les protocoles natifs du gestionnaire de fenêtres. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_app_launch` | <img src="https://img.shields.io/badge/Fen%C3%AAtre-10B981?style=flat-square" alt="Fenêtre" /> | Lance des applications système sous forme de processus asynchrones en arrière-plan ou synchrones. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_find_template` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Recherche des sous-images sur l'écran par corrélation croisée normalisée via OpenCV. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_find_text` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Identifie et localise les coordonnées de texte à l'écran via des moteurs OCR (Tesseract / RapidOCR). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_click_text` | <img src="https://img.shields.io/badge/Vision-34D399?style=flat-square" alt="Vision" /> | Effectue une recherche OCR complète et clique immédiatement au centre du cadre englobant le texte. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_web_action` | <img src="https://img.shields.io/badge/Web-34D399?style=flat-square" alt="Web" /> | Exécute des interactions web déterministes (`aria_tree`, `click`, `type`, `screenshot`) via Playwright. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_start_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Démarre un enregistrement vidéo d'écran en arrière-plan à faible surcharge via FFmpeg (`x11grab` / H.264). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
-| `gui_stop_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Arrête proprement l'enregistrement FFmpeg actif, vide le conteneur MP4 et évite les fuites de descripteurs. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
+| `execute_action_batch` | <img src="https://img.shields.io/badge/Core%20REPL-10B981?style=flat-square" alt="Core REPL" /> | Exécute des scripts Python/Bash locaux avec `mcp_core` préchargé (modèle Open Interpreter), enchaînant des lots d'actions sans RTT (Phase 2). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `process_run` | <img src="https://img.shields.io/badge/PTY%20Syst%C3%A8me-10B981?style=flat-square" alt="PTY Système" /> | Lance des commandes shell interactives via PTY pour injecter des identifiants et franchir les dialogues Polkit/sudo (Phase 3). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `process_list` | <img src="https://img.shields.io/badge/PTY%20Syst%C3%A8me-10B981?style=flat-square" alt="PTY Système" /> | Inspecte le système de fichiers `/proc` en lecture seule pour sonder les processus actifs sans modifier l'état du bureau (Phase 3). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `activate_window` | <img src="https://img.shields.io/badge/PTY%20Syst%C3%A8me-10B981?style=flat-square" alt="PTY Système" /> | Bascule le focus au niveau du compositeur d'affichage via Window ID unique (alias runtime actif : `gui_window_focus`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `get_app_state` | <img src="https://img.shields.io/badge/Palier%20L3-10B981?style=flat-square" alt="Palier L3" /> | Inspecte l'arbre d'accessibilité AT-SPI2 via le médiateur natif Rust (`gui-agent-atspi`) directement en RAM. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
+| `perform_action` | <img src="https://img.shields.io/badge/Palier%20L3-10B981?style=flat-square" alt="Palier L3" /> | Déclenche des actions sémantiques directement en RAM via IPC D-Bus en sub-50ms sans mouvement physique de pointeur. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
+| `set_value` | <img src="https://img.shields.io/badge/Palier%20L3-10B981?style=flat-square" alt="Palier L3" /> | Mute des valeurs textuelles ou numériques directement dans les variables mémoire des composants sans frappe physique. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
+| `find_text` | <img src="https://img.shields.io/badge/Palier%20L2-34D399?style=flat-square" alt="Palier L2" /> | Découvre les coordonnées du texte à l'écran via OCR local sans transférer de flux d'images (alias runtime actif : `gui_find_text`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `screen_capture` | <img src="https://img.shields.io/badge/Palier%20L1-34D399?style=flat-square" alt="Palier L1" /> | Capture le framebuffer brut avec grille cartésienne calibrée pour les surfaces opaques (alias runtime actif : `gui_take_screenshot`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `mouse_click_at` | <img src="https://img.shields.io/badge/Palier%20L1-34D399?style=flat-square" alt="Palier L1" /> | Injecte des événements de clic souris (`gauche`, `droite`, `milieu`, double) aux coordonnées physiques cibles `(x, y)` (alias runtime actif : `gui_mouse_click`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `mouse_drag_smooth` | <img src="https://img.shields.io/badge/Palier%20L1-34D399?style=flat-square" alt="Palier L1" /> | Diffuse une trajectoire cinématique continue interpolée franchissant les seuils d'arrachement de l'interface (alias runtime actif : `gui_mouse_drag`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `mouse_scroll` | <img src="https://img.shields.io/badge/Palier%20L1-34D399?style=flat-square" alt="Palier L1" /> | Exécute des défilements molette matériels pour matérialiser les listes virtualisées (alias runtime actif : `gui_mouse_scroll`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `key_tap` | <img src="https://img.shields.io/badge/Palier%20L1-34D399?style=flat-square" alt="Palier L1" /> | Injecte des frappes standard, raccourcis de navigation et accords de touches (alias runtime actifs : `gui_keyboard_press`, `gui_keyboard_type`). | <img src="https://img.shields.io/badge/Cible_v1.0-10B981?style=flat-square" alt="Cible v1.0" /> |
+| `gui_start_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Démarre un enregistrement vidéo d'écran en arrière-plan à faible empreinte via FFmpeg (`x11grab` / H.264). | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
+| `gui_stop_video_recording` | <img src="https://img.shields.io/badge/M%C3%A9dia-F0883E?style=flat-square" alt="Média" /> | Interrompt proprement l'enregistrement FFmpeg actif, vide le conteneur MP4 et prévient les fuites de descripteurs. | <img src="https://img.shields.io/badge/Actif-3FB950?style=flat-square" alt="Actif" /> |
 
 ---
 
@@ -78,7 +73,7 @@ Le serveur expose 21 outils FastMCP monolithiques couvrant l'intégralité du cy
 ### Pipeline d'Exécution Technique & Piliers Fondateurs
 
 1. **Pilier 1 : Escalade Progressive & Actionnement par Paliers** : Au lieu d'imposer un mode d'action unique, l'architecture priorise l'efficience cognitive et d'exécution à travers des paliers étagés : le Niveau L3 interagit avec l'arbre d'accessibilité (AT-SPI2 / D-Bus via le médiateur Rust compilé `gui-agent-atspi`) directement en RAM pour une actuation déterministe en moins de 50 ms sans jeton d'image ; le Niveau L2 exploite un OCR local découplé (RapidOCR/Tesseract) sans surcoût d'inférence ; le Niveau L1 offre le filet de sécurité matériel ultime via grille cartésienne calibrée et dispatchers d'entrée natifs (l'intégration noyau directe `uinput`/`evdev` étant inscrite sur la feuille de route) ; et un shell PTY interactif gère les commandes privilégiées.
-2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_script` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
+2. **Pilier 2 : Architecture d'Exécution Haute Efficacité** : Afin d'éliminer la latence réseau des allers-retours (RTT) successifs, l'architecture conçoit un environnement d'exécution local isolé (`execute_action_batch` via `core/repl.py`). Les modèles y projetteront directement leur logique d'inspection et d'action sous forme de code Python exécuté en mémoire hôte via le SDK unifié `mcp_core`. Les vérifications conditionnelles, calculs cinématiques de glisser et scrutations dynamiques se résoudront en un unique aller-retour cognitif à moins de 5 ms avec moins de 15 Mo de RAM (planifié dans la feuille de route Phase 2).
 3. **Acquisition d'Écran Ultra-Rapide & Incrustation de Grille Cartésienne** : Lorsqu'un agent demande l'état visuel via `gui_take_screenshot`, le serveur capture le framebuffer brut via MSS avec bascule automatique sur KDE Spectacle ou Scrot sous XWayland. Le moteur superpose une grille cartésienne millimétrique à contraste adaptatif à intervalles configurables (ex. 100px), permettant aux modèles de déduire les coordonnées cibles avec certitude mathématique.
 4. **Moteur Double de Normalisation des Coordonnées** : Le serveur accepte les coordonnées en pixels physiques absolus `(x, y)` ou en ratios normalisés `[0, 1000]` sur toute géométrie d'affichage ou configuration multi-écrans. Un convertisseur automatique gère le bornage aux limites, la mise à l'échelle DPI et la translation spatiale de manière transparente.
 5. **Répartiteur d'Entrées et de Fenêtres OS Natif** : Les frappes, raccourcis, clics et glissers sont acheminés via des pilotes natifs à faible latence (`xdotool` et `python-xlib` sous Linux, API Win32 sous Windows). Des micro-délais humanisés émulent une interaction naturelle. Les commandes de gestion de fenêtres (`wmctrl` / `xprop`) inspectent et manipulent l'état des fenêtres sans verrouiller le gestionnaire de fenêtres.
@@ -208,6 +203,108 @@ Ajoutez l'entrée suivante dans votre fichier `mcp.json` de Cursor (`~/.cursor/m
 ---
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Hammer%20and%20Wrench.png" alt="Tools" width="28" height="28" style="vertical-align: middle; margin-right: 8px;" /> Référence du Toolset & CLI
+
+<details>
+<summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Cible" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Primitives d'Architecture Cible v1.0 (13 outils)</b></summary>
+
+#### `execute_action_batch`
+Exécute des blocs d'actions Python ou Bash directement en mémoire hôte avec le SDK `mcp_core` préchargé (paradigme Open Interpreter), éliminant le RTT réseau.
+- **Paramètres** :
+  - `language` (`str`, valeur par défaut `"python"`) : Environnement d'exécution (`"python"` ou `"bash"`).
+  - `code` (`str`) : Script multi-étapes contenant la logique conditionnelle, les boucles et scrutations rapides.
+  - `timeout` (`float`, valeur par défaut `30.0`) : Échéance d'exécution en secondes avant terminaison du processus.
+- **Retourne** : `dict` contenant le `status` d'exécution, les sorties `stdout`, `stderr` et le temps `elapsed_seconds`.
+
+#### `process_run`
+Exécute des commandes shell dans une session pseudo-terminal (PTY), permettant l'injection de mots de passe pour franchir les modales.
+- **Paramètres** :
+  - `command` (`str` | `list[str]`) : Chaîne de commande ou liste d'arguments à exécuter.
+  - `background` (`bool`, valeur par défaut `False`) : Lance en tâche de fond détachée (`True`) ou attend de manière synchrone (`False`).
+  - `sudo_password` (`str | None`, valeur par défaut `None`) : Mot de passe injecté sur `stdin` pour l'escalade Polkit/sudo.
+- **Retourne** : `dict` contenant le statut `status`, le code de sortie `returncode`, `stdout` et `stderr`.
+
+#### `process_list`
+Inspecte le système de fichiers `/proc` en lecture seule pour sonder les processus actifs du bureau sans altération.
+- **Paramètres** : Aucun.
+- **Retourne** : `list[dict]` contenant les processus actifs du système avec métadonnées `pid`, `name` et statut.
+
+#### `activate_window`
+Bascule le focus directement au niveau du compositeur d'affichage via Window ID unique, évitant les collisions de PID (alias actif : `gui_window_focus`).
+- **Paramètres** :
+  - `window_id` (`str` | `int`) : Identifiant Window ID du compositeur cible à activer et placer au premier plan.
+- **Retourne** : `dict` contenant le `status` de l'opération et l'identifiant de fenêtre actif confirmé.
+
+#### `get_app_state`
+Inspecte l'arbre d'accessibilité via le médiateur natif Rust (`gui-agent-atspi`) directement en RAM sans jeton d'image.
+- **Paramètres** :
+  - `include_screenshot` (`bool`, valeur par défaut `False`) : Joint une capture visuelle optionnelle du framebuffer.
+- **Retourne** : `dict` contenant les nœuds de l'arbre, les `element_index` numériques, boîtes, états et `snapshot_id`.
+
+#### `perform_action`
+Invoque des actions sémantiques en mémoire applicative cible via IPC D-Bus en moins de 50 ms sans déplacer le pointeur.
+- **Paramètres** :
+  - `element_id` (`str` | `int`) : Identifiant du nœud ou index de cache issu du `snapshot_id` actif.
+  - `action` (`str`, valeur par défaut `"activate"`) : Nom de l'action sémantique (`"activate"`, `"click"`, `"press"`).
+- **Retourne** : `dict` contenant le statut `status`, l'identifiant cible et la réponse de vérification d'action.
+
+#### `set_value`
+Mute des valeurs textuelles ou numériques directement dans les variables mémoire sans émettre de frappes physiques.
+- **Paramètres** :
+  - `element_id` (`str` | `int`) : Champ de saisie ou composant cible.
+  - `value` (`str`) : Valeur textuelle ou numérique à affecter directement en mémoire applicative.
+- **Retourne** : `dict` contenant le statut `status`, l'identifiant cible et la confirmation de la valeur assignée.
+
+#### `find_text`
+Découvre les coordonnées du texte à l'écran via les moteurs OCR locaux (RapidOCR / Tesseract ; alias actif : `gui_find_text`).
+- **Paramètres** :
+  - `text` (`str`) : Chaîne de texte cible à identifier à l'écran.
+  - `confidence` (`float`, valeur par défaut `0.85`) : Score de confiance minimal (0.0 à 1.0).
+- **Retourne** : `dict` contenant le centroïde `{"x": int, "y": int}`, le cadre englobant et la `confidence`.
+
+#### `screen_capture`
+Capture le framebuffer brut de l'écran avec incrustation optionnelle d'une grille cartésienne calibrée (alias actif : `gui_take_screenshot`).
+- **Paramètres** :
+  - `show_grid` (`bool`, valeur par défaut `True`) : Incruste une grille cartésienne avec libellés à contraste adaptatif.
+  - `grid_step` (`int`, valeur par défaut `100`) : Intervalle en pixels entre les lignes de grille (minimum 20px).
+  - `output_path` (`str | None`, valeur par défaut `None`) : Chemin de destination avec protection par réservation atomique.
+- **Retourne** : `dict` contenant `screenshot_path` résolu, dimensions de l'image, format et état de la grille.
+
+#### `mouse_click_at`
+Injecte des clics de souris matériels via les sous-systèmes d'entrée bas niveau aux coordonnées exactes (alias actif : `gui_mouse_click`).
+- **Paramètres** :
+  - `x` (`int` | `float`) : Coordonnée horizontale absolue en pixels X.
+  - `y` (`int` | `float`) : Coordonnée verticale absolue en pixels Y.
+  - `button` (`str`, default `"left"`) : Bouton de souris (`"left"`, `"right"`, `"middle"`).
+  - `double` (`bool`, default `False`) : Déclenche une séquence de double-clic consécutif.
+- **Retourne** : `dict` confirmant le statut d'exécution du clic, les coordonnées cibles et le bouton émis.
+
+#### `mouse_drag_smooth`
+Diffuse une trajectoire continue interpolée franchissant les seuils d'arrachement du glisser-déposer (alias actif : `gui_mouse_drag`).
+- **Paramètres** :
+  - `from_x` (`int` | `float`) : Coordonnée horizontale de départ X.
+  - `from_y` (`int` | `float`) : Coordonnée verticale de départ Y.
+  - `to_x` (`int` | `float`) : Coordonnée horizontale d'arrivée X.
+  - `to_y` (`int` | `float`) : Coordonnée verticale d'arrivée Y.
+  - `duration` (`float`, valeur par défaut `0.5`) : Durée totale d'interpolation de la trajectoire en secondes.
+- **Retourne** : `dict` confirmant l'accomplissement du glisser cinématique sur la trajectoire spatiale.
+
+#### `mouse_scroll`
+Simule des mouvements de molette matériels pour forcer le rendu dynamique des listes virtualisées (alias actif : `gui_mouse_scroll`).
+- **Paramètres** :
+  - `x` (`int` | `float`) : Position horizontale d'injection de l'événement de défilement.
+  - `y` (`int` | `float`) : Position verticale d'injection de l'événement de défilement.
+  - `direction` (`str`, default `"down"`) : Axe directionnel de défilement (`"up"`, `"down"`, `"left"`, `"right"`).
+  - `amount` (`int`, default `5`) : Nombre d'unités de pas de défilement à diffuser.
+- **Retourne** : `dict` confirmant la diffusion du défilement, la cible de coordonnées et le nombre de pas.
+
+#### `key_tap`
+Émet des frappes matérielles, raccourcis et accords de touches directement vers la fenêtre active (alias actifs : `gui_keyboard_press`, `gui_keyboard_type`).
+- **Paramètres** :
+  - `key` (`str`) : Identifiant de touche (ex. `"Return"`, `"Escape"`, `"Tab"`, `"space"`).
+  - `modifiers` (`list[str] | str | None`, default `None`) : Modificateurs (ex. `["ctrl"]`, `["alt"]`, `"super"`).
+- **Retourne** : `dict` confirmant le statut d'injection de la frappe et la combinaison d'accords émise.
+
+</details>
 
 <details>
 <summary><b><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Computer%20Mouse.png" alt="Mouse" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Outils d'Affichage & Curseur (10 outils)</b></summary>

@@ -1,69 +1,57 @@
 # Session Handoff
 
 ## 🎯 Functional Outcome & Task Reality
-- **Requested Task**: Mise à jour intégrale des README (`README.md` et `README.fr.md`) avec la nouvelle architecture, conception et génération des nouveaux diagrammes vectoriels d'architecture Excalidraw, conversion en images (SVG/PNG), hébergement sur Gist, respect strict de l'isomorphisme bilingue ligne à ligne, 0 emoji Unicode dans les en-têtes, aucune mention d'historique de versions, création de la Pull Request #138 sous le compte `personnal-agent` et résolution intégrale des constats de revue Greptile.
+- **Requested Task**: Traitement exhaustif des constats Greptile sur la PR #139 (normalisation `execute_action_batch`, structure des balises `<details>`, positionnement du Toolset, et parité bilingue stricte).
 - **Functional Status**: SUCCESS
 - **Behavioral Proof**:
-  - Conception et génération des fichiers sources Excalidraw : `how-it-works-en.excalidraw` et `how-it-works-fr.excalidraw` (schéma officiel JSON avec palette Émeraude, style manuscrit Virgil).
-  - Rendu et conversion sur `excalidraw.com` via Chromium headless :
-    - `assets/exc-how-it-works-en.svg` (44 200 octets) & `assets/exc-how-it-works-en.png` (327 248 octets)
-    - `assets/exc-how-it-works-fr.svg` (45 225 octets) & `assets/exc-how-it-works-fr.png` (328 232 octets)
-  - Inspection visuelle multimodale validée par rapport à l'image de référence fournie par l'utilisateur (`media_1789334163981.png`).
-  - Hébergement sur GitHub Gist public : `https://gist.github.com/personnal-agent/f0b933b981a70de123282eb99fd6df44`
-    - EN SVG : `https://gist.githubusercontent.com/personnal-agent/f0b933b981a70de123282eb99fd6df44/raw/exc-how-it-works-en.svg`
-    - FR SVG : `https://gist.githubusercontent.com/personnal-agent/f0b933b981a70de123282eb99fd6df44/raw/exc-how-it-works-fr.svg`
-  - Parité bilingue stricte vérifiée : 485 lignes dans `README.md` et 485 lignes dans `README.fr.md`, correspondance parfaite des lignes vides et des blocs.
-  - Zéro emoji Unicode dans les en-têtes Markdown (`#`, `##`, `###`, `####`), exclusivement des images Fluent 3D via CDN.
-  - Reflet fidèle et souverain de l'état actuel : aucune mention de "Nouvelle version", "Nouvelle maj" ou historique de versions.
-  - Publication de la Pull Request [#138](https://github.com/leandre755/gui_agent/pull/138) sous le compte GitHub `personnal-agent`.
-  - Traitement exhaustif de 100% des constats formulés par Greptile lors des revues successives (Score passé de 3/5 à 4/5, puis résolution du dernier finding) :
-    1. *P1 - Fonctionnalités annoncées indisponibles* : qualification rigoureuse des Piliers 1 & 2 (L3 AT-SPI2 Rust opérationnel, L2 RapidOCR opérationnel, L1 screenshots opérationnel avec uinput/evdev en roadmap, REPL CodeAct en Phase 2).
-    2. *P1 - Backends multiplateformes absents* : qualification explicite de `windows/` et `macos/` comme répertoires avec backends natifs en cours de développement / réservés.
-    3. *P2 - Installation non reproductible* & *P1 - Tagged scripts unavailable* : utilisation de la révision immuable `7a49514` (commit SHA de base de la release multi-plateforme) pour toutes les commandes curl/PowerShell dans `README.md`, `README.fr.md` et `INSTALL.md`, éliminant tout risque de 404 (toutes les URLs vérifiées HTTP 200).
-    4. *P2 - Prérequis Cargo manquant* : ajout de `cargo` et `rustc` aux prérequis Linux, mention explicite `(requires Cargo)` pour le mode éditable, et émission d'un warning logger dans `hatch_build.py` si cargo est introuvable sous Linux.
-    5. *P2 - Séparateurs de tableaux en trop* : réduction des séparateurs à 3 colonnes dans `README.md` et `README.fr.md` (lignes 389 et 469).
-  - Validation complète de `./ci.sh` : 112/112 tests PASS en 41.78s.
+  - **Nom cible normalisé (P2)** : Remplacement rigoureux de `execute_script` par `execute_action_batch` dans la prose du Pilier II (ligne 81) et dans l'intégralité des sections anglaises et françaises.
+  - **Structure `<details>` et positionnement du Toolset (P1 & P2)** :
+    - Rétablissement des balises d'ouverture `<details>` et `<summary>` pour le bloc `Target Architecture v1.0 Primitives (13 tools)`.
+    - Positionnement strict de `## Toolset & CLI Reference` au premier niveau, hors de tout volet rétractable `<details>`.
+    - Rétablissement et fermeture déterministe de la balise `</details>` pour l'enregistrement vidéo continu et pour l'ensemble des groupes d'outils.
+    - Préservation intégrale des 5 blocs d'outils opérationnels issus de `fe5f9a3`.
+  - **Parité bilingue stricte vérifiée** : 582 lignes dans `README.md` et 582 lignes dans `README.fr.md`, correspondance parfaite ligne à ligne des lignes vides et des tableaux.
+  - **Zéro émoji Unicode dans les en-têtes Markdown** : Exclusivement des images Fluent 3D via CDN.
+  - **Zéro mention d'historique de versions** : Reflet fidèle et souverain de l'état actuel.
+  - **Budget de gouvernance respecté** : 598 lignes de diff total cumulé contre `fe5f9a3` (`git diff --numstat fe5f9a3`), strictement conforme au plafond de 1000 lignes (`governance.yml`).
+  - **Validation CI `./ci.sh`** : 112/112 tests PASS en 58.41s.
+  - **Pre-commit 8 couches** : 8/8 couches validées (gitleaks, pip-audit, ruff check, ruff format, mypy, sonar/smells, bandit, semgrep).
 
 ## ⚡ Technical Diffs / Atomic Modifications
-- **File**: `README.md`, `README.fr.md`, `INSTALL.md`
-  - **Scope**: Documentation principale, miroir francophone et guide d'installation.
-  - **Exact Technical Change**: Alignement des URLs d'installation et de désinstallation vers le SHA immuable `7a49514`, assurant 100% de reproductibilité et zéro 404.
-- **File**: `hatch_build.py`
-  - **Scope**: Hook de build personnalisé Hatchling.
-  - **Exact Technical Change**: Avertissement explicite émis si `cargo` est introuvable lors d'un build sous Linux.
-- **File**: `.GCC/branches/test.md`
-  - **Scope**: Registre persistent de tests.
-  - **Exact Technical Change**: Consignation du traitement de 100% des constats de revue Greptile sur la PR #138.
-- **File**: `.GCC/main.md`
-  - **Scope**: Registre macro du projet.
-  - **Exact Technical Change**: Mise à jour du statut des branches actives et de la direction.
+- **File**: `README.md`, `README.fr.md`
+  - **Scope**: Documentation principale et miroir francophone.
+  - **Exact Technical Change**: Normalisation de `execute_action_batch` dans le Pilier II, réorganisation propre du Toolset avec insertion du bloc `Target Architecture v1.0 Primitives (13 tools)` sous `## Toolset & CLI Reference`, fermeture stricte de tous les blocs `<details>`, et maintien des 5 blocs d'outils actifs.
+- **File**: `.GCC/branches/plan_readme_tools_unification.md`, `.GCC/resume.md`
+  - **Scope**: Registre de session et plan d'exécution tactique.
+  - **Exact Technical Change**: Consignation de la résolution des constats Greptile sur `5193e7d` et mise à jour des preuves de validation.
 
 ## 🛠️ Static Codebase Health
-- **Verification Command Run**: `./ci.sh`
+- **Verification Command Run**: `./ci.sh` && `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit`
 - **Linter/Compiler Status**:
 ```text
-============================= 112 passed in 41.78s =============================
-✔ Validé (45176ms)
+============================= 112 passed in 58.41s =============================
+✔ Validé (71198ms)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 RÉSUMÉ D'EXÉCUTION CI (CI Summary)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 | Étape de Validation                       | Statut     | Durée     |
 |--------------------------------------------|------------|------------|
-| Compilation Bytecode Python (compileall)   | PASS       | 395ms      |
-| Validation Workflows GitHub Actions        | PASS       | 91ms       |
-| Linter de Code (Ruff Check)                | PASS       | 626ms      |
-| Formatage de Code (Ruff Format)            | PASS       | 62ms       |
-| Typage Statique Strict (Mypy)              | PASS       | 4772ms     |
-| Suite de Tests Pytest                      | PASS       | 45176ms    |
+| Compilation Bytecode Python (compileall)   | PASS     | 10467ms    |
+| Validation Workflows GitHub Actions        | PASS     | 172ms      |
+| Linter de Code (Ruff Check)                | PASS     | 1194ms     |
+| Formatage de Code (Ruff Format)            | PASS     | 68ms       |
+| Typage Statique Strict (Mypy)              | PASS     | 10631ms    |
+| Suite de Tests Pytest                      | PASS     | 71198ms    |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎉 Toutes les étapes CI sont validées avec succès !
+[Quality-Gate] Pipeline validé avec succès (Secrets, CVE, Lint, Typage, Qualité, SAST). Commit autorisé.
 ```
 
 ## 🚧 Unfinished Work & Technical Failures
-- Aucun blocage technique ni régression.
+- Aucun blocage technique ni régression. La branche locale est prête pour le commit et le push vers `origin/docs/unify-tools-specification`.
 
 ## 👉 Handover Directives for the Next Agent
-1. **Target File**: `README.md`, `README.fr.md`, `INSTALL.md`
-2. **Immediate Action**: Commiter et pousser les modifications sur `docs/readme-how-it-works-update`, puis observer la certification finale Greptile (5/5).
-3. **Verification Command**: `git status && ./ci.sh`
+1. **Target File**: `README.md`, `README.fr.md`
+2. **Immediate Action**: Exécuter `git commit` puis `git push origin docs/unify-tools-specification`, programmer la temporisation d'attente de 8 minutes (480s), et vérifier l'obtention du Confidence Score 5/5 sur PR #139.
+3. **Verification Command**: `gh pr view 139 --json title,state,comments`

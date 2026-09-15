@@ -16,7 +16,7 @@
 - [2026-09-13] Documentation Architecture v1.0, Nouveaux Diagrammes Excalidraw Gist & Harmonisation Immuable (PR #138, Confidence Score 5/5 Greptile, 112/112 tests)
 
 ## 🎯 Objective
-High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 21 tools, zero-leak process lifecycle).
+High-performance FastMCP server engineered with a decoupled modular architecture (core, layers, utils) for direct, low-latency Computer Use on Linux (X11/XWayland) and Windows desktop environments (<50 MB RAM, 15 unified tools, zero-leak process lifecycle).
 
 ## 🛡️ Protocole de Validation par Pull Request & Critères 5/5 Inviolables
 - **Mode de travail exclusif par Pull Request (PR)** : Toute évolution, correctif de sécurité ou refactorisation est développée sur une branche dédiée et soumise via PR.
@@ -54,6 +54,10 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - *P1 - Course TOCTOU lors de la suppression par chemin* : La séquence `os.stat()` puis `os.unlink(filename, dir_fd)` permet à un attaquant de remplacer l'entrée entre les deux appels et d'entraîner la suppression de son fichier tiers. Solution : bannir la suppression destructive basée sur le nom dans un répertoire concurrent ; retenir le descripteur ouvert de la réservation à l'écriture, ou s'abstenir de tout `unlink` non lié de manière exclusive.
 
 ## 🧠 Decisions Made
+- [2026-09-14] Renommage Explicite de `execute_script` et Modèle Inspiré d'Open Interpreter
+  - **Context**: L'outil `execute_script` est conçu pour exécuter des blocs séquentiels ou conditionnels de plusieurs actions à la fois en local (avec `mcp_core` préchargé) pour éliminer le RTT LLM. Le nom `execute_script` est trop générique et ne communique pas clairement cette capacité d'exécution groupée d'actions (batch actions).
+  - **Discarded Options**: Conserver `execute_script` (nom générique prêtant à confusion avec un runner bash isolé) ; forcer des micro-appels atomiques séquentiels (provoque une explosion de latence RTT de 30 à 50s).
+  - **Rationale**: Adoption explicite du paradigme d'Open Interpreter (https://github.com/openinterpreter/openinterpreter) permettant au modèle d'exécuter localement des actions composites en boucle fermée. Le nom retenu est formellement `execute_action_batch` (remplaçant `execute_script`) pour refléter sans équivoque la capacité d'exécuter plusieurs actions motrices et sémantiques en une seule passe.
 - [2026-09-12] Bundle Unique Natif par Système d'Exploitation (Rust + REPL PyO3)
   - **Context**: Besoin de livrer un artefact directement exécutable par OS (`gui-agent` sous Linux, `gui-agent.exe` sous Windows, `gui-agent` sous macOS), compilable directement sur la machine hôte via Cargo sans surcoût d'environnement virtuel Python ni fragmentation multi-processus.
   - **Discarded Options**: Bundle Python auto-extractible via PyInstaller/Nuitka (>150 Mo, latence au démarrage, décompression) ; distribution multi-binaires fragmentée (FastMCP Python appelant des sous-processus séparés).
@@ -128,7 +132,8 @@ High-performance FastMCP server engineered with a decoupled modular architecture
   - **Rationale**: Geler la structure jusqu'à la revue utilisateur afin de ne pas invalider les chemins de son audit, et reporter les corrections futures dans l'audit.
 
 ## 🌿 Active Branches / Plans
-- `docs/readme-how-it-works-update` : Mise à jour des README (EN & FR) et génération des nouveaux diagrammes d'architecture Excalidraw (Architecture v1.0) [plan_readme_maj.md](.GCC/branches/plan_readme_maj.md) (Validé 5/5 Greptile sur PR #138).
+- `docs/unify-tools-specification` : Alignement de la section des fonctionnalités principales des README sur le jeu d'outils unifié (15 outils stratégiques : 13 primitives chirurgicales et 2 outils d'audit vidéo) [plan_readme_tools_unification.md](.GCC/branches/plan_readme_tools_unification.md).
+- `docs/readme-how-it-works-update` : Archivé (Fusionné dans `main` via PR #138).
 - `main` : Production release with multi-platform decoupled architecture (`linux/`, `windows/`, `macos/`), native Rust AT-SPI mediator, dynamic XDG path resolution, bilingual landing pages, 112/112 Zero-Slop test harness, and thread-safe video recording.
 
 ## 📈 Current Status

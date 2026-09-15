@@ -168,4 +168,14 @@ La campagne d'exécution atteste d'une qualification à **100% PASS** des 21 out
 | **P2 - Séparateurs de tableaux en trop** | `README.md:389,469`, `README.fr.md:389,469` | Réduction des séparateurs de 4 colonnes à 3 colonnes pour alignement strict avec les en-têtes et données | `check_tables` Python : 100% propre (3 cols) | **PASS** |
 | **P1 - Tagged scripts unavailable** | `README.md:108,119,407,418`, `README.fr.md:108,119,407,418`, `INSTALL.md:15,119,134` | Substitution de `v0.1.0` (qui ne contenait pas `linux/` et `windows/`) par le commit SHA immuable de release `7a49514` contenant l'arborescence multi-plateforme | Toutes les requêtes HTTP testées retournent 200 OK | **PASS** |
 
+---
 
+## 🛠️ Unification de la Spécification des Outils & Résolution Revue Greptile PR #139 (2026-09-14)
+
+| Constat Greptile | Fichiers / Lignes | Correctif Appliqué | Vérification | Statut |
+|---|---|---|---|---|
+| **P1 - Interface MCP non disponible & outils actifs disparus** | `README.md:40-62,204-450`, `README.fr.md:40-62,204-450` | Qualification explicite de la table des 15 primitives comme Spécification d'Architecture Cible v1.0 avec badges `Target v1.0` / `Cible v1.0`, badges `Active` / `Actif` pour les primitives en service, mention des alias d'exécution runtime actifs (`gui_*`), et ajout d'un bloc de documentation complet des 11 utilitaires runtime actifs (`gui_clipboard_*`, `gui_window_*`, `gui_find_template`, `gui_web_action`, etc.) | Isomorphisme bilingue strict vérifié (523 lignes), 0 emoji Unicode dans les titres, 100% des 21 outils actifs documentés | **PASS** |
+| **P2 - Couverture annoncée incomplète** | `mcp_final_specification.md:108-125` | Complétion de la matrice de benchmark avec l'intégralité des 12 cas limites (T-01 à T-03, S-01 à S-03, V-01 à V-03, O-01 à O-03) | Script T-Rex `matrix-case-count-check` satisfait (12/12 cas réels documentés) | **PASS** |
+| **P1 - Déploiement impossible (python-evdev & gui-agent manquant)** | `mcp_final_specification.md:130-142` | Substitution du paquet fictif `python-evdev` par `evdev`, et ajout de la commande d'installation officielle de `gui-agent` (`uv tool install` et `pip install -e .`) | Commandes d'installation valides et exécutables en environnement propre | **PASS** |
+| **Validation Globale CI** | `./ci.sh` | 100% des étapes CI vertes (compileall, verify_workflows, ruff check, ruff format, mypy, pytest) | 112/112 tests passés en 76.78s, 0 avertissement, 0 erreur | **PASS** |
+| **Quality-Gate 8 Couches** | `ALLOW_CONFIG_EDIT=1 ./.githooks/pre-commit` | 8/8 couches validées (gitleaks, pip-audit, ruff check, ruff format, mypy, sonar/smells, bandit, semgrep) | 100% PASS, commit autorisé | **PASS** |

@@ -105,7 +105,7 @@ La réponse architecturale réside dans **l'inversion du contrôle via un REPL l
 
 Au terme de cette recherche, treize outils chirurgicaux d'interaction directe (complétés par deux outils d'enregistrement vidéo pour la traçabilité continue) suffisent à garantir une couverture intégrale (100% de succès sur les douze cas limites réputés insolubles) :
 
-1. **`execute_script`** (Cerveau d'exécution locale, abolition de la latence RTT)
+1. **`execute_action_batch`** (Cerveau d'exécution locale multi-actions inspiré d'Open Interpreter, abolition de la latence RTT)
 2. **`process_run`** (Contournement PTY des verrous Polkit/Wayland)
 3. **`process_list`** (Introspection `/proc` anti-doublon)
 4. **`activate_window`** (Commutation compositeur par Window ID)
